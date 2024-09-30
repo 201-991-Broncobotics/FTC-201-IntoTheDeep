@@ -32,6 +32,10 @@ public class BasicTeleOp extends LinearOpMode {
         double driveDirection = 0;
         double joystickMagnitude = 0;
         double drivePower = 0;
+        double lastExtensionLength = 0;
+        double extensionTarget = 0;
+        double extensionCutoff = 5; // millimeters of distance that the linear slide stops going full speed at the start and end
+        double extensionSpeed = 0;
 
         // temporary TurnControl PID
         double PIDVar = 0;
@@ -115,17 +119,33 @@ public class BasicTeleOp extends LinearOpMode {
             // Arm extension
             if (Math.abs(gamepad2.left_stick_y) > 0.05) {
                 // extend but not past max and min
+                extensionSpeed = Math.abs(gamepad2.left_stick_y) * gamepad2.left_stick_y * 30; // mm per second
+                extensionTarget = extensionTarget + extensionSpeed / FrameRate; // Change target by set speed
 
-            } else {
-                // hold position
+                if (extensionTarget > 696 - extensionCutoff) {
+                    extensionTarget = extensionTarget + extensionSpeed / 10 / FrameRate; // when beyond max extension minus the cutoff, go 10 times slower
+                    if (extensionTarget > 696) extensionTarget = 696; // if target is beyond max, reset to max
 
+                }
+                else if (extensionTarget < 0 + extensionCutoff) {
+                    extensionTarget = extensionTarget + extensionSpeed / 10 / FrameRate;
+                    if (extensionTarget < 0) extensionTarget = 0;
+                }
             }
+            // go to target position
+            robot.Extension.setPower(robot.ExtensionPID(extensionTarget, robot.LinearSlideLength()));
+
+            /*
+            // Arm pivot
+            if (Math.abs(gamepad2.right_stick_y) > 0.05) {
+                void
+            }
+            */
 
 
+            FrameRate = (1 / (mRuntime.time() - LastTime)) * 1000;
 
-            FrameRate = Math.round((1 / (mRuntime.time() - LastTime)) * 1000);
-
-            telemetry.addData("FPS:", FrameRate);
+            telemetry.addData("FPS:", Math.round(FrameRate));
             telemetry.addData("MSPerFrame:", (mRuntime.time() - LastTime));
             LastTime = mRuntime.time();
             telemetry.addData("Heading:", heading);
@@ -138,15 +158,15 @@ public class BasicTeleOp extends LinearOpMode {
             telemetry.addData("Gyro Roll:", robotOrientation.getRoll(AngleUnit.DEGREES));
             telemetry.addLine(" ");
             if (PIDVar == 0) telemetry.addLine("Not Editing PIDs");
-            else if (PIDVar == 1) telemetry.addData("Editing: Diffy Kp", robot.PosKp);
-            else if (PIDVar == 2) telemetry.addData("Editing: Diffy Ki", robot.PosKi);
-            else if (PIDVar == 3) telemetry.addData("Editing: Diffy Kd", robot.PosKd);
-            else if (PIDVar == 4) telemetry.addData("Editing: Pivot Kp", robot.PivotKp);
-            else if (PIDVar == 5) telemetry.addData("Editing: Pivot Ki", robot.PivotKi);
-            else if (PIDVar == 6) telemetry.addData("Editing: Pivot Kd", robot.PivotKd);
-            else if (PIDVar == 7) telemetry.addData("Editing: Extension Kp", robot.ExtendKp);
-            else if (PIDVar == 8) telemetry.addData("Editing: Extension Ki", robot.ExtendKi);
-            else if (PIDVar == 9) telemetry.addData("Editing: Extension Kd", robot.ExtendKd);
+            else if (PIDVar == 1) telemetry.addData("Editing: Diffy Kp - ", robot.PosKp);
+            else if (PIDVar == 2) telemetry.addData("Editing: Diffy Ki - ", robot.PosKi);
+            else if (PIDVar == 3) telemetry.addData("Editing: Diffy Kd - ", robot.PosKd);
+            else if (PIDVar == 4) telemetry.addData("Editing: Pivot Kp - ", robot.PivotKp);
+            else if (PIDVar == 5) telemetry.addData("Editing: Pivot Ki - ", robot.PivotKi);
+            else if (PIDVar == 6) telemetry.addData("Editing: Pivot Kd - ", robot.PivotKd);
+            else if (PIDVar == 7) telemetry.addData("Editing: Extension Kp - ", robot.ExtendKp);
+            else if (PIDVar == 8) telemetry.addData("Editing: Extension Ki - ", robot.ExtendKi);
+            else if (PIDVar == 9) telemetry.addData("Editing: Extension Kd - ", robot.ExtendKd);
             telemetry.update();
         }
     }

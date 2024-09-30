@@ -52,8 +52,6 @@ public class RobotHardware {
     ElapsedTime ExtendPIDtimer = new ElapsedTime();
 
 
-
-
     public RobotHardware(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
 
@@ -242,6 +240,10 @@ public class RobotHardware {
         ExtendPIDtimer.reset();
 
         return (Error * ExtendKp) + (Derivative * ExtendKd) + (ExtendIntegralSum * ExtendKi);
+    }
+
+    public double LinearSlideLength() {
+        return (Extension.getCurrentPosition() / 384.5) * 360 / 2088 * 696;
     }
 
 }
