@@ -32,7 +32,7 @@ public class RobotHardware {
 
 
     // PID variables
-    double RightPosIntegralSum = 0, PosKp = 0.01, PosKi = 0, PosKd = 0; // Right Diffy
+    double RightPosIntegralSum = 0, PosKp = 0.01, PosKi = 0, PosKd = 0; // Diffy settings
     private double RightPosLastError = 0;
     ElapsedTime RightPIDtimer = new ElapsedTime();
 

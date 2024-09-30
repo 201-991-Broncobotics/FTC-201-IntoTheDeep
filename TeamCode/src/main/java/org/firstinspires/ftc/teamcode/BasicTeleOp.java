@@ -23,10 +23,9 @@ public class BasicTeleOp extends LinearOpMode {
         double LastTime = mRuntime.time();
 
 
-        boolean AbsoluteSetting = false;
+        boolean ButtonPressed = false;
         //double AbsDrivingDirection = OpVariableStorage.rotationChange; // allows information to travel from auton to teleop
         double FrameRate = 0;
-        double lastAngle = 0;
         double throttleControl = 0.5;
         boolean reset_heading = false;
         boolean absoluteDriving = true;
@@ -35,7 +34,7 @@ public class BasicTeleOp extends LinearOpMode {
         double drivePower = 0;
 
         // temporary TurnControl PID
-        double PIDVar = 0; // 0 = kp, 1 = ki, 2 = kd
+        double PIDVar = 0;
         double PIDChangeIncrement = 0.01;
 
 
@@ -75,10 +74,10 @@ public class BasicTeleOp extends LinearOpMode {
             robot.driveDiffySwerveWithControllers(driveDirection, drivePower, -0.6 * Math.abs(gamepad1.left_stick_x) * gamepad1.left_stick_x, throttleControl);
 
 
-            if (gamepad1.y && !reset_heading) {
+            if (gamepad1.y && !reset_heading) { // reset absolute driving
                 robot.imu.resetYaw();
                 reset_heading = true;
-            } else if (gamepad1.x && !reset_heading) {
+            } else if (gamepad1.x && !reset_heading) { // toggle absolute driving
                 absoluteDriving = !absoluteDriving;
             } else reset_heading  = false;
 
@@ -87,27 +86,30 @@ public class BasicTeleOp extends LinearOpMode {
             if (gamepad1.left_bumper) PIDChangeIncrement = 0.01;
             else PIDChangeIncrement = 0.0001;
 
-            if (gamepad1.dpad_right && !AbsoluteSetting) {
+            if (gamepad1.dpad_right && !ButtonPressed) {
                 PIDVar = PIDVar + 1;
-                if (PIDVar > 2) PIDVar = 0;
-                AbsoluteSetting = true;
-            } else if (gamepad1.dpad_left && !AbsoluteSetting) {
+                if (PIDVar > 9) PIDVar = 0;
+                ButtonPressed = true;
+            } else if (gamepad1.dpad_left && !ButtonPressed) {
                 PIDVar = PIDVar - 1;
-                if (PIDVar < 0) PIDVar = 2;
-                AbsoluteSetting = true;
+                if (PIDVar < 0) PIDVar = 9;
+                ButtonPressed = true;
 
-            } else if (gamepad1.dpad_up && !AbsoluteSetting) {
-                if (PIDVar == 0) robot.PosKp = (robot.PosKp + PIDChangeIncrement);
-                else if (PIDVar == 1) robot.PosKi = (robot.PosKi + PIDChangeIncrement);
-                else if (PIDVar == 2) robot.PosKd = (robot.PosKd + PIDChangeIncrement);
-                AbsoluteSetting = true;
-            } if (gamepad1.dpad_down) {
-                if (PIDVar == 0 && robot.PosKp > 0) robot.PosKp = (robot.PosKp - PIDChangeIncrement);
-                else if (PIDVar == 1 && robot.PosKi > 0) robot.PosKi = (robot.PosKi - PIDChangeIncrement);
-                else if (PIDVar == 2 && robot.PosKd > 0) robot.PosKd = (robot.PosKd - PIDChangeIncrement);
-                AbsoluteSetting = true;
+            } else if ((gamepad1.dpad_up || gamepad1.dpad_down) && !ButtonPressed) {
+                if (gamepad1.dpad_down) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
+                if (PIDVar == 1) robot.PosKp = (robot.PosKp + PIDChangeIncrement); // Diffy
+                else if (PIDVar == 2) robot.PosKi = (robot.PosKi + PIDChangeIncrement);
+                else if (PIDVar == 3) robot.PosKd = (robot.PosKd + PIDChangeIncrement);
+                else if (PIDVar == 4) robot.PivotKp = (robot.PivotKp + PIDChangeIncrement); // Pivot
+                else if (PIDVar == 5) robot.PivotKi = (robot.PivotKi + PIDChangeIncrement);
+                else if (PIDVar == 6) robot.PivotKd = (robot.PivotKd + PIDChangeIncrement);
+                else if (PIDVar == 7) robot.ExtendKp = (robot.ExtendKp + PIDChangeIncrement); // Extension
+                else if (PIDVar == 8) robot.ExtendKi = (robot.ExtendKi + PIDChangeIncrement);
+                else if (PIDVar == 9) robot.ExtendKd = (robot.ExtendKd + PIDChangeIncrement);
+                ButtonPressed = true;
 
-            } else if (!gamepad1.dpad_up && !gamepad1.dpad_right && !gamepad1.dpad_left && !gamepad1.dpad_down) AbsoluteSetting = false;
+            } else if (!gamepad1.dpad_up && !gamepad1.dpad_right && !gamepad1.dpad_left && !gamepad1.dpad_down) ButtonPressed = false;
+
 
 
             // Arm extension
@@ -118,7 +120,6 @@ public class BasicTeleOp extends LinearOpMode {
                 // hold position
 
             }
-
 
 
 
@@ -136,16 +137,16 @@ public class BasicTeleOp extends LinearOpMode {
             telemetry.addData("Gyro Pitch:", robotOrientation.getPitch(AngleUnit.DEGREES));
             telemetry.addData("Gyro Roll:", robotOrientation.getRoll(AngleUnit.DEGREES));
             telemetry.addLine(" ");
-            if (PIDVar == 0) telemetry.addLine("Setting: Kp");
-            else if (PIDVar == 1) telemetry.addLine("Setting: Ki");
-            else if (PIDVar == 2) telemetry.addLine("Setting: Kd");
-            telemetry.addData("Kp: ", robot.PosKp);
-            telemetry.addData("Ki: ", robot.PosKi);
-            telemetry.addData("Kd: ", robot.PosKd);
-            telemetry.addData("Direction:", driveDirection);
-            telemetry.addData("Magnitude:", joystickMagnitude);
-            telemetry.addData("Right:", robot.getCurrentRightDiffAngle());
-            telemetry.addData("Left:", robot.getCurrentLeftDiffAngle());
+            if (PIDVar == 0) telemetry.addLine("Not Editing PIDs");
+            else if (PIDVar == 1) telemetry.addData("Editing: Diffy Kp", robot.PosKp);
+            else if (PIDVar == 2) telemetry.addData("Editing: Diffy Ki", robot.PosKi);
+            else if (PIDVar == 3) telemetry.addData("Editing: Diffy Kd", robot.PosKd);
+            else if (PIDVar == 4) telemetry.addData("Editing: Pivot Kp", robot.PivotKp);
+            else if (PIDVar == 5) telemetry.addData("Editing: Pivot Ki", robot.PivotKi);
+            else if (PIDVar == 6) telemetry.addData("Editing: Pivot Kd", robot.PivotKd);
+            else if (PIDVar == 7) telemetry.addData("Editing: Extension Kp", robot.ExtendKp);
+            else if (PIDVar == 8) telemetry.addData("Editing: Extension Ki", robot.ExtendKi);
+            else if (PIDVar == 9) telemetry.addData("Editing: Extension Kd", robot.ExtendKd);
             telemetry.update();
         }
     }
