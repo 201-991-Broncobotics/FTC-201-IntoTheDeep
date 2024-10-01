@@ -4,6 +4,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -16,6 +17,9 @@ public class RobotHardware {
 
 
     public final DcMotorEx R1, R2, R3, R4, Pivot, Extension;
+
+
+    public final Servo Claw, Wrist;
 
 
     public final IMU imu;
@@ -67,6 +71,9 @@ public class RobotHardware {
         R4 = hardwareMap.get(DcMotorEx.class, "R4");
         Pivot = hardwareMap.get(DcMotorEx.class, "Pivot");
         Extension = hardwareMap.get(DcMotorEx.class, "Extension");
+
+        Claw = hardwareMap.get(Servo.class, "Claw");
+        Wrist = hardwareMap.get(Servo.class, "Wrist");
 
 
         R1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -244,6 +251,11 @@ public class RobotHardware {
 
     public double LinearSlideLength() {
         return (Extension.getCurrentPosition() / 384.5) * 360 / 2088 * 696;
+    }
+
+
+    public double PivotAngle() {
+        return Pivot.getCurrentPosition() / 5281.1 * 360;
     }
 
 }

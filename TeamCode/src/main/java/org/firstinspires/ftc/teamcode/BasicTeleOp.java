@@ -32,10 +32,13 @@ public class BasicTeleOp extends LinearOpMode {
         double driveDirection = 0;
         double joystickMagnitude = 0;
         double drivePower = 0;
-        double lastExtensionLength = 0;
         double extensionTarget = 0;
-        double extensionCutoff = 5; // millimeters of distance that the linear slide stops going full speed at the start and end
         double extensionSpeed = 0;
+        double pivotTarget = 0;
+        double pivotSpeed = 0;
+        double pivotPower = 0;
+        double clawY = 0; // eventually the pivot and extension should work together to move the claw to a specific x,y point
+        double clawX = 0;
 
         // temporary TurnControl PID
         double PIDVar = 0;
@@ -121,26 +124,33 @@ public class BasicTeleOp extends LinearOpMode {
                 // extend but not past max and min
                 extensionSpeed = Math.abs(gamepad2.left_stick_y) * gamepad2.left_stick_y * 30; // mm per second
                 extensionTarget = extensionTarget + extensionSpeed / FrameRate; // Change target by set speed
+                if (extensionTarget > 696) extensionTarget = 696; // if target is beyond max, reset to max
+                else if (extensionTarget < 0) extensionTarget = 0;
+            } else if (gamepad2.dpad_right) extensionTarget = 696 - 50; // preset extensions to travel to at max speed
+            else if (gamepad2.dpad_left) extensionTarget = 0;
 
-                if (extensionTarget > 696 - extensionCutoff) {
-                    extensionTarget = extensionTarget + extensionSpeed / 10 / FrameRate; // when beyond max extension minus the cutoff, go 10 times slower
-                    if (extensionTarget > 696) extensionTarget = 696; // if target is beyond max, reset to max
+            robot.Extension.setPower(robot.ExtensionPID(extensionTarget, robot.LinearSlideLength())); // go to and hold at target
 
-                }
-                else if (extensionTarget < 0 + extensionCutoff) {
-                    extensionTarget = extensionTarget + extensionSpeed / 10 / FrameRate;
-                    if (extensionTarget < 0) extensionTarget = 0;
-                }
-            }
-            // go to target position
-            robot.Extension.setPower(robot.ExtensionPID(extensionTarget, robot.LinearSlideLength()));
 
-            /*
+
             // Arm pivot
             if (Math.abs(gamepad2.right_stick_y) > 0.05) {
-                void
-            }
-            */
+                // extend but not past max and min
+                pivotSpeed = Math.abs(gamepad2.right_stick_y) * gamepad2.right_stick_y * 20; // degrees per second
+                pivotTarget = pivotTarget + pivotSpeed / FrameRate; // Change target by set speed
+                if (pivotTarget > 90) pivotTarget = 90; // if target is beyond max, reset to max
+                else if (pivotTarget < 0) pivotTarget = 0;
+            } else if (gamepad2.dpad_up) pivotTarget = 90; // preset extensions to travel to at max speed
+            else if (gamepad2.dpad_down) pivotTarget = 0;
+            pivotPower = robot.PivotPID(pivotTarget, robot.PivotAngle());
+
+            if (Math.abs(pivotPower) > 0.3) { // go to and hold at target but keep max speed under 0.3
+                robot.Pivot.setPower(Math.signum(pivotPower) * 0.2);
+            } else robot.Pivot.setPower(pivotPower);
+
+
+
+
 
 
             FrameRate = (1 / (mRuntime.time() - LastTime)) * 1000;
@@ -167,6 +177,9 @@ public class BasicTeleOp extends LinearOpMode {
             else if (PIDVar == 7) telemetry.addData("Editing: Extension Kp - ", robot.ExtendKp);
             else if (PIDVar == 8) telemetry.addData("Editing: Extension Ki - ", robot.ExtendKi);
             else if (PIDVar == 9) telemetry.addData("Editing: Extension Kd - ", robot.ExtendKd);
+            telemetry.addLine(" ");
+            telemetry.addData("Extension Length:", robot.LinearSlideLength());
+            telemetry.addData("Extension Target:", extensionTarget);
             telemetry.update();
         }
     }
