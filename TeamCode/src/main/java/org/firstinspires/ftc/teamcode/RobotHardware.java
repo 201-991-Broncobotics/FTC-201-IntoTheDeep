@@ -109,7 +109,7 @@ public class RobotHardware {
     }
 
 
-    public void methodSleep(long time) {
+    public void methodSleep(long time) { // only needed while in a method, there is another built in sleep function
         try {
             Thread.sleep(time);
         } catch (InterruptedException e) {
@@ -250,7 +250,7 @@ public class RobotHardware {
     }
 
     public double LinearSlideLength() {
-        return (Extension.getCurrentPosition() / 384.5) * 360 / 2088 * 696;
+        return ((Extension.getCurrentPosition() / 384.5) * 360 + PivotAngle()) / 2088 * 696; // encoder tpr, convert to degrees, account for pivot angle, degrees of rotation for entire extension, max length in mm
     }
 
 
