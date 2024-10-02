@@ -24,6 +24,7 @@ public class BasicTeleOp extends LinearOpMode {
 
 
         boolean ButtonPressed = false;
+        boolean PIDIncrementButtonPressed = false;
         //double AbsDrivingDirection = OpVariableStorage.rotationChange; // allows information to travel from auton to teleop
         double FrameRate = 0;
         double throttleControl = 0.5;
@@ -34,11 +35,13 @@ public class BasicTeleOp extends LinearOpMode {
         double drivePower = 0;
         double extensionTarget = 0;
         double extensionSpeed = 0;
+        double extensionPower = 0;
         double pivotTarget = 0;
         double pivotSpeed = 0;
         double pivotPower = 0;
-        double clawY = 0; // eventually the pivot and extension should work together to move the claw to a specific x,y point
+        double clawY = 0; // eventually the pivot, extension, and drivetrain should work together to move the claw to a specific x,y point
         double clawX = 0;
+        double PIDEditingButtonPressedTime = 0; // in ms
 
         // temporary TurnControl PID
         double PIDVar = 0;
@@ -101,21 +104,30 @@ public class BasicTeleOp extends LinearOpMode {
                 PIDVar = PIDVar - 1;
                 if (PIDVar < 0) PIDVar = 9;
                 ButtonPressed = true;
+            } else if (!gamepad1.dpad_right && !gamepad1.dpad_left) ButtonPressed = false;
 
-            } else if ((gamepad1.dpad_up || gamepad1.dpad_down) && !ButtonPressed) {
-                if (gamepad1.dpad_down) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
+            // if the button is held for more than a second, add or subtract constantly
+            if ((gamepad1.dpad_up || gamepad1.dpad_down) && !(PIDIncrementButtonPressed && (mRuntime.time() - PIDEditingButtonPressedTime) < 1000)) {
+                if (gamepad1.dpad_down)
+                    PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
                 if (PIDVar == 1) robot.PosKp = (robot.PosKp + PIDChangeIncrement); // Diffy
                 else if (PIDVar == 2) robot.PosKi = (robot.PosKi + PIDChangeIncrement);
                 else if (PIDVar == 3) robot.PosKd = (robot.PosKd + PIDChangeIncrement);
                 else if (PIDVar == 4) robot.PivotKp = (robot.PivotKp + PIDChangeIncrement); // Pivot
                 else if (PIDVar == 5) robot.PivotKi = (robot.PivotKi + PIDChangeIncrement);
                 else if (PIDVar == 6) robot.PivotKd = (robot.PivotKd + PIDChangeIncrement);
-                else if (PIDVar == 7) robot.ExtendKp = (robot.ExtendKp + PIDChangeIncrement); // Extension
+                else if (PIDVar == 7)
+                    robot.ExtendKp = (robot.ExtendKp + PIDChangeIncrement); // Extension
                 else if (PIDVar == 8) robot.ExtendKi = (robot.ExtendKi + PIDChangeIncrement);
                 else if (PIDVar == 9) robot.ExtendKd = (robot.ExtendKd + PIDChangeIncrement);
-                ButtonPressed = true;
+                if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
+                    PIDEditingButtonPressedTime = mRuntime.time(); // log the time that the button started being pressed
+                    PIDIncrementButtonPressed = true;
+                }
 
-            } else if (!gamepad1.dpad_up && !gamepad1.dpad_right && !gamepad1.dpad_left && !gamepad1.dpad_down) ButtonPressed = false;
+            } else if (!gamepad1.dpad_up && !gamepad1.dpad_down) {
+                PIDIncrementButtonPressed = false;
+            }
 
 
 
@@ -129,8 +141,8 @@ public class BasicTeleOp extends LinearOpMode {
             } else if (gamepad2.dpad_right) extensionTarget = 696 - 50; // preset extensions to travel to at max speed
             else if (gamepad2.dpad_left) extensionTarget = 0;
 
-            robot.Extension.setPower(robot.ExtensionPID(extensionTarget, robot.LinearSlideLength())); // go to and hold at target
-
+            extensionPower = robot.ExtensionPID(extensionTarget, robot.LinearSlideLength()); // go to and hold at target
+            //robot.Extension.setPower(extensionPower);
 
 
             // Arm pivot
@@ -140,14 +152,15 @@ public class BasicTeleOp extends LinearOpMode {
                 pivotTarget = pivotTarget + pivotSpeed / FrameRate; // Change target by set speed
                 if (pivotTarget > 90) pivotTarget = 90; // if target is beyond max, reset to max
                 else if (pivotTarget < 0) pivotTarget = 0;
-            } else if (gamepad2.dpad_up) pivotTarget = 90; // preset extensions to travel to at max speed
+            } else if (gamepad2.dpad_up) pivotTarget = 90; // preset angles to travel to at max speed
             else if (gamepad2.dpad_down) pivotTarget = 0;
             pivotPower = robot.PivotPID(pivotTarget, robot.PivotAngle());
 
-            if (Math.abs(pivotPower) > 0.3) { // go to and hold at target but keep max speed under 0.3
+            /*
+            if (Math.abs(pivotPower) > 0.2) { // go to and hold at target but keep max power under 0.2
                 robot.Pivot.setPower(Math.signum(pivotPower) * 0.2);
             } else robot.Pivot.setPower(pivotPower);
-
+            */
 
 
 
@@ -180,6 +193,10 @@ public class BasicTeleOp extends LinearOpMode {
             telemetry.addLine(" ");
             telemetry.addData("Extension Length:", robot.LinearSlideLength());
             telemetry.addData("Extension Target:", extensionTarget);
+            telemetry.addData("Extension Power:", extensionPower);
+            telemetry.addData("Pivot Angle:", robot.PivotAngle());
+            telemetry.addData("Pivot Target:", pivotTarget);
+            telemetry.addData("Pivot Power:", pivotPower);
             telemetry.update();
         }
     }
