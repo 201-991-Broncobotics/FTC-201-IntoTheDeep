@@ -118,6 +118,11 @@ public class RobotHardware {
     }
 
 
+    public double roundDouble(double input, int digits) {
+        return Math.round(input * (Math.pow(10, digits))) / (Math.pow(10, digits));
+    }
+
+
     public void driveDiffySwerveWithControllers(double direction, double magnitude, double turn, double throttle) {
         double forward = Math.sin(Math.toRadians(direction)) * magnitude; // convert vector to x and y
         double strafe = Math.cos(Math.toRadians(direction)) * magnitude;

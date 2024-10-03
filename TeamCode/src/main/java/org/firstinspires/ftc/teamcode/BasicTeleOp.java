@@ -110,15 +110,15 @@ public class BasicTeleOp extends LinearOpMode {
             if ((gamepad1.dpad_up || gamepad1.dpad_down) && !(PIDIncrementButtonPressed && (mRuntime.time() - PIDEditingButtonPressedTime) < 1000)) {
                 if (gamepad1.dpad_down)
                     PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
-                if (PIDVar == 1) robot.PosKp = (robot.PosKp + PIDChangeIncrement); // Diffy
-                else if (PIDVar == 2) robot.PosKi = (robot.PosKi + PIDChangeIncrement);
-                else if (PIDVar == 3) robot.PosKd = (robot.PosKd + PIDChangeIncrement);
-                else if (PIDVar == 4) robot.PivotKp = (robot.PivotKp + PIDChangeIncrement); // Pivot
-                else if (PIDVar == 5) robot.PivotKi = (robot.PivotKi + PIDChangeIncrement);
-                else if (PIDVar == 6) robot.PivotKd = (robot.PivotKd + PIDChangeIncrement);
-                else if (PIDVar == 7) robot.ExtendKp = (robot.ExtendKp + PIDChangeIncrement); // Extension
-                else if (PIDVar == 8) robot.ExtendKi = (robot.ExtendKi + PIDChangeIncrement);
-                else if (PIDVar == 9) robot.ExtendKd = (robot.ExtendKd + PIDChangeIncrement);
+                if (PIDVar == 1) robot.PosKp = robot.roundDouble(robot.PosKp + PIDChangeIncrement, 4); // Diffy
+                else if (PIDVar == 2) robot.PosKi = robot.roundDouble(robot.PosKi + PIDChangeIncrement, 4);
+                else if (PIDVar == 3) robot.PosKd = robot.roundDouble(robot.PosKd + PIDChangeIncrement, 4);
+                else if (PIDVar == 4) robot.PivotKp = robot.roundDouble(robot.PivotKp + PIDChangeIncrement, 4); // Pivot
+                else if (PIDVar == 5) robot.PivotKi = robot.roundDouble(robot.PivotKi + PIDChangeIncrement, 4);
+                else if (PIDVar == 6) robot.PivotKd = robot.roundDouble(robot.PivotKd + PIDChangeIncrement, 4);
+                else if (PIDVar == 7) robot.ExtendKp = robot.roundDouble(robot.ExtendKp + PIDChangeIncrement, 4); // Extension
+                else if (PIDVar == 8) robot.ExtendKi = robot.roundDouble(robot.ExtendKi + PIDChangeIncrement, 4);
+                else if (PIDVar == 9) robot.ExtendKd = robot.roundDouble(robot.ExtendKd + PIDChangeIncrement, 4);
                 if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                     PIDEditingButtonPressedTime = mRuntime.time(); // log the time that the button started being pressed
                     PIDIncrementButtonPressed = true;
@@ -158,6 +158,15 @@ public class BasicTeleOp extends LinearOpMode {
                 robot.Pivot.setPower(Math.signum(pivotPower) * 0.2);
             } else robot.Pivot.setPower(pivotPower);
             */
+
+
+            // super easy and simple servo code
+            if (gamepad2.y) robot.Wrist.setPosition(1); // units are in amounts of 180 degrees
+            else if (gamepad2.x) robot.Wrist.setPosition(0.5);
+            else if (gamepad2.a) robot.Wrist.setPosition(0);
+
+            if (gamepad2.right_bumper) robot.Claw.setPosition(0); // close - only thing actually from Eli's controls request
+            else if (gamepad2.left_bumper) robot.Claw.setPosition(0.4); // open
 
 
             FrameRate = (1 / (mRuntime.time() - LastTime)) * 1000;
