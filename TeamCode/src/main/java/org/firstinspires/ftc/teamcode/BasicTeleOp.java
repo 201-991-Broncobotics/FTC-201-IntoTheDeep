@@ -128,7 +128,6 @@ public class BasicTeleOp extends LinearOpMode {
             }
 
 
-
             // Arm extension
             if (Math.abs(gamepad2.left_stick_y) > 0.05) {
                 // extend but not past max and min
