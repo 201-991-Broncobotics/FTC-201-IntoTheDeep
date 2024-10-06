@@ -17,21 +17,13 @@ public class RobotHardware {
 
 
     public final DcMotorEx R1, R2, R3, R4, Pivot, Extension;
-
-
     public final Servo Claw, Wrist;
-
-
     public final IMU imu;
 
 
     public double minimumMotorSpeed = 0.4;
-
-
     public double encoderResolution = 8192; // resolution for 1 module turn
-
     public double lastRightAngle = 0;
-
     public double lastLeftAngle = 0;
 
 
@@ -46,12 +38,12 @@ public class RobotHardware {
     ElapsedTime LeftPIDtimer = new ElapsedTime();
 
     // Pivot
-    double PivotIntegralSum = 0, PivotKp = 0.01, PivotKi = 0, PivotKd = 0;
+    double PivotIntegralSum = 0, PivotKp = 0.1, PivotKi = 0, PivotKd = 0;
     private double PivotLastError = 0;
     ElapsedTime PivotPIDtimer = new ElapsedTime();
 
     // Extension
-    double ExtendIntegralSum = 0, ExtendKp = 0.01, ExtendKi = 0, ExtendKd = 0;
+    double ExtendIntegralSum = 0, ExtendKp = 0.012, ExtendKi = 0, ExtendKd = 0;
     private double ExtendLastError = 0;
     ElapsedTime ExtendPIDtimer = new ElapsedTime();
 

@@ -42,6 +42,9 @@ public class BasicTeleOp extends LinearOpMode {
         double clawY = 0; // eventually the pivot, extension, and drivetrain should work together to move the claw to a specific x,y point
         double clawX = 0;
         double PIDEditingButtonPressedTime = 0; // in ms
+        double servoOffset = 0;
+        boolean ServoSetting = false;
+        boolean ExtensionExtended = false;
 
         // temporary TurnControl PID
         double PIDVar = 0;
@@ -127,37 +130,40 @@ public class BasicTeleOp extends LinearOpMode {
                 PIDIncrementButtonPressed = false;
             }
 
+            // yes I overcomplicated the extension and pivot code
 
             // Arm extension
             if (Math.abs(gamepad2.left_stick_y) > 0.05) {
                 // extend but not past max and min
-                extensionSpeed = Math.abs(gamepad2.left_stick_y) * gamepad2.left_stick_y * 30; // mm per second
+                extensionSpeed = Math.abs(gamepad2.left_stick_y) * gamepad2.left_stick_y * 80; // mm per second
                 if (!(FrameRate == 0)) extensionTarget = extensionTarget + extensionSpeed / FrameRate;  // Change target by set speed as long as the frame rate isn't 0
                 if (extensionTarget > 696) extensionTarget = 696; // if target is beyond max, reset to max
                 else if (extensionTarget < 0) extensionTarget = 0;
             } else if (gamepad2.dpad_right) extensionTarget = 696 - 50; // preset extensions to travel to at max speed
             else if (gamepad2.dpad_left) extensionTarget = 0;
 
+            ExtensionExtended = extensionTarget > 300 || robot.LinearSlideLength() > 300; // if linear slide is extended stop pivot presets
+
             extensionPower = robot.ExtensionPID(extensionTarget, robot.LinearSlideLength()); // go to and hold at target
-            //robot.Extension.setPower(extensionPower);
+            robot.Extension.setPower(extensionPower);
 
 
             // Arm pivot
             if (Math.abs(gamepad2.right_stick_y) > 0.05) {
                 // extend but not past max and min
-                pivotSpeed = Math.abs(gamepad2.right_stick_y) * gamepad2.right_stick_y * 20; // degrees per second
+                pivotSpeed = Math.abs(gamepad2.right_stick_y) * gamepad2.right_stick_y * 30; // degrees per second
                 if (!(FrameRate == 0)) pivotTarget = pivotTarget + pivotSpeed / FrameRate; // Change target by set speed as long as the frame rate isn't 0
                 if (pivotTarget > 90) pivotTarget = 90; // if target is beyond max, reset to max
                 else if (pivotTarget < 0) pivotTarget = 0;
-            } else if (gamepad2.dpad_up) pivotTarget = 90; // preset angles to travel to at max speed
-            else if (gamepad2.dpad_down) pivotTarget = 0;
+            } else if (gamepad2.dpad_up && !ExtensionExtended) pivotTarget = 90; // preset angles to travel to at max speed
+            else if (gamepad2.dpad_down && !ExtensionExtended) pivotTarget = 0;
             pivotPower = robot.PivotPID(pivotTarget, robot.PivotAngle());
 
-            /* //i don't want to break the bottom plate again
-            if (Math.abs(pivotPower) > 0.2) { // go to and hold at target but keep max power under 0.2
-                robot.Pivot.setPower(Math.signum(pivotPower) * 0.2);
+            //i don't want to break the bottom plate again
+            if (Math.abs(pivotPower) > 0.4) { // go to and hold at target but keep max power at threshold
+                robot.Pivot.setPower(Math.signum(pivotPower) * 0.4);
             } else robot.Pivot.setPower(pivotPower);
-            */
+
 
 
             // super easy and simple servo code
@@ -165,8 +171,16 @@ public class BasicTeleOp extends LinearOpMode {
             else if (gamepad2.x) robot.Wrist.setPosition(0.5);
             else if (gamepad2.a) robot.Wrist.setPosition(0);
 
-            if (gamepad2.right_bumper) robot.Claw.setPosition(0); // close - only thing actually from Eli's controls request
-            else if (gamepad2.left_bumper) robot.Claw.setPosition(0.4); // open
+            if (gamepad2.right_bumper) robot.Claw.setPosition(0 + servoOffset); // close - only thing actually from Eli's controls request
+            else if (gamepad2.left_bumper) robot.Claw.setPosition(0.05 + servoOffset); // open
+
+            if (gamepad2.x && !ServoSetting) { // currently wrist and servo setting both use x button
+                servoOffset -= 0.05;
+                ServoSetting = true;
+            } else if (gamepad2.b && !ServoSetting) {
+                servoOffset += 0.05;
+                ServoSetting = true;
+            } else if (!gamepad2.x && !gamepad2.b) ServoSetting = false;
 
 
             FrameRate = (1 / (mRuntime.time() - LastTime)) * 1000;
@@ -200,6 +214,7 @@ public class BasicTeleOp extends LinearOpMode {
             telemetry.addData("Pivot Angle:", robot.PivotAngle());
             telemetry.addData("Pivot Target:", pivotTarget);
             telemetry.addData("Pivot Power:", pivotPower);
+            telemetry.addData("Servo Offset", servoOffset);
             telemetry.update();
         }
     }
