@@ -26,9 +26,9 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         GamepadEx driver = new GamepadEx(gamepad1);
 
-        register(drivetrain);
+        //register(drivetrain);
 
-        drivetrain.setDefaultCommand(new DifferentialSwerveCommand(drivetrain, driver));
+        //drivetrain.setDefaultCommand(new DifferentialSwerveCommand(drivetrain, driver));
 
 
 

@@ -1,22 +1,23 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
-import com.arcrobotics.ftclib.hardware.motors.Motor;
-import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.Constants;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 public class SwerveModule {
 
-    private final MotorEx top_motor, bottom_motor;
+    private final DcMotorEx top_motor, bottom_motor;
 
     private final PIDController modulePID;
 
 
     public SwerveModule(HardwareMap map, String top_motor_name, String bottom_motor_name) { // initialize the module
-        top_motor = new MotorEx(map, top_motor_name);
-        bottom_motor = new MotorEx(map, bottom_motor_name);
-        top_motor.setRunMode(Motor.RunMode.RawPower);
-        bottom_motor.setRunMode(Motor.RunMode.RawPower);
+        top_motor = map.get(DcMotorEx.class, top_motor_name);
+        bottom_motor = map.get(DcMotorEx.class, bottom_motor_name);
+        top_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        bottom_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        top_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        bottom_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
         modulePID = new PIDController(0.01, 0, 0, () -> functions.angleDifference(top_motor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360));
     }
@@ -46,8 +47,8 @@ public class SwerveModule {
         double R2Power = -speed + rotation;
         double divider = Math.max(1, Math.max(R1Power, R2Power));
 
-        top_motor.set(-1 * R1Power / divider * throttle);
-        bottom_motor.set(-1 * R2Power / divider * throttle);
+        top_motor.setPower(-1 * R1Power / divider * throttle);
+        bottom_motor.setPower(-1 * R2Power / divider * throttle);
     }
 
 

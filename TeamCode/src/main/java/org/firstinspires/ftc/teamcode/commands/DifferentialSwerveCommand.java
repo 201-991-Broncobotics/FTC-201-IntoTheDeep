@@ -24,7 +24,7 @@ public class DifferentialSwerveCommand extends CommandBase {
     private final boolean absoluteDriving = false;
 
     public DifferentialSwerveCommand(DifferentialSwerveDrivetrain drivetrain, GamepadEx driver) {
-        addRequirements(drivetrain);
+        //addRequirements(drivetrain);
         this.right_joystick_x = () -> 1 * driver.getRightX();
         this.right_joystick_y = () -> 1 * driver.getRightY();
         this.left_joystick_x = () -> 1 * driver.getLeftX();
@@ -53,7 +53,7 @@ public class DifferentialSwerveCommand extends CommandBase {
         //    driveDirection = functions.angleDifference(driveDirection + heading, 0, 360);
         //}
 
-        drivetrain.driveDifferentialSwerve(driveDirection, drivePower, -0.6 * Math.abs(left_joystick_x_value) * left_joystick_x_value, throttleControl);
+        //drivetrain.driveDifferentialSwerve(driveDirection, drivePower, -0.6 * Math.abs(left_joystick_x_value) * left_joystick_x_value, throttleControl);
     }
 
     @Override
