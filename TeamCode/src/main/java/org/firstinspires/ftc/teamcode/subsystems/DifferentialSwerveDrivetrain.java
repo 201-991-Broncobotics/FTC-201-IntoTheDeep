@@ -12,7 +12,7 @@ public class DifferentialSwerveDrivetrain {
     private double lastRightAngle = 0.0, lastLeftAngle = 0.0;
 
     public DifferentialSwerveDrivetrain(HardwareMap map) {
-        rightModule = new SwerveModule(map, "R1", "R2"); // rotation encoder assumed to be on the top motors
+        rightModule = new SwerveModule(map, "R2", "R1"); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         leftModule = new SwerveModule(map, "R3", "R4");
     }
 

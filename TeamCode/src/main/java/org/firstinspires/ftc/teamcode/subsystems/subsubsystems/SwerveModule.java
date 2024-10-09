@@ -14,8 +14,7 @@ public class SwerveModule {
     public SwerveModule(HardwareMap map, String top_motor_name, String bottom_motor_name) { // initialize the module
         top_motor = map.get(DcMotorEx.class, top_motor_name);
         bottom_motor = map.get(DcMotorEx.class, bottom_motor_name);
-        top_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        bottom_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        top_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER); // reset only the rotation encoder
         top_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         bottom_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
