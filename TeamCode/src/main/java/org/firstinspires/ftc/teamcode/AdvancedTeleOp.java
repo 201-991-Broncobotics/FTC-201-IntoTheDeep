@@ -4,7 +4,9 @@ import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.commands.DifferentialSwerveCommand;
+import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
+import org.firstinspires.ftc.teamcode.commands.DriveCommand;
+import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.DifferentialSwerveDrivetrain;
 
 import com.arcrobotics.ftclib.command.InstantCommand;
@@ -20,17 +22,20 @@ public class AdvancedTeleOp extends CommandOpMode {
 
     @Override
     public void initialize() {
-        // something
 
-        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap);
+        GamepadEx driver = new GamepadEx(gamepad1), operator = new GamepadEx(gamepad2);
+        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, driver);
+        ArmSystem armClaw = new ArmSystem(hardwareMap, operator);
 
-        GamepadEx driver = new GamepadEx(gamepad1);
-
-        //register(drivetrain);
-
-        //drivetrain.setDefaultCommand(new DifferentialSwerveCommand(drivetrain, driver));
+        // buttons
+        driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
 
 
 
+        // always running
+        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
+        armClaw.setDefaultCommand(new ArmClawCommand(armClaw));
+
+        schedule(new RunCommand(telemetry::update));
     }
 }

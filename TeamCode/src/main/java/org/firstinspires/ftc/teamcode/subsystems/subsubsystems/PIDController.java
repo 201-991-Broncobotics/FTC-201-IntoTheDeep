@@ -5,10 +5,11 @@ import java.util.function.DoubleSupplier;
 public class PIDController {
 
     public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, maxSpeed, tolerance; // all of these variables can be change elsewhere in the code
+    public double maxIntegral = 1; // helps prevent integral from constantly adding up if the mechanism is stuck
 
     public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false;
 
-    public final DoubleSupplier encoderPosition;
+    public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble()
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
     private double percentMaxSpeed = 1;
@@ -88,7 +89,8 @@ public class PIDController {
     }
 
 
-    public double getPower(double overrideCurrentPosition) { // needs to be called constantly to work properly
+    public double getPower(double overrideCurrentPosition) { // VERY IMPORTANT that this needs to be called constantly to work properly
+        // overrideCurrentPosition is just the current encoder Position unless it is being overridden
         correctValues();
         double power;
         double timeSince = (System.currentTimeMillis() / 1000.0) - previousTime;
@@ -97,6 +99,7 @@ public class PIDController {
 
         double Error = movingTargetPosition - overrideCurrentPosition; // calculate PID values
         integral += Error * timeSince;
+        if (Math.abs(integral) > maxIntegral) integral = Math.signum(integral) * maxIntegral; // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
         previousTime = System.currentTimeMillis() / 1000.0;
@@ -121,7 +124,7 @@ public class PIDController {
         if (kP < 0) kP = 0;
         if (kI < 0) kI = 0;
         if (kD < 0) kD = 0;
-        if (minPosition > maxPosition) { // flip max and min values when the min is above the max value
+        if (minPosition > maxPosition) { // flip max and min values when the min is above the max
             activeMinPosition = maxPosition;
             activeMaxPosition = minPosition;
         } else {
