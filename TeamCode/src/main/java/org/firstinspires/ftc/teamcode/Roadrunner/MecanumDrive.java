@@ -53,6 +53,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
+import org.firstinspires.ftc.teamcode.subsystems.DifferentialSwerveDrivetrain;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -234,6 +235,9 @@ public final class MecanumDrive {
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        // secretly set up diffy alongside mecanum...
+        DifferentialSwerveDrivetrain.setupDiffy(rightFront, leftFront);
+
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -253,15 +257,20 @@ public final class MecanumDrive {
         MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(
                 PoseVelocity2dDual.constant(powers, 1));
 
+        DifferentialSwerveDrivetrain.driveDifferentialSwerve(PoseVelocity2dDual.constant(powers, 1), PARAMS.inPerTick * PARAMS.trackWidthTicks);
+
+        /*
         double maxPowerMag = 1;
         for (DualNum<Time> power : wheelVels.all()) {
             maxPowerMag = Math.max(maxPowerMag, power.value());
         }
+        */
 
-        leftFront.setPower(wheelVels.leftFront.get(0) / maxPowerMag);
-        leftBack.setPower(wheelVels.leftBack.get(0) / maxPowerMag);
-        rightBack.setPower(wheelVels.rightBack.get(0) / maxPowerMag);
-        rightFront.setPower(wheelVels.rightFront.get(0) / maxPowerMag);
+
+        leftFront.setPower(DifferentialSwerveDrivetrain.getLeftTop().get(0)); //  / maxPowerMag
+        leftBack.setPower(DifferentialSwerveDrivetrain.getLeftBottom().get(0)); // hope we don't need this ^
+        rightBack.setPower(DifferentialSwerveDrivetrain.getRightBottom().get(0));
+        rightFront.setPower(DifferentialSwerveDrivetrain.getRightTop().get(0));
     }
 
     public final class FollowTrajectoryAction implements Action {
@@ -319,12 +328,16 @@ public final class MecanumDrive {
             MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
 
+            // Aidan deciding to force using diffy into mecanum:
+            DifferentialSwerveDrivetrain.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
+
+
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            double leftFrontPower = feedforward.compute(wheelVels.leftFront) / voltage;
-            double leftBackPower = feedforward.compute(wheelVels.leftBack) / voltage;
-            double rightBackPower = feedforward.compute(wheelVels.rightBack) / voltage;
-            double rightFrontPower = feedforward.compute(wheelVels.rightFront) / voltage;
+            double leftFrontPower = feedforward.compute(DifferentialSwerveDrivetrain.getLeftTop()) / voltage;
+            double leftBackPower = feedforward.compute(DifferentialSwerveDrivetrain.getLeftBottom()) / voltage;
+            double rightBackPower = feedforward.compute(DifferentialSwerveDrivetrain.getRightBottom()) / voltage;
+            double rightFrontPower = feedforward.compute(DifferentialSwerveDrivetrain.getRightTop()) / voltage;
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
@@ -410,20 +423,24 @@ public final class MecanumDrive {
 
             MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
+
+            // Aidan Diffy implementation 2
+            DifferentialSwerveDrivetrain.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
+
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            double leftFrontPower = feedforward.compute(wheelVels.leftFront) / voltage;
-            double leftBackPower = feedforward.compute(wheelVels.leftBack) / voltage;
-            double rightBackPower = feedforward.compute(wheelVels.rightBack) / voltage;
-            double rightFrontPower = feedforward.compute(wheelVels.rightFront) / voltage;
+            double leftFrontPower = feedforward.compute(DifferentialSwerveDrivetrain.getLeftTop()) / voltage;
+            double leftBackPower = feedforward.compute(DifferentialSwerveDrivetrain.getLeftBottom()) / voltage;
+            double rightBackPower = feedforward.compute(DifferentialSwerveDrivetrain.getRightBottom()) / voltage;
+            double rightFrontPower = feedforward.compute(DifferentialSwerveDrivetrain.getRightTop()) / voltage;
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
 
-            leftFront.setPower(feedforward.compute(wheelVels.leftFront) / voltage);
-            leftBack.setPower(feedforward.compute(wheelVels.leftBack) / voltage);
-            rightBack.setPower(feedforward.compute(wheelVels.rightBack) / voltage);
-            rightFront.setPower(feedforward.compute(wheelVels.rightFront) / voltage);
+            leftFront.setPower(feedforward.compute(DifferentialSwerveDrivetrain.getLeftTop()) / voltage);
+            leftBack.setPower(feedforward.compute(DifferentialSwerveDrivetrain.getLeftBottom()) / voltage);
+            rightBack.setPower(feedforward.compute(DifferentialSwerveDrivetrain.getRightBottom()) / voltage);
+            rightFront.setPower(feedforward.compute(DifferentialSwerveDrivetrain.getRightTop()) / voltage);
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);

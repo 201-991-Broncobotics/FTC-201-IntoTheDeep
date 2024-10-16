@@ -24,16 +24,16 @@ public class AdvancedTeleOp extends CommandOpMode {
     public void initialize() {
 
         GamepadEx driver = new GamepadEx(gamepad1), operator = new GamepadEx(gamepad2);
-        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, driver);
+        // DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, driver);
         ArmSystem armClaw = new ArmSystem(hardwareMap, operator);
 
         // buttons
-        driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
+        // driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
 
 
 
         // always running
-        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
+        // drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
         armClaw.setDefaultCommand(new ArmClawCommand(armClaw));
 
         schedule(new RunCommand(telemetry::update));
