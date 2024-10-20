@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import java.util.function.DoubleSupplier;
 
 public class PIDController {
@@ -13,6 +15,8 @@ public class PIDController {
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
     private double percentMaxSpeed = 1;
+
+    ElapsedTime mRuntime;
 
 
     // full PID with all of the possible settings
@@ -32,6 +36,7 @@ public class PIDController {
         this.positionLimitingEnabled = positionLimitingEnabled;
         this.speedLimitingEnabled = speedLimitingEnabled;
         this.encoderPosition = encoderPosition;
+        mRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         reset();
     }
 
@@ -50,7 +55,7 @@ public class PIDController {
             else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
         }
         targetPosition = newTargetPosition;
-        previousTime = System.currentTimeMillis() / 1000.0;
+        previousTime = mRuntime.time() / 1000.0;
         integral = 0; // reset integral so it doesn't go crazy
     }
 
@@ -62,7 +67,7 @@ public class PIDController {
             else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
         }
         targetPosition = newTargetPosition;
-        previousTime = System.currentTimeMillis() / 1000.0;
+        previousTime = mRuntime.time() / 1000.0;
         integral = 0; // reset integral so it doesn't go crazy
     }
 
@@ -70,7 +75,7 @@ public class PIDController {
     public void reset() {
         targetPosition = encoderPosition.getAsDouble();
         movingTargetPosition = targetPosition;
-        previousTime = System.currentTimeMillis() / 1000.0;
+        previousTime = mRuntime.time() / 1000.0;
         integral = 0;
     }
 
@@ -93,7 +98,7 @@ public class PIDController {
         // overrideCurrentPosition is just the current encoder Position unless it is being overridden
         correctValues();
         double power;
-        double timeSince = (System.currentTimeMillis() / 1000.0) - previousTime;
+        double timeSince = (mRuntime.time() / 1000.0) - previousTime;
 
         updateMovingTargetPosition();
 
@@ -102,7 +107,7 @@ public class PIDController {
         if (Math.abs(integral) > maxIntegral) integral = Math.signum(integral) * maxIntegral; // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
-        previousTime = System.currentTimeMillis() / 1000.0;
+        previousTime = mRuntime.time() / 1000.0;
         power =  (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
 
 

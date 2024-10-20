@@ -1,9 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
@@ -23,17 +25,19 @@ public class AdvancedTeleOp extends CommandOpMode {
     @Override
     public void initialize() {
 
+        Pose2d currentPose = new Pose2d(0, 0, Math.toRadians(90));
+
         GamepadEx driver = new GamepadEx(gamepad1), operator = new GamepadEx(gamepad2);
-        // DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, driver);
-        ArmSystem armClaw = new ArmSystem(hardwareMap, operator);
+        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, currentPose, driver, telemetry);
+        ArmSystem armClaw = new ArmSystem(hardwareMap, operator, telemetry);
 
         // buttons
-        // driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
-
-
+        driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
+        operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::closeClaw));
+        operator.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::openClaw));
 
         // always running
-        // drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
+        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
         armClaw.setDefaultCommand(new ArmClawCommand(armClaw));
 
         schedule(new RunCommand(telemetry::update));

@@ -19,6 +19,9 @@ public class SwerveModule {
     private final DoubleSupplier topMotorEncoder;
 
 
+    private double LastRotation;
+
+
     public SwerveModule(DcMotorEx top_motor /*HardwareMap map, String top_motor_name, String bottom_motor_name*/) { // initialize the module
         /*
         top_motor = map.get(DcMotorEx.class, top_motor_name);
@@ -42,6 +45,7 @@ public class SwerveModule {
         double angleChange = functions.angleDifference(currentAngle, angle, 180);
 
         double rotation = modulePID.getPower(0.0, angleChange);
+        LastRotation = rotation;
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
         speed = speed.times(Math.sin(((Math.abs(functions.angleDifference(currentAngle, angle, 360)) / 90) - 1) * Math.PI / 2));
@@ -58,5 +62,7 @@ public class SwerveModule {
 
     public DualNum<Time> getTopMotorPower() { return topMotorPower; }
     public DualNum<Time> getBottomMotorPower() { return bottomMotorPower; }
+
+    public double getRotation() { return LastRotation; }
 
 }

@@ -47,6 +47,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
@@ -61,6 +62,7 @@ import java.util.List;
 
 @Config
 public final class MecanumDrive {
+
     public static class Params {
         // IMU orientation
         // TODO: fill in these values based on
@@ -235,7 +237,7 @@ public final class MecanumDrive {
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // secretly set up diffy alongside mecanum...
+        // secretly initializing diffy alongside mecanum...
         DifferentialSwerveDrivetrain.setupDiffy(rightFront, leftFront);
 
         // TODO: reverse motor directions if needed
@@ -257,18 +259,11 @@ public final class MecanumDrive {
         MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(
                 PoseVelocity2dDual.constant(powers, 1));
 
-        DifferentialSwerveDrivetrain.driveDifferentialSwerve(PoseVelocity2dDual.constant(powers, 1), PARAMS.inPerTick * PARAMS.trackWidthTicks);
+        DifferentialSwerveDrivetrain.driveDifferentialSwerve(PoseVelocity2dDual.constant(powers, 1), 1);
+        // PARAMS.inPerTick * PARAMS.trackWidthTicks
 
-        /*
-        double maxPowerMag = 1;
-        for (DualNum<Time> power : wheelVels.all()) {
-            maxPowerMag = Math.max(maxPowerMag, power.value());
-        }
-        */
-
-
-        leftFront.setPower(DifferentialSwerveDrivetrain.getLeftTop().get(0)); //  / maxPowerMag
-        leftBack.setPower(DifferentialSwerveDrivetrain.getLeftBottom().get(0)); // hope we don't need this ^
+        leftFront.setPower(DifferentialSwerveDrivetrain.getLeftTop().get(0));
+        leftBack.setPower(DifferentialSwerveDrivetrain.getLeftBottom().get(0));
         rightBack.setPower(DifferentialSwerveDrivetrain.getRightBottom().get(0));
         rightFront.setPower(DifferentialSwerveDrivetrain.getRightTop().get(0));
     }

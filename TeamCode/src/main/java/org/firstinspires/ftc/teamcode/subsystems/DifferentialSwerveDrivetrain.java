@@ -1,10 +1,11 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.roadrunner.DualNum;
-import com.acmerobotics.roadrunner.MecanumKinematics;
-import com.acmerobotics.roadrunner.MotorFeedforward;
+import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -12,17 +13,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
+import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
-import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
 public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     private static SwerveModule rightModule, leftModule;
 
-    // private final DoubleSupplier ForwardSupplier, StrafeSupplier, TurnSupplier, ThrottleSupplier;
+    private final DoubleSupplier ForwardSupplier, StrafeSupplier, TurnSupplier, ThrottleSupplier;
 
     private static double lastRightAngle = 0.0;
     private static double lastLeftAngle = 0.0;
@@ -31,68 +33,66 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     public boolean absoluteDriving = true;
 
-    public DifferentialSwerveDrivetrain(DcMotorEx topRightMotor, DcMotorEx topLeftMotor/*HardwareMap map, GamepadEx gamepad*/) {
-        rightModule = new SwerveModule(topRightMotor/*map, "R2", "R1"*/); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        leftModule = new SwerveModule(topLeftMotor/*map, "R3", "R4"*/);
-        /* ForwardSupplier = gamepad::getLeftY;
-        StrafeSupplier = gamepad::getLeftX;
-        TurnSupplier = gamepad::getRightX;
-        ThrottleSupplier = () -> gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+    MecanumDrive drive;
 
-         */
+    private final Telemetry telemetry;
+
+
+    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad, Telemetry telemetryInput) {
+        // rightModule = new SwerveModule(topRightMotor/*map, "R2", "R1"*/); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
+        // leftModule = new SwerveModule(topLeftMotor/*map, "R3", "R4"*/);
+        drive = new MecanumDrive(hardwareMap, currentPose);
+        ForwardSupplier = gamepad::getRightY;
+        StrafeSupplier = gamepad::getRightX;
+        TurnSupplier = gamepad::getLeftX;
+        ThrottleSupplier = () -> gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+        telemetry = telemetryInput;
+        drive.updatePoseEstimate(); // update localization
+        SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
-        rightModule = new SwerveModule(topRightMotor/*map, "R2", "R1"*/); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        leftModule = new SwerveModule(topLeftMotor/*map, "R3", "R4"*/);
+        rightModule = new SwerveModule(topRightMotor); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
+        leftModule = new SwerveModule(topLeftMotor);
     }
 
     public void controlDifferentialSwerve() {
-        /*
-        double forward = ForwardSupplier.getAsDouble(); // get initial values
-        double strafe = StrafeSupplier.getAsDouble();
-        double turn = TurnSupplier.getAsDouble();
-        double throttle = ThrottleSupplier.getAsDouble();
-        double heading = 0; // TODO: needs to be set to the correct twist value from roadrunner
+        drive.updatePoseEstimate(); // update localization
+        SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
 
-        // normalize values to make it easier for the driver to control
+        double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
+        double forward = -ForwardSupplier.getAsDouble();
+        double strafe = StrafeSupplier.getAsDouble();
+        double turn = -0.6 * TurnSupplier.getAsDouble();
+        double heading = Math.toDegrees(drive.pose.heading.toDouble());
+
+        // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
         double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude;
-        double throttleControl = 0.5 + throttle / 2;
 
         if (absoluteDriving) {
-            driveDirection = functions.angleDifference(driveDirection + heading, 0, 360);
+            driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
         }
 
-        // ask roadrunner to run mecanum drive instead
-        // driveDifferentialSwerve(driveDirection, drivePower, -0.4 * Math.abs(turn) * turn, throttleControl);
+        double forwardNorm = Math.sin(Math.toRadians(driveDirection)) * drivePower; // convert vector to x and y
+        double strafeNorm = Math.cos(Math.toRadians(driveDirection)) * drivePower;
 
-         */
+        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
+                strafeNorm * throttleControl), turn * throttleControl));
+
+        telemetry.addData("x", drive.pose.position.x);
+        telemetry.addData("y", drive.pose.position.y);
+        telemetry.addData("Heading", heading);
+        telemetry.addData("Forward", forwardNorm * throttleControl);
+        telemetry.addData("Strafe", strafeNorm * throttleControl);
+        telemetry.addData("Turn", turn * throttleControl);
+        telemetry.addData("LT", getLeftTop().value());
+        telemetry.addData("LB", getLeftBottom().value());
+        telemetry.addData("RB", getRightBottom().value());
+        telemetry.addData("RT", getRightTop().value());
     }
 
-    /*
-    public void controlDifferentialSwerve() {
-        double forward = ForwardSupplier.getAsDouble(); // get initial values
-        double strafe = StrafeSupplier.getAsDouble();
-        double turn = TurnSupplier.getAsDouble();
-        double throttle = ThrottleSupplier.getAsDouble();
-        double heading = 0;
-
-        // normalize values to make it easier for the driver to control
-        double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
-        double joystickMagnitude = Math.hypot(strafe, forward);
-        double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude;
-        double throttleControl = 0.5 + throttle / 2;
-
-        if (absoluteDriving) {
-            driveDirection = functions.angleDifference(driveDirection + heading, 0, 360);
-        }
-
-        // ask roadrunner to run mecanum drive instead
-        // driveDifferentialSwerve(driveDirection, drivePower, -0.4 * Math.abs(turn) * turn, throttleControl);
-    }
-    */
 
     public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) {
         DualNum<Time> forward = command.linearVel.y;
