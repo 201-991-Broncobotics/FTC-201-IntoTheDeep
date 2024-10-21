@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
 
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+
 public class SubsystemDataTransfer {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
@@ -11,5 +13,12 @@ public class SubsystemDataTransfer {
     public static Pose2d getCurrentRobotPose() { return CurrentRobotPose; }
 
     public static void setCurrentRobotPose(Pose2d CurrentPose) { CurrentRobotPose = CurrentPose; }
+
+    public static boolean OverrideDrivetrainRotation = false;
+    public static double OverrideDrivetrainTargetHeading = 0;
+
+
+    public static PIDController HeadingTargetPID; // temporarily here so I can tune the PID
+
 
 }

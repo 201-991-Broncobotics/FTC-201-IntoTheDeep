@@ -12,9 +12,9 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
@@ -35,10 +35,10 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     MecanumDrive drive;
 
-    private final Telemetry telemetry;
+    // private final Telemetry telemetry;
 
 
-    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad, Telemetry telemetryInput) {
+    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad) { //Telemetry telemetryInput
         // rightModule = new SwerveModule(topRightMotor/*map, "R2", "R1"*/); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         // leftModule = new SwerveModule(topLeftMotor/*map, "R3", "R4"*/);
         drive = new MecanumDrive(hardwareMap, currentPose);
@@ -46,9 +46,10 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         StrafeSupplier = gamepad::getRightX;
         TurnSupplier = gamepad::getLeftX;
         ThrottleSupplier = () -> gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
-        telemetry = telemetryInput;
+        // telemetry = telemetryInput;
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
+        SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.012, 0, 0, () -> drive.pose.heading.toDouble());
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
@@ -58,13 +59,18 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     public void controlDifferentialSwerve() {
         drive.updatePoseEstimate(); // update localization
-        SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
+        SubsystemDataTransfer.setCurrentRobotPose(drive.pose); // TODO: find out how to get the roadrunner lazyIMU "imu is broken" message so it tell robot to stop using any field centric features
 
         double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
         double forward = -ForwardSupplier.getAsDouble();
         double strafe = StrafeSupplier.getAsDouble();
         double turn = -0.6 * TurnSupplier.getAsDouble();
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
+
+        if (functions.inUse(turn) && SubsystemDataTransfer.OverrideDrivetrainRotation) {
+            SubsystemDataTransfer.HeadingTargetPID.setTarget(SubsystemDataTransfer.OverrideDrivetrainTargetHeading);
+            turn = SubsystemDataTransfer.HeadingTargetPID.getPower();
+        } else SubsystemDataTransfer.OverrideDrivetrainRotation = false;
 
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
@@ -80,17 +86,6 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
                 strafeNorm * throttleControl), turn * throttleControl));
-
-        telemetry.addData("x", drive.pose.position.x);
-        telemetry.addData("y", drive.pose.position.y);
-        telemetry.addData("Heading", heading);
-        telemetry.addData("Forward", forwardNorm * throttleControl);
-        telemetry.addData("Strafe", strafeNorm * throttleControl);
-        telemetry.addData("Turn", turn * throttleControl);
-        telemetry.addData("LT", getLeftTop().value());
-        telemetry.addData("LB", getLeftBottom().value());
-        telemetry.addData("RB", getRightBottom().value());
-        telemetry.addData("RT", getRightTop().value());
     }
 
 

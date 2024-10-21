@@ -14,6 +14,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.function.DoubleSupplier;
 
@@ -21,53 +22,55 @@ import java.util.function.DoubleSupplier;
 public class ArmSystem extends SubsystemBase {
 
     private DcMotorEx Pivot, Extension;
-
     private final Servo Wrist, Claw;
-
-
     private final PIDController PivotPID, ExtensionPID;
 
 
     private double WristTargetAngle, ClawTargetPosition, PivotTargetAngle, ExtensionTargetLength;
 
-
+    private double CurrentExtensionLengthZero = 0;
     public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360;
-    public DoubleSupplier CurrentExtensionLength = () -> ((Extension.getCurrentPosition() / 384.5) * 360 - CurrentPivotAngle.getAsDouble()) / 2088 * 696;
-
+    public DoubleSupplier CurrentExtensionLength = () -> ((Extension.getCurrentPosition() / 384.5) * 360 - CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
 
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
     private double backPedalStart = 0; // where pivot is when command to move starts
 
-    private Vector2d targetClawPoint; // robot centric
-
     private boolean justPressedPreset = false;
 
-    private double ArmFrameRate;
+    private boolean resettingExtensionZero = false;
 
-    ElapsedTime mRuntime;
-
+    ElapsedTime ArmFrameTime;
     GamepadEx gamepad;
-
     Telemetry telemetry;
 
+    // PID tuning stuff
+    GamepadEx driverGamepad;
+    ElapsedTime PIDButtonPressTime;
+    boolean PIDButtonPressed = false;
+    boolean PIDIncrementButtonPressed = false;
+    double PIDVar = 0;
+    double PIDChangeIncrement = 0.01;
 
-    public ArmSystem(HardwareMap map, GamepadEx operatorGamepad, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
+
+    public ArmSystem(HardwareMap map, GamepadEx operatorGamepad, Telemetry inputTelemetry, GamepadEx driver) { // Pivot, Extension, Claw, and Wrist initialization
         Pivot = map.get(DcMotorEx.class, "Pivot");
         Extension = map.get(DcMotorEx.class, "Extension");
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
         gamepad = operatorGamepad;
-        ClawTargetPosition = 0.5;
-        WristTargetAngle = 180;
+        ClawTargetPosition = Constants.ClawOpenPosition; // open claw
+        WristTargetAngle = 180; // point claw straight up
 
-        mRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        ArmFrameTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        driverGamepad = driver;
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.1, 0, 0, 0, Constants.pivotMaxAngle, 0,
                 0.5, Constants.pivotMaxAngle, 2.5, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.012, 0, 0, 0, Constants.extensionMaxLength, 0,
-                1, 150, 5, true, false,
+                1, 0, 5, true, true,
                 CurrentExtensionLength);
     }
 
@@ -91,24 +94,25 @@ public class ArmSystem extends SubsystemBase {
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
 
-        ArmFrameRate = (1 / (mRuntime.time())) * 1000;
-        mRuntime.reset();
+        double armFrameRate = 1 / (ArmFrameTime.time() / 1000.0); // in seconds
+        ArmFrameTime.reset(); // timer is in milliseconds
 
         // Manual arm control when controllers active
         if (manualArmControlActive()) {
             backPedalExtension = false;
             Vector2d currentClawPos = getCurrentClawPoint();
-            if (Math.abs(gamepad.getLeftY()) > 0.03 || Math.abs(gamepad.getRightY()) > 0.03) {
-                double X = currentClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / ArmFrameRate;
-                double Y = currentClawPos.y + Constants.maxManualClawSpeedVertical * gamepad.getRightY() / ArmFrameRate;
+            if (armFrameRate > 2) {
+                double X = currentClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / armFrameRate;
+                double Y = currentClawPos.y + Constants.maxManualClawSpeedVertical * gamepad.getRightY() / armFrameRate;
                 moveArmToPoint(new Vector2d(X, Y));
             }
-        } else if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && !justPressedPreset) { // presets
+            justPressedPreset = false; // also reset button presses
+        } else if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && !justPressedPreset) { // Presets
             resetArm();
             justPressedPreset = true;
         } else justPressedPreset = false;
 
-
+        // Wrist and Claw
         if (gamepad.getButton(GamepadKeys.Button.Y)) {
             WristTargetAngle = 190;
         } else if (gamepad.getButton(GamepadKeys.Button.X)) {
@@ -117,13 +121,16 @@ public class ArmSystem extends SubsystemBase {
             WristTargetAngle = 0;
         }
 
+        // TODO: make PID variables change based on current arm position and gravity
 
-        // slows pivot down when the extension is extended
+        // slows down pivot based on how far the extension is extended
         PivotPID.setPercentMaxSpeed(1 - (1 - Constants.minimumPivotSpeedPercent) * (ExtensionPID.encoderPosition.getAsDouble() / (ExtensionPID.maxPosition - ExtensionPID.minPosition)));
 
         PivotPID.setTarget(PivotTargetAngle);
-        Pivot.setPower(PivotPID.getPower());
+        double PivotPower = PivotPID.getPower();
+        Pivot.setPower(PivotPower);
 
+        // The purpose of Backpedal is to retract the extension when the pivot needs to move a lot so that 1. the arm doesn't hit anything and 2. the pivot can rotate faster
         // if backpedal is enabled and the angle already traveled is less than half of the total angle that needs to be traversed
         if (backPedalExtension && (PivotPID.encoderPosition.getAsDouble() - backPedalStart) < (PivotTargetAngle - backPedalStart) / 2) {
             ExtensionPID.setTarget(0); // move extension towards 0
@@ -132,43 +139,109 @@ public class ArmSystem extends SubsystemBase {
             backPedalExtension = false;
         }
 
-        Extension.setPower(ExtensionPID.getPower());
+        double ExtensionPower = ExtensionPID.getPower();
+        Extension.setPower(ExtensionPower);
 
-        if ((CurrentExtensionLength.getAsDouble() < 80 || CurrentPivotAngle.getAsDouble() > 45) && WristTargetAngle < 80) WristTargetAngle = 90;
+        if (resettingExtensionZero && ExtensionTargetLength == 0) {
+            // if Extension is close to where it thinks 0 is, tell it to keep retracting
+            if (CurrentExtensionLength.getAsDouble() < 10) Extension.setPower(-0.2);
+        } else resettingExtensionZero = false;
+        // If the current extension length is ever negative, set the current value to zero
+        if (CurrentExtensionLength.getAsDouble() < 0) CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
+        // TODO: make extension capable of resetting in the other direction
 
+        if ((CurrentExtensionLength.getAsDouble() < 80 || CurrentPivotAngle.getAsDouble() > 45) && WristTargetAngle < 80) {
+            WristTargetAngle = 90;
+        }
         setWrist(WristTargetAngle - PivotPID.encoderPosition.getAsDouble());
 
+        // right trigger slightly loosens the claw's grip
         Claw.setPosition(ClawTargetPosition - (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)));
 
-        telemetry.addData("Extension Target Length", ExtensionTargetLength);
-        telemetry.addData("Extension Current Length", CurrentExtensionLength.getAsDouble());
-        telemetry.addData("Pivot Target Angle", PivotTargetAngle);
-        telemetry.addData("Pivot Current Angle", CurrentPivotAngle.getAsDouble());
-        telemetry.addData("Is backpedaling Arm", backPedalExtension);
-        if (manualArmControlActive()) telemetry.addLine("Arm Control is AUTO");
-        else telemetry.addLine("Arm Control is Manual");
-        telemetry.addData("Wrist Target Angle", WristTargetAngle);
-        telemetry.addData("Claw Position", ClawTargetPosition);
-
-
+        telemetry.addData("Heading:", Math.toDegrees(SubsystemDataTransfer.getCurrentRobotPose().heading.toDouble()));
+        telemetry.addLine("Current Robot Pose (in) X: " +
+                functions.round(SubsystemDataTransfer.getCurrentRobotPose().position.x, 2) + " Y: " +
+                functions.round(SubsystemDataTransfer.getCurrentRobotPose().position.y, 2));
+        telemetry.addLine(" ");
+        telemetry.addLine("Current Claw Pose X: " +
+                functions.round(getCurrentClawPose().position.x, 2) + " Y: " +
+                functions.round(getCurrentClawPose().position.y, 2) + " H: " +
+                functions.round(getCurrentClawHeight(), 2));
+        telemetry.addLine("Target Claw Pose X: " +
+                functions.round(getTargetClawPose().position.x, 2) + " Y: " +
+                functions.round(getTargetClawPose().position.y, 2) + " H: " +
+                functions.round(getTargetClawHeight(), 2));
+        telemetry.addData("Arm System FrameRate:", armFrameRate);
+        telemetry.addData("Extension Target Length:", ExtensionTargetLength);
+        telemetry.addData("Extension Current Length:", CurrentExtensionLength.getAsDouble());
+        telemetry.addData("Pivot Target Angle:", PivotTargetAngle);
+        telemetry.addData("Pivot Current Angle:", CurrentPivotAngle.getAsDouble());
+        telemetry.addData("Is backpedaling Arm:", backPedalExtension);
+        if (manualArmControlActive()) telemetry.addLine("Arm Control in AUTO");
+        else telemetry.addLine("Arm Control in Manual");
+        telemetry.addData("Wrist Target Angle:", WristTargetAngle);
+        telemetry.addData("Claw Position:", ClawTargetPosition);
+        telemetry.addLine(" ");
+        telemetry.addData("Pivot Motor Power:", PivotPower);
+        telemetry.addData("Extension Motor Power:", ExtensionPower);
+        tunePIDWithController(driverGamepad);
     }
 
 
-    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.31); } // make wrist go to that specific angle
+    private void tunePIDWithController(GamepadEx inputGamepad) {
+        // Allows changing PID variables whilst on the field during testing:
+        if (inputGamepad.getButton(GamepadKeys.Button.LEFT_BUMPER)) PIDChangeIncrement = 0.01;
+        else PIDChangeIncrement = 0.0001;
+
+        if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
+            PIDVar = PIDVar + 1;
+            if (PIDVar > 11) PIDVar = 0;
+            PIDButtonPressed = true;
+        } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
+            PIDVar = PIDVar - 1;
+            if (PIDVar < 0) PIDVar = 11;
+            PIDButtonPressed = true;
+        } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
+
+        // if the button is held for more than a second, add or subtract constantly
+        if ((inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) || inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) && !(PIDIncrementButtonPressed && ArmFrameTime.time() < 1000)) {
+            if (inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
+
+            if (PIDVar == 1) ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4);
+            else if (PIDVar == 2) ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4);
+            else if (PIDVar == 3) ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4);
+            else if (PIDVar == 4) Constants.extensionGravityPower = functions.round(Constants.extensionGravityPower + PIDChangeIncrement * 10, 3);
+            else if (PIDVar == 5) PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4);
+            else if (PIDVar == 6) PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4);
+            else if (PIDVar == 7) PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4);
+            else if (PIDVar == 8) Constants.pivotGravityPower = functions.round(Constants.pivotGravityPower + PIDChangeIncrement * 10, 3);
+            else if (PIDVar == 9) SubsystemDataTransfer.HeadingTargetPID.kP = functions.round(SubsystemDataTransfer.HeadingTargetPID.kP + PIDChangeIncrement, 4);
+            else if (PIDVar == 10) SubsystemDataTransfer.HeadingTargetPID.kI = functions.round(SubsystemDataTransfer.HeadingTargetPID.kI + PIDChangeIncrement, 4);
+            else if (PIDVar == 11) SubsystemDataTransfer.HeadingTargetPID.kD = functions.round(SubsystemDataTransfer.HeadingTargetPID.kD + PIDChangeIncrement, 4);
+            if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
+                PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
+                PIDIncrementButtonPressed = true;
+            }
+        } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) {
+            PIDIncrementButtonPressed = false;
+        }
+        if (PIDVar == 0) telemetry.addLine("Not Editing PIDs");
+        else if (PIDVar == 1) telemetry.addData("Editing: Extension Kp - ", ExtensionPID.kP);
+        else if (PIDVar == 2) telemetry.addData("Editing: Extension Ki - ", ExtensionPID.kI);
+        else if (PIDVar == 3) telemetry.addData("Editing: Extension Kd - ", ExtensionPID.kD);
+        else if (PIDVar == 4) telemetry.addData("Editing: Extension Gravity - ", Constants.extensionGravityPower);
+        else if (PIDVar == 5) telemetry.addData("Editing: Pivot Kp - ", PivotPID.kP);
+        else if (PIDVar == 6) telemetry.addData("Editing: Pivot Ki - ", PivotPID.kI);
+        else if (PIDVar == 7) telemetry.addData("Editing: Pivot Kd - ", PivotPID.kD);
+        else if (PIDVar == 8) telemetry.addData("Editing: Pivot Gravity - ", Constants.pivotGravityPower);
+        else if (PIDVar == 9) telemetry.addData("Editing: Heading Kp - ", SubsystemDataTransfer.HeadingTargetPID.kP);
+        else if (PIDVar == 10) telemetry.addData("Editing: Heading Ki - ", SubsystemDataTransfer.HeadingTargetPID.kI);
+        else if (PIDVar == 11) telemetry.addData("Editing: Heading Kd - ", SubsystemDataTransfer.HeadingTargetPID.kD);
+    }
 
 
     private boolean manualArmControlActive() {
-        return (Math.abs(gamepad.getLeftY()) > 0.03 || Math.abs(gamepad.getRightY()) > 0.03);
-    }
-
-
-    private void moveArmToPoint(Vector2d point) { // units:mm, makes pivot and extension work together to go to a set point relative to the robot
-        PivotTargetAngle = Math.toDegrees(Math.atan2(point.y, point.x)); // forward 0 is at the pivot point, HEIGHT 0 IS FROM AXLE not from floor
-        ExtensionTargetLength = Math.hypot(point.x, point.y);
-        if (PivotTargetAngle < 0) PivotTargetAngle = 0;
-        else if (PivotTargetAngle > Constants.pivotMaxAngle) PivotTargetAngle = Constants.pivotMaxAngle;
-        if (ExtensionTargetLength < 0) ExtensionTargetLength = 0;
-        else if (ExtensionTargetLength > Constants.extensionMaxLength) ExtensionTargetLength = Constants.extensionMaxLength;
+        return (functions.inUse(gamepad.getLeftY()) || functions.inUse(gamepad.getRightY()));
     }
 
 
@@ -184,24 +257,63 @@ public class ArmSystem extends SubsystemBase {
     }
 
 
-    public void moveClawToFieldCoordinate(Vector2d TargetClawPos, double TargetHeight) {
-        // Pose2d CurrentPose = SubsystemDataTransfer.getCurrentRobotPose();
-
-    }
-
-
     public Pose2d getCurrentClawPose() { // Note: HEADING IN RADIANS and field centric
         Pose2d CurrentPose = SubsystemDataTransfer.getCurrentRobotPose();
         Vector2d CurrentClawPoint = getCurrentClawPoint(); // Claw Position relative to robot
-        Vector2d CurrentClawPosition = (new Vector2d(
-                CurrentClawPoint.x * Math.cos(CurrentPose.heading.toDouble()),
-                CurrentClawPoint.x * Math.sin(CurrentPose.heading.toDouble())) // also uses x because y is the claw height
-        ).plus(CurrentPose.position);
-
         return new Pose2d((new Vector2d(
                 CurrentClawPoint.x * Math.cos(CurrentPose.heading.toDouble()),
                 CurrentClawPoint.x * Math.sin(CurrentPose.heading.toDouble())) // also uses x because y is the claw height
         ).plus(CurrentPose.position), CurrentPose.heading);
+    }
+
+
+    public Pose2d getTargetClawPose() { // Note: HEADING IN RADIANS and field centric
+        Pose2d CurrentPose = SubsystemDataTransfer.getCurrentRobotPose();
+        Vector2d TargetClawPoint = getTargetClawPoint(); // Claw Target Position relative to robot
+        return new Pose2d((new Vector2d(
+                TargetClawPoint.x * Math.cos(CurrentPose.heading.toDouble()),
+                TargetClawPoint.x * Math.sin(CurrentPose.heading.toDouble())) // also uses x because y is the claw height
+        ).plus(CurrentPose.position), CurrentPose.heading);
+    }
+
+
+    public double getCurrentClawHeight() { // FROM FIELD TILES instead of from pivot axle
+        // this has to be separate from pose since I don't want to create data types or use lists
+        return Math.sin(Math.toRadians(CurrentPivotAngle.getAsDouble())) *
+                (CurrentExtensionLength.getAsDouble() + Constants.retractedExtensionLength) + Constants.pivotAxleHeight;
+    }
+
+
+    public double getTargetClawHeight() { // FROM FIELD TILES instead of from pivot axle
+        // this has to be separate from pose since I don't want to create data types or use lists
+        return Math.sin(Math.toRadians(PivotTargetAngle)) *
+                (ExtensionTargetLength + Constants.retractedExtensionLength) + Constants.pivotAxleHeight;
+    }
+
+
+
+
+    // MOVE ARM METHODS AND PRESETS:
+    private void moveArmToPoint(Vector2d point) { // units:mm, makes pivot and extension work together to go to a set point relative to the robot
+        PivotTargetAngle = Math.toDegrees(Math.atan2(point.y, point.x)); // forward 0 is at the pivot point, HEIGHT 0 IS FROM AXLE not from floor
+        ExtensionTargetLength = Math.hypot(point.x, point.y);
+        if (PivotTargetAngle < 0) PivotTargetAngle = 0;
+        else if (PivotTargetAngle > Constants.pivotMaxAngle) PivotTargetAngle = Constants.pivotMaxAngle;
+        if (ExtensionTargetLength < 0) ExtensionTargetLength = 0;
+        else if (ExtensionTargetLength > Constants.extensionMaxLength) ExtensionTargetLength = Constants.extensionMaxLength;
+    }
+
+
+    public void moveClawToFieldCoordinate(Vector2d TargetClawPos, double TargetHeight) { // needs to be called constantly while in use, HEIGHT IS FROM FIELD TILES
+        Pose2d CurrentPose = SubsystemDataTransfer.getCurrentRobotPose();
+        Vector2d DeltaPose = TargetClawPos.minus(CurrentPose.position); // Vector of where the arm needs to go relative to the robot
+
+        // tell the drivetrain to point towards the target point
+        SubsystemDataTransfer.OverrideDrivetrainTargetHeading = Math.toDegrees(Math.atan2(DeltaPose.y, DeltaPose.x));
+        SubsystemDataTransfer.OverrideDrivetrainRotation = true;
+
+        moveArmToPoint(new Vector2d(Math.hypot(DeltaPose.x, DeltaPose.y) - Constants.pivotAxleOffset,
+                TargetHeight - Constants.pivotAxleHeight));
     }
 
 
@@ -223,7 +335,16 @@ public class ArmSystem extends SubsystemBase {
         PivotTargetAngle = 0;
         ExtensionTargetLength = 0;
         WristTargetAngle = 180;
+        resettingExtensionZero = true;
     }
+
+
+
+    // WRIST AND CLAW METHODS
+
+    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.31); } // make wrist go to that specific angle
+    public void openClaw() { ClawTargetPosition = Constants.ClawOpenPosition; }
+    public void closeClaw() { ClawTargetPosition = Constants.ClawClosedPosition; }
 
     /*
     public void toggleClaw() {
@@ -231,8 +352,5 @@ public class ArmSystem extends SubsystemBase {
         else ClawTargetPosition = 0;
     }
     */
-
-    public void openClaw() { ClawTargetPosition = 0.5; }
-    public void closeClaw() { ClawTargetPosition = 0.85; }
 
 }

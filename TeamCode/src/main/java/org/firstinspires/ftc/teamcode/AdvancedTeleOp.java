@@ -5,7 +5,6 @@ import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
@@ -13,10 +12,7 @@ import org.firstinspires.ftc.teamcode.subsystems.DifferentialSwerveDrivetrain;
 
 import com.arcrobotics.ftclib.command.InstantCommand;
 import com.arcrobotics.ftclib.command.RunCommand;
-import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 
 @TeleOp(name="TeleOp", group="Iterative Opmode")
@@ -28,8 +24,8 @@ public class AdvancedTeleOp extends CommandOpMode {
         Pose2d currentPose = new Pose2d(0, 0, Math.toRadians(90));
 
         GamepadEx driver = new GamepadEx(gamepad1), operator = new GamepadEx(gamepad2);
-        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, currentPose, driver, telemetry);
-        ArmSystem armClaw = new ArmSystem(hardwareMap, operator, telemetry);
+        DifferentialSwerveDrivetrain drivetrain = new DifferentialSwerveDrivetrain(hardwareMap, currentPose, driver);
+        ArmSystem armClaw = new ArmSystem(hardwareMap, operator, telemetry, driver);
 
         // buttons
         driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));

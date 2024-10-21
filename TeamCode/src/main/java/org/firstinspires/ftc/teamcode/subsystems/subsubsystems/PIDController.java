@@ -31,7 +31,7 @@ public class PIDController {
         activeMaxPosition = maxPosition;
         this.minPower = minPower;
         this.maxPower = maxPower;
-        this.maxSpeed = maxSpeed; // doesn't matter what this is if speed limiting is false
+        this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false
         this.tolerance = tolerance; // the range where closeEnough() will return true
         this.positionLimitingEnabled = positionLimitingEnabled;
         this.speedLimitingEnabled = speedLimitingEnabled;
@@ -82,7 +82,7 @@ public class PIDController {
 
     // this limits the speed by making the target position, that the PID is aiming for, approach the set target position at the max speed
     private void updateMovingTargetPosition() {
-        if (speedLimitingEnabled && !speedLimitingOverride) {
+        if (speedLimitingEnabled && !speedLimitingOverride && !(maxSpeed == 0)) {
             if (movingTargetPosition < targetPosition) { // move the movingTargetPosition at maxSpeed towards the set targetPosition until the targetPosition is reached
                 movingTargetPosition += maxSpeed * percentMaxSpeed;
                 if (movingTargetPosition > targetPosition) movingTargetPosition = targetPosition;
@@ -90,7 +90,7 @@ public class PIDController {
                 movingTargetPosition -= maxSpeed * percentMaxSpeed;
                 if (movingTargetPosition < targetPosition) movingTargetPosition = targetPosition;
             }
-        } else movingTargetPosition = targetPosition; // if not speed limiting movingTargetPosition is just targetPosition
+        } else movingTargetPosition = targetPosition; // if not speed limiting or maxSpeed is 0, movingTargetPosition just becomes targetPosition
     }
 
 
