@@ -20,5 +20,7 @@ public class SubsystemDataTransfer {
 
     public static PIDController HeadingTargetPID; // temporarily here so I can tune the PID
 
+    public static boolean IMUWorking = true;
+
 
 }

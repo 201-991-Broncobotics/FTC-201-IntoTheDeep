@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
@@ -28,8 +29,8 @@ public class ArmSystem extends SubsystemBase {
 
     private double WristTargetAngle, ClawTargetPosition, PivotTargetAngle, ExtensionTargetLength;
 
-    private double CurrentExtensionLengthZero = 0;
-    public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360;
+    private double CurrentPivotAngleZero = 0, CurrentExtensionLengthZero = 0;
+    public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero;
     public DoubleSupplier CurrentExtensionLength = () -> ((Extension.getCurrentPosition() / 384.5) * 360 - CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
 
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
@@ -51,6 +52,8 @@ public class ArmSystem extends SubsystemBase {
     double PIDVar = 0;
     double PIDChangeIncrement = 0.01;
 
+    HuskyLensCamera huskyLens;
+
 
     public ArmSystem(HardwareMap map, GamepadEx operatorGamepad, Telemetry inputTelemetry, GamepadEx driver) { // Pivot, Extension, Claw, and Wrist initialization
         Pivot = map.get(DcMotorEx.class, "Pivot");
@@ -61,17 +64,29 @@ public class ArmSystem extends SubsystemBase {
         ClawTargetPosition = Constants.ClawOpenPosition; // open claw
         WristTargetAngle = 180; // point claw straight up
 
+        // TODO: Make sure this works
+        Pivot.setPower(0.1); // make sure gearbox is aligned
+        Extension.setPower(-0.1); // make sure extension is fully retracted
+        functions.Sleep(100); // may cause issues by waiting like this idk
+        Pivot.setPower(0);
+        Extension.setPower(0);
+        functions.Sleep(100); // may cause issues by waiting like this idk
+        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
+        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
+
         ArmFrameTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         driverGamepad = driver;
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.1, 0, 0, 0, Constants.pivotMaxAngle, 0,
-                0.5, Constants.pivotMaxAngle, 2.5, true, true,
+                1, Constants.pivotMaxAngle, 2.5, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.012, 0, 0, 0, Constants.extensionMaxLength, 0,
                 1, 0, 5, true, true,
                 CurrentExtensionLength);
+
+        huskyLens = new HuskyLensCamera(map);
     }
 
     // Dictionary of things the arm has to do
@@ -93,7 +108,6 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
-
         double armFrameRate = 1 / (ArmFrameTime.time() / 1000.0); // in seconds
         ArmFrameTime.reset(); // timer is in milliseconds
 
@@ -121,14 +135,21 @@ public class ArmSystem extends SubsystemBase {
             WristTargetAngle = 0;
         }
 
-        // TODO: make PID variables change based on current arm position and gravity
 
         // slows down pivot based on how far the extension is extended
         PivotPID.setPercentMaxSpeed(1 - (1 - Constants.minimumPivotSpeedPercent) * (ExtensionPID.encoderPosition.getAsDouble() / (ExtensionPID.maxPosition - ExtensionPID.minPosition)));
 
         PivotPID.setTarget(PivotTargetAngle);
-        double PivotPower = PivotPID.getPower();
-        Pivot.setPower(PivotPower);
+        // set pivot power to pid value + the amount of power needed to counteract gravity at the current pivot angle and current extension length
+        double PivotPIDPower = PivotPID.getPower();
+        double PivotPower = PivotPIDPower + ((Constants.pivotExtendedGravityPower - Constants.pivotRetractedGravityPower)
+                / Constants.extensionMaxLength * CurrentExtensionLength.getAsDouble() + Constants.pivotRetractedGravityPower)
+                * Math.cos(Math.toRadians(CurrentPivotAngle.getAsDouble()));
+        if (Math.abs(PivotPower) > 0.5) PivotPower = Math.signum(PivotPower) * 0.5; // sets max pivot power TODO: remove this after it has been tested that it works
+        if ((CurrentPivotAngle.getAsDouble() < 3 && PivotTargetAngle < 3) || armFrameRate < 2) { // stop pivot if it is resting on the mechanical stop or if the framerate is less than 2
+            Pivot.setPower(0);
+        } else Pivot.setPower(PivotPower);
+
 
         // The purpose of Backpedal is to retract the extension when the pivot needs to move a lot so that 1. the arm doesn't hit anything and 2. the pivot can rotate faster
         // if backpedal is enabled and the angle already traveled is less than half of the total angle that needs to be traversed
@@ -139,16 +160,22 @@ public class ArmSystem extends SubsystemBase {
             backPedalExtension = false;
         }
 
-        double ExtensionPower = ExtensionPID.getPower();
+        double ExtensionPIDPower = ExtensionPID.getPower();
+        double ExtensionPower = ExtensionPIDPower + Math.sin(Math.toRadians(CurrentPivotAngle.getAsDouble())) * Constants.extensionGravityPower;
+        if (armFrameRate < 2) ExtensionPower = 0; // emergency stop extension if framerate is less than 2
         Extension.setPower(ExtensionPower);
 
         if (resettingExtensionZero && ExtensionTargetLength == 0) {
             // if Extension is close to where it thinks 0 is, tell it to keep retracting
             if (CurrentExtensionLength.getAsDouble() < 10) Extension.setPower(-0.2);
+            // resets 0 if motor can't move and resetting extension zero is enabled
+            if (Extension.getCurrent(CurrentUnit.AMPS) > 8) {
+                CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
+                resettingExtensionZero = false;
+            }
         } else resettingExtensionZero = false;
         // If the current extension length is ever negative, set the current value to zero
         if (CurrentExtensionLength.getAsDouble() < 0) CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
-        // TODO: make extension capable of resetting in the other direction
 
         if ((CurrentExtensionLength.getAsDouble() < 80 || CurrentPivotAngle.getAsDouble() > 45) && WristTargetAngle < 80) {
             WristTargetAngle = 90;
@@ -158,12 +185,13 @@ public class ArmSystem extends SubsystemBase {
         // right trigger slightly loosens the claw's grip
         Claw.setPosition(ClawTargetPosition - (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)));
 
+        if (!SubsystemDataTransfer.IMUWorking) telemetry.addLine("IMU HATH BEEN DEFEATED");
         telemetry.addData("Heading:", Math.toDegrees(SubsystemDataTransfer.getCurrentRobotPose().heading.toDouble()));
-        telemetry.addLine("Current Robot Pose (in) X: " +
+        telemetry.addLine("Robot Pose (in) X: " +
                 functions.round(SubsystemDataTransfer.getCurrentRobotPose().position.x, 2) + " Y: " +
                 functions.round(SubsystemDataTransfer.getCurrentRobotPose().position.y, 2));
         telemetry.addLine(" ");
-        telemetry.addLine("Current Claw Pose X: " +
+        telemetry.addLine("Claw Pose X: " +
                 functions.round(getCurrentClawPose().position.x, 2) + " Y: " +
                 functions.round(getCurrentClawPose().position.y, 2) + " H: " +
                 functions.round(getCurrentClawHeight(), 2));
@@ -182,24 +210,30 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("Wrist Target Angle:", WristTargetAngle);
         telemetry.addData("Claw Position:", ClawTargetPosition);
         telemetry.addLine(" ");
+        telemetry.addData("Pivot PID Power:", PivotPIDPower);
+        telemetry.addData("Extension PID Power:", ExtensionPIDPower);
         telemetry.addData("Pivot Motor Power:", PivotPower);
         telemetry.addData("Extension Motor Power:", ExtensionPower);
-        tunePIDWithController(driverGamepad);
+        telemetry.addData("Extension Motor Current:", Extension.getCurrent(CurrentUnit.AMPS));
+        tunePIDsWithController(driverGamepad);
+
+        telemetry.addLine(" "); // TODO: move this to its own command
+        huskyLens.ScanForSample(telemetry);
     }
 
 
-    private void tunePIDWithController(GamepadEx inputGamepad) {
+    private void tunePIDsWithController(GamepadEx inputGamepad) {
         // Allows changing PID variables whilst on the field during testing:
         if (inputGamepad.getButton(GamepadKeys.Button.LEFT_BUMPER)) PIDChangeIncrement = 0.01;
         else PIDChangeIncrement = 0.0001;
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 11) PIDVar = 0;
+            if (PIDVar > 12) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 11;
+            if (PIDVar < 0) PIDVar = 12;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -214,10 +248,11 @@ public class ArmSystem extends SubsystemBase {
             else if (PIDVar == 5) PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4);
             else if (PIDVar == 6) PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4);
             else if (PIDVar == 7) PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4);
-            else if (PIDVar == 8) Constants.pivotGravityPower = functions.round(Constants.pivotGravityPower + PIDChangeIncrement * 10, 3);
-            else if (PIDVar == 9) SubsystemDataTransfer.HeadingTargetPID.kP = functions.round(SubsystemDataTransfer.HeadingTargetPID.kP + PIDChangeIncrement, 4);
-            else if (PIDVar == 10) SubsystemDataTransfer.HeadingTargetPID.kI = functions.round(SubsystemDataTransfer.HeadingTargetPID.kI + PIDChangeIncrement, 4);
-            else if (PIDVar == 11) SubsystemDataTransfer.HeadingTargetPID.kD = functions.round(SubsystemDataTransfer.HeadingTargetPID.kD + PIDChangeIncrement, 4);
+            else if (PIDVar == 8) Constants.pivotRetractedGravityPower = functions.round(Constants.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3);
+            else if (PIDVar == 9) Constants.pivotExtendedGravityPower = functions.round(Constants.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3);
+            else if (PIDVar == 10) SubsystemDataTransfer.HeadingTargetPID.kP = functions.round(SubsystemDataTransfer.HeadingTargetPID.kP + PIDChangeIncrement, 4);
+            else if (PIDVar == 11) SubsystemDataTransfer.HeadingTargetPID.kI = functions.round(SubsystemDataTransfer.HeadingTargetPID.kI + PIDChangeIncrement, 4);
+            else if (PIDVar == 12) SubsystemDataTransfer.HeadingTargetPID.kD = functions.round(SubsystemDataTransfer.HeadingTargetPID.kD + PIDChangeIncrement, 4);
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
                 PIDIncrementButtonPressed = true;
@@ -233,10 +268,11 @@ public class ArmSystem extends SubsystemBase {
         else if (PIDVar == 5) telemetry.addData("Editing: Pivot Kp - ", PivotPID.kP);
         else if (PIDVar == 6) telemetry.addData("Editing: Pivot Ki - ", PivotPID.kI);
         else if (PIDVar == 7) telemetry.addData("Editing: Pivot Kd - ", PivotPID.kD);
-        else if (PIDVar == 8) telemetry.addData("Editing: Pivot Gravity - ", Constants.pivotGravityPower);
-        else if (PIDVar == 9) telemetry.addData("Editing: Heading Kp - ", SubsystemDataTransfer.HeadingTargetPID.kP);
-        else if (PIDVar == 10) telemetry.addData("Editing: Heading Ki - ", SubsystemDataTransfer.HeadingTargetPID.kI);
-        else if (PIDVar == 11) telemetry.addData("Editing: Heading Kd - ", SubsystemDataTransfer.HeadingTargetPID.kD);
+        else if (PIDVar == 8) telemetry.addData("Editing: Pivot Retracted Gravity - ", Constants.pivotRetractedGravityPower);
+        else if (PIDVar == 9) telemetry.addData("Editing: Pivot Extended Gravity - ", Constants.pivotExtendedGravityPower);
+        else if (PIDVar == 10) telemetry.addData("Editing: Heading Kp - ", SubsystemDataTransfer.HeadingTargetPID.kP);
+        else if (PIDVar == 11) telemetry.addData("Editing: Heading Ki - ", SubsystemDataTransfer.HeadingTargetPID.kI);
+        else if (PIDVar == 12) telemetry.addData("Editing: Heading Kd - ", SubsystemDataTransfer.HeadingTargetPID.kD);
     }
 
 

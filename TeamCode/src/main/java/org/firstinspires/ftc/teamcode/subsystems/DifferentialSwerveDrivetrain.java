@@ -11,6 +11,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
+import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
@@ -26,12 +27,13 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     private final DoubleSupplier ForwardSupplier, StrafeSupplier, TurnSupplier, ThrottleSupplier;
 
-    private static double lastRightAngle = 0.0;
-    private static double lastLeftAngle = 0.0;
+    private static double lastRightAngle = 0.0, lastLeftAngle = 0.0;
 
     private static DualNum<Time> RightTop, RightBottom, LeftTop, LeftBottom;
 
     public boolean absoluteDriving = true;
+
+    private double headingHold;
 
     MecanumDrive drive;
 
@@ -49,7 +51,8 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         // telemetry = telemetryInput;
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
-        SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.012, 0, 0, () -> drive.pose.heading.toDouble());
+        headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+        SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.012, 0, 0, () -> Math.toDegrees(drive.pose.heading.toDouble()));
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
@@ -59,18 +62,29 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     public void controlDifferentialSwerve() {
         drive.updatePoseEstimate(); // update localization
-        SubsystemDataTransfer.setCurrentRobotPose(drive.pose); // TODO: find out how to get the roadrunner lazyIMU "imu is broken" message so it tell robot to stop using any field centric features
+        SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
+
+        if (RobotLog.hasGlobalWarningMsg() && RobotLog.getGlobalWarningMessage().message.contains("Road Runner: IMU imu continues to return invalid data after 500 ms")) {
+            SubsystemDataTransfer.IMUWorking = false;
+            absoluteDriving = false;
+        }
 
         double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
-        double forward = -ForwardSupplier.getAsDouble();
+        double forward = -1 * ForwardSupplier.getAsDouble();
         double strafe = StrafeSupplier.getAsDouble();
         double turn = -0.6 * TurnSupplier.getAsDouble();
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
 
-        if (functions.inUse(turn) && SubsystemDataTransfer.OverrideDrivetrainRotation) {
-            SubsystemDataTransfer.HeadingTargetPID.setTarget(SubsystemDataTransfer.OverrideDrivetrainTargetHeading);
+        if (!functions.inUse(turn) && SubsystemDataTransfer.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
+            if (SubsystemDataTransfer.OverrideDrivetrainRotation)
+                SubsystemDataTransfer.HeadingTargetPID.setTarget(SubsystemDataTransfer.OverrideDrivetrainTargetHeading);
+            else SubsystemDataTransfer.HeadingTargetPID.setTarget(headingHold);
             turn = SubsystemDataTransfer.HeadingTargetPID.getPower();
-        } else SubsystemDataTransfer.OverrideDrivetrainRotation = false;
+        } else {
+            SubsystemDataTransfer.OverrideDrivetrainRotation = false;
+            turn = turn * throttleControl;
+            headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+        }
 
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
@@ -85,11 +99,11 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         double strafeNorm = Math.cos(Math.toRadians(driveDirection)) * drivePower;
 
         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
-                strafeNorm * throttleControl), turn * throttleControl));
+                strafeNorm * throttleControl), turn));
     }
 
 
-    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) {
+    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) { // this is only accessed from roadrunner's MecanumDrive
         DualNum<Time> forward = command.linearVel.y;
         DualNum<Time> strafe = command.linearVel.x;
         DualNum<Time> turn = command.angVel.times(trackWidth);

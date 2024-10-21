@@ -21,4 +21,13 @@ public class functions {
         return (Math.abs(value) > Constants.controllerDeadZone);
     }
 
+
+    public static void Sleep(long milliseconds) {
+        try {
+            Thread.sleep(milliseconds);
+        } catch (InterruptedException e) {
+            // Wait the set amount of time in milliseconds
+        }
+    }
+
 }

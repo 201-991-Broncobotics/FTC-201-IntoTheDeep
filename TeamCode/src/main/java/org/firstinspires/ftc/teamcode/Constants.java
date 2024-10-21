@@ -16,6 +16,6 @@ public class Constants {
     public static double ClawClosedPosition = 0.85, ClawOpenPosition = 0.5;
 
     public static double controllerDeadZone = 0.03; // Not really necessary but anyways
-    public static double pivotGravityPower = 0, extensionGravityPower = 0;
+    public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.497, extensionGravityPower = 0.194;
 
 }
