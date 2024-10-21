@@ -49,11 +49,13 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
+import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 import org.firstinspires.ftc.teamcode.subsystems.DifferentialSwerveDrivetrain;
 
 import java.util.Arrays;
@@ -266,6 +268,11 @@ public final class MecanumDrive {
         leftBack.setPower(DifferentialSwerveDrivetrain.getLeftBottom().get(0));
         rightBack.setPower(DifferentialSwerveDrivetrain.getRightBottom().get(0));
         rightFront.setPower(DifferentialSwerveDrivetrain.getRightTop().get(0));
+
+        if (SubsystemDataTransfer.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemDataTransfer.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
+        if (SubsystemDataTransfer.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemDataTransfer.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
+        if (SubsystemDataTransfer.DriveMotorHighCurrents[2] < rightBack.getCurrent(CurrentUnit.AMPS)) SubsystemDataTransfer.DriveMotorHighCurrents[2] = rightBack.getCurrent(CurrentUnit.AMPS);
+        if (SubsystemDataTransfer.DriveMotorHighCurrents[3] < rightFront.getCurrent(CurrentUnit.AMPS)) SubsystemDataTransfer.DriveMotorHighCurrents[3] = rightFront.getCurrent(CurrentUnit.AMPS);
     }
 
     public final class FollowTrajectoryAction implements Action {

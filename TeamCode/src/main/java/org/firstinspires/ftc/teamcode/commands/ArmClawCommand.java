@@ -5,6 +5,6 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 
 public class ArmClawCommand extends RunCommand {
     public ArmClawCommand(ArmSystem armClaw) {
-        super(armClaw::updateClawArm, armClaw);
+        super(armClaw::updateClawArm, armClaw); // TODO: move anything that uses the gamepad to here
     }
 }

@@ -169,7 +169,7 @@ public class ArmSystem extends SubsystemBase {
             // if Extension is close to where it thinks 0 is, tell it to keep retracting
             if (CurrentExtensionLength.getAsDouble() < 10) Extension.setPower(-0.2);
             // resets 0 if motor can't move and resetting extension zero is enabled
-            if (Extension.getCurrent(CurrentUnit.AMPS) > 8) {
+            if (Extension.getCurrent(CurrentUnit.AMPS) > 8) { // TODO: make sure this isn't a problem when the arm gets temporarily stuck extended
                 CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
                 resettingExtensionZero = false;
             }
@@ -210,6 +210,11 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("Wrist Target Angle:", WristTargetAngle);
         telemetry.addData("Claw Position:", ClawTargetPosition);
         telemetry.addLine(" ");
+        telemetry.addData("LT High Current", SubsystemDataTransfer.DriveMotorHighCurrents[0]);
+        telemetry.addData("LB High Current", SubsystemDataTransfer.DriveMotorHighCurrents[1]);
+        telemetry.addData("RT High Current", SubsystemDataTransfer.DriveMotorHighCurrents[3]);
+        telemetry.addData("RB High Current", SubsystemDataTransfer.DriveMotorHighCurrents[2]);
+        telemetry.addLine(" ");
         telemetry.addData("Pivot PID Power:", PivotPIDPower);
         telemetry.addData("Extension PID Power:", ExtensionPIDPower);
         telemetry.addData("Pivot Motor Power:", PivotPower);
@@ -217,8 +222,8 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("Extension Motor Current:", Extension.getCurrent(CurrentUnit.AMPS));
         tunePIDsWithController(driverGamepad);
 
-        telemetry.addLine(" "); // TODO: move this to its own command
-        huskyLens.ScanForSample(telemetry);
+        telemetry.addLine(" ");
+        huskyLens.ScanForSample(telemetry); // TODO: move this to its own command
     }
 
 

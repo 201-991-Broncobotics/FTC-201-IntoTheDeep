@@ -22,5 +22,7 @@ public class SubsystemDataTransfer {
 
     public static boolean IMUWorking = true;
 
+    public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
+
 
 }
