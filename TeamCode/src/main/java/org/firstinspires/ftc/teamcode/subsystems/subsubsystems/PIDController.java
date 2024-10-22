@@ -18,6 +18,8 @@ public class PIDController {
 
     ElapsedTime mRuntime;
 
+    private double PIDFrameRate = 0;
+
 
     // full PID with all of the possible settings
     public PIDController(double kP, double kI, double kD, double minPosition, double maxPosition,
@@ -31,7 +33,7 @@ public class PIDController {
         activeMaxPosition = maxPosition;
         this.minPower = minPower;
         this.maxPower = maxPower;
-        this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false
+        this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false, in units per second
         this.tolerance = tolerance; // the range where closeEnough() will return true
         this.positionLimitingEnabled = positionLimitingEnabled;
         this.speedLimitingEnabled = speedLimitingEnabled;
@@ -84,12 +86,12 @@ public class PIDController {
     private void updateMovingTargetPosition() {
         if (speedLimitingEnabled && !speedLimitingOverride && !(maxSpeed == 0)) {
             if (movingTargetPosition < targetPosition) { // move the movingTargetPosition at maxSpeed towards the set targetPosition until the targetPosition is reached
-                movingTargetPosition += maxSpeed * percentMaxSpeed;
+                if (PIDFrameRate > 0) movingTargetPosition += maxSpeed * percentMaxSpeed / PIDFrameRate;
                 if (movingTargetPosition > targetPosition) movingTargetPosition = targetPosition;
             } else if (movingTargetPosition > targetPosition) {
-                movingTargetPosition -= maxSpeed * percentMaxSpeed;
+                if (PIDFrameRate > 0) movingTargetPosition -= maxSpeed * percentMaxSpeed / PIDFrameRate;
                 if (movingTargetPosition < targetPosition) movingTargetPosition = targetPosition;
-            }
+            } else movingTargetPosition = targetPosition;
         } else movingTargetPosition = targetPosition; // if not speed limiting or maxSpeed is 0, movingTargetPosition just becomes targetPosition
     }
 
@@ -99,6 +101,7 @@ public class PIDController {
         correctValues();
         double power;
         double timeSince = (mRuntime.time() / 1000.0) - previousTime;
+        PIDFrameRate = 1.0 / timeSince;
 
         updateMovingTargetPosition();
 
@@ -108,7 +111,7 @@ public class PIDController {
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
         previousTime = mRuntime.time() / 1000.0;
-        power =  (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
+        power = (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
 
 
         // make sure power obeys all of the set limits
