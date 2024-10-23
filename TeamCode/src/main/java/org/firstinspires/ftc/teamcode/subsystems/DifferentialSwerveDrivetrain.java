@@ -11,6 +11,7 @@ import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
@@ -37,6 +38,8 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     MecanumDrive drive;
 
+    ElapsedTime DriveThreadTime;
+
     // private final Telemetry telemetry;
 
 
@@ -53,6 +56,8 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
         SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.012, 0, 0, () -> Math.toDegrees(drive.pose.heading.toDouble()));
+
+        DriveThreadTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
@@ -61,6 +66,9 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
     }
 
     public void controlDifferentialSwerve() {
+        SubsystemDataTransfer.driveSystemFrameRate = 1 / (DriveThreadTime.time() / 1000.0);
+        DriveThreadTime.reset();
+
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
 

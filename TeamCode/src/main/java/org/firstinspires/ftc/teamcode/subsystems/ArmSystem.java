@@ -31,7 +31,7 @@ public class ArmSystem extends SubsystemBase {
 
     private double CurrentPivotAngleZero = 0, CurrentExtensionLengthZero = 0;
     public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero;
-    public DoubleSupplier CurrentExtensionLength = () -> ((Extension.getCurrentPosition() / 384.5) * 360 - CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
+    public DoubleSupplier CurrentExtensionLength = () -> ((Extension.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
 
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
     private double backPedalStart = 0; // where pivot is when command to move starts
@@ -54,6 +54,8 @@ public class ArmSystem extends SubsystemBase {
 
     HuskyLensCamera huskyLens;
 
+    double LastTestingTime = 0;
+
 
     public ArmSystem(HardwareMap map, GamepadEx operatorGamepad, Telemetry inputTelemetry, GamepadEx driver) { // Pivot, Extension, Claw, and Wrist initialization
         Pivot = map.get(DcMotorEx.class, "Pivot");
@@ -63,17 +65,6 @@ public class ArmSystem extends SubsystemBase {
         gamepad = operatorGamepad;
         ClawTargetPosition = Constants.ClawOpenPosition; // open claw
         WristTargetAngle = 180; // point claw straight up
-
-        /* // idk if this will work or not
-        Pivot.setPower(0.1); // make sure gearbox is aligned
-        Extension.setPower(-0.1); // make sure extension is fully retracted
-        functions.Sleep(100); // may cause issues by waiting like this idk
-        Pivot.setPower(0);
-        Extension.setPower(0);
-        functions.Sleep(100); // may cause issues by waiting like this idk
-        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
-        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
-         */
 
         ArmFrameTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
@@ -111,6 +102,11 @@ public class ArmSystem extends SubsystemBase {
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         double armFrameRate = 1 / (ArmFrameTime.time() / 1000.0); // in seconds
         ArmFrameTime.reset(); // timer is in milliseconds
+        telemetry.addData("Arm System FrameRate:", armFrameRate);
+        telemetry.addData("Drive System FrameRate:", SubsystemDataTransfer.driveSystemFrameRate);
+        telemetry.addLine(" ");
+
+        LastTestingTime = 0;
 
         // Manual arm control when controllers active
         if (manualArmControlActive()) {
@@ -137,6 +133,9 @@ public class ArmSystem extends SubsystemBase {
             WristTargetAngle = 0;
         }
 
+        telemetry.addData("Point 1:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
+
 
         // PIVOT
 
@@ -153,6 +152,9 @@ public class ArmSystem extends SubsystemBase {
         if ((CurrentPivotAngle.getAsDouble() < 3 && PivotTargetAngle < 3) || armFrameRate < 2) { // stop pivot if it is resting on the mechanical stop or if the framerate is less than 2
             Pivot.setPower(0);
         } else Pivot.setPower(PivotPower);
+
+        telemetry.addData("Point 2:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
 
 
         // EXTENSION
@@ -183,6 +185,8 @@ public class ArmSystem extends SubsystemBase {
         // If the current extension length is ever negative, set the current value to zero
         if (CurrentExtensionLength.getAsDouble() < 0) CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
 
+        telemetry.addData("Point 3:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
 
         // WRIST AND CLAW
 
@@ -194,7 +198,8 @@ public class ArmSystem extends SubsystemBase {
         // right trigger slightly loosens the claw's grip
         Claw.setPosition(ClawTargetPosition - (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)));
 
-
+        telemetry.addData("Point 4:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
 
         if (!SubsystemDataTransfer.IMUWorking) telemetry.addLine("IMU HATH BEEN DEFEATED");
         telemetry.addData("Heading:", Math.toDegrees(SubsystemDataTransfer.getCurrentRobotPose().heading.toDouble()));
@@ -210,7 +215,6 @@ public class ArmSystem extends SubsystemBase {
                 functions.round(getTargetClawPose().position.x, 2) + " Y: " +
                 functions.round(getTargetClawPose().position.y, 2) + " H: " +
                 functions.round(getTargetClawHeight(), 2));
-        telemetry.addData("Arm System FrameRate:", armFrameRate);
         telemetry.addData("Extension Target Length:", ExtensionTargetLength);
         telemetry.addData("Extension Current Length:", CurrentExtensionLength.getAsDouble());
         telemetry.addData("Pivot Target Angle:", PivotTargetAngle);
@@ -227,14 +231,25 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("RB High Current", SubsystemDataTransfer.DriveMotorHighCurrents[2]);
         telemetry.addLine(" ");
         telemetry.addData("Pivot PID Power:", PivotPIDPower);
-        telemetry.addData("Extension PID Power:", ExtensionPIDPower);
         telemetry.addData("Pivot Motor Power:", PivotPower);
+        telemetry.addData("Extension PID Power:", ExtensionPIDPower);
         telemetry.addData("Extension Motor Power:", ExtensionPower);
         telemetry.addData("Extension Motor Current:", Extension.getCurrent(CurrentUnit.AMPS));
+
+        telemetry.addData("Point 5:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
+
         tunePIDsWithController(driverGamepad);
+
+        telemetry.addData("Point 6:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
 
         telemetry.addLine(" ");
         huskyLens.ScanForSample(telemetry); // TODO: move this to its own command
+
+        telemetry.addData("Point 7:", ArmFrameTime.time() - LastTestingTime);
+        LastTestingTime = ArmFrameTime.time();
+
     }
 
 
@@ -245,11 +260,11 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 13) PIDVar = 0;
+            if (PIDVar > 12) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 13;
+            if (PIDVar < 0) PIDVar = 12;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -269,7 +284,7 @@ public class ArmSystem extends SubsystemBase {
             else if (PIDVar == 10) SubsystemDataTransfer.HeadingTargetPID.kP = functions.round(SubsystemDataTransfer.HeadingTargetPID.kP + PIDChangeIncrement, 4);
             else if (PIDVar == 11) SubsystemDataTransfer.HeadingTargetPID.kI = functions.round(SubsystemDataTransfer.HeadingTargetPID.kI + PIDChangeIncrement, 4);
             else if (PIDVar == 12) SubsystemDataTransfer.HeadingTargetPID.kD = functions.round(SubsystemDataTransfer.HeadingTargetPID.kD + PIDChangeIncrement, 4);
-            else if (PIDVar == 13) Constants.ClawOpenPosition = functions.round(Constants.ClawOpenPosition + PIDChangeIncrement * 10, 3);
+            // else if (PIDVar == 13) Constants.ClawOpenPosition = functions.round(Constants.ClawOpenPosition + PIDChangeIncrement * 10, 3);
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
                 PIDIncrementButtonPressed = true;
@@ -290,7 +305,7 @@ public class ArmSystem extends SubsystemBase {
         else if (PIDVar == 10) telemetry.addData("Editing: Heading Kp - ", SubsystemDataTransfer.HeadingTargetPID.kP);
         else if (PIDVar == 11) telemetry.addData("Editing: Heading Ki - ", SubsystemDataTransfer.HeadingTargetPID.kI);
         else if (PIDVar == 12) telemetry.addData("Editing: Heading Kd - ", SubsystemDataTransfer.HeadingTargetPID.kD);
-        else if (PIDVar == 13) telemetry.addData("Editing: Claw Offset - ", Constants.ClawOpenPosition);
+        // else if (PIDVar == 13) telemetry.addData("Editing: Claw Offset - ", Constants.ClawOpenPosition);
     }
 
 
@@ -396,7 +411,7 @@ public class ArmSystem extends SubsystemBase {
 
     // WRIST AND CLAW METHODS
 
-    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.31); } // make wrist go to that specific angle
+    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.29); } // make wrist go to that specific angle
     public void openClaw() { ClawTargetPosition = Constants.ClawOpenPosition; }
     public void closeClaw() { ClawTargetPosition = Constants.ClawClosedPosition; }
 

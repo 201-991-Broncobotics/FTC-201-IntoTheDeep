@@ -24,5 +24,7 @@ public class SubsystemDataTransfer {
 
     public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
+    public static double driveSystemFrameRate = 0;
+
 
 }
