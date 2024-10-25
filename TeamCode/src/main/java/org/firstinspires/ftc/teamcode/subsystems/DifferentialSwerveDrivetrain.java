@@ -38,7 +38,7 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     MecanumDrive drive;
 
-    ElapsedTime DriveThreadTime;
+    ElapsedTime DifferentialSwerveTimer;
 
     // private final Telemetry telemetry;
 
@@ -58,7 +58,7 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
 
-        DriveThreadTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
@@ -67,8 +67,7 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
     }
 
     public void controlDifferentialSwerve() {
-        SubsystemDataTransfer.driveSystemFrameRate = 1 / (DriveThreadTime.time() / 1000.0);
-        DriveThreadTime.reset();
+        DifferentialSwerveTimer.reset();
 
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
@@ -109,6 +108,8 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
                 strafeNorm * throttleControl), turn));
+
+        SubsystemDataTransfer.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }
 
 

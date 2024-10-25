@@ -31,5 +31,7 @@ public class SubsystemDataTransfer {
 
     public static double HuskyLensFrameRate = 0;
 
+    public static double HuskyLensLoopTime = 0, DrivetrainLoopTime = 0;
+
 
 }

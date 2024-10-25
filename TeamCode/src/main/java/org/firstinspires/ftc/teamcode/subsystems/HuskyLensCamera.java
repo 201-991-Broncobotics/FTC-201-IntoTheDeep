@@ -21,9 +21,9 @@ public class HuskyLensCamera extends SubsystemBase {
     }
 
     public void ScanForSample() {
-        SubsystemDataTransfer.HuskyLensFrameRate = 1 / (CameraTimer.time() / 1000.0);
         CameraTimer.reset();
         SubsystemDataTransfer.Vision = Camera.blocks();
+        SubsystemDataTransfer.HuskyLensLoopTime = CameraTimer.time();
     }
 
 }
