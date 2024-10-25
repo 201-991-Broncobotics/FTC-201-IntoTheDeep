@@ -29,5 +29,7 @@ public class SubsystemDataTransfer {
 
     public static HuskyLens.Block[] Vision;
 
+    public static double HuskyLensFrameRate = 0;
+
 
 }
