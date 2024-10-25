@@ -22,14 +22,7 @@ public class SwerveModule {
     private double LastRotation;
 
 
-    public SwerveModule(DcMotorEx top_motor /*HardwareMap map, String top_motor_name, String bottom_motor_name*/) { // initialize the module
-        /*
-        top_motor = map.get(DcMotorEx.class, top_motor_name);
-        bottom_motor = map.get(DcMotorEx.class, bottom_motor_name);
-        top_motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER); // reset only the rotation encoder
-        top_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        bottom_motor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        */
+    public SwerveModule(DcMotorEx top_motor) { // initialize the module
         topMotorEncoder = () -> functions.angleDifference(top_motor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360);
         modulePID = new PIDController(0.01, 0, 0, topMotorEncoder);
     }
@@ -39,7 +32,7 @@ public class SwerveModule {
         return topMotorEncoder.getAsDouble();
     }
 
-    public void setModule(double angle, DualNum<Time> speed) {
+    public void setModule(double angle, DualNum<Time> speed, double maxPowerLimit) {
         // find current angle in degrees of the wheel and wrap it to between -90 and 90
         double currentAngle = getCurrentAngle();
         double angleChange = functions.angleDifference(currentAngle, angle, 180);
@@ -53,7 +46,7 @@ public class SwerveModule {
         // maintain the correct motor speed balance
         DualNum<Time> R1Power = speed.plus(rotation);
         DualNum<Time> R2Power = speed.times(-1).plus(rotation);
-        double divider = Math.max(1, Math.max(R1Power.value(), R2Power.value()));
+        double divider = Math.max(1, Math.max(R1Power.value() / maxPowerLimit, R2Power.value() / maxPowerLimit));
 
         topMotorPower = R1Power.times(-1).div(divider);
         bottomMotorPower = R2Power.times(-1).div(divider);

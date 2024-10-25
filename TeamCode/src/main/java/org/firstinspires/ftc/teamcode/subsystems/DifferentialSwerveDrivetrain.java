@@ -28,7 +28,7 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     private final DoubleSupplier ForwardSupplier, StrafeSupplier, TurnSupplier, ThrottleSupplier;
 
-    private static double lastRightAngle = 0.0, lastLeftAngle = 0.0;
+    private static double lastRightAngle = 0.0, lastLeftAngle = 0.0, maxPower = 1;
 
     private static DualNum<Time> RightTop, RightBottom, LeftTop, LeftBottom;
 
@@ -43,9 +43,8 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
     // private final Telemetry telemetry;
 
 
-    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad) { //Telemetry telemetryInput
-        // rightModule = new SwerveModule(topRightMotor/*map, "R2", "R1"*/); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        // leftModule = new SwerveModule(topLeftMotor/*map, "R3", "R4"*/);
+    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad, double maxPowerLimit) {
+        // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = new MecanumDrive(hardwareMap, currentPose);
         ForwardSupplier = gamepad::getRightY;
         StrafeSupplier = gamepad::getRightX;
@@ -55,7 +54,9 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
-        SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.012, 0, 0, () -> Math.toDegrees(drive.pose.heading.toDouble()));
+        SubsystemDataTransfer.HeadingTargetPID = new PIDController(0.002, 0, 0, () -> Math.toDegrees(drive.pose.heading.toDouble()));
+
+        maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
 
         DriveThreadTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
@@ -130,13 +131,13 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
         // actually tell the pod to go to the angle at the power
         if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            rightModule.setModule(RightAngle, RightPower);
-            leftModule.setModule(LeftAngle, LeftPower);
+            rightModule.setModule(RightAngle, RightPower, maxPower);
+            leftModule.setModule(LeftAngle, LeftPower, maxPower);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
         } else { // when no controller input, stop moving wheels
-            rightModule.setModule(lastRightAngle, RightPower);
-            leftModule.setModule(lastLeftAngle, LeftPower);
+            rightModule.setModule(lastRightAngle, RightPower, maxPower);
+            leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
         }
 
         RightTop = rightModule.getTopMotorPower();

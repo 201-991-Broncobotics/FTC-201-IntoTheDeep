@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.qualcomm.hardware.dfrobot.HuskyLens;
 
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 
@@ -10,7 +11,7 @@ public class SubsystemDataTransfer {
 
     private static Pose2d CurrentRobotPose;
 
-    public static Pose2d getCurrentRobotPose() { return CurrentRobotPose; }
+    public static Pose2d getCurrentRobotPose() { return CurrentRobotPose; } // TODO: why did I do this for only robot pose????
 
     public static void setCurrentRobotPose(Pose2d CurrentPose) { CurrentRobotPose = CurrentPose; }
 
@@ -25,6 +26,8 @@ public class SubsystemDataTransfer {
     public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
     public static double driveSystemFrameRate = 0;
+
+    public static HuskyLens.Block[] Vision;
 
 
 }
