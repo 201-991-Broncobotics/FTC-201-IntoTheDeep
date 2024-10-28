@@ -14,6 +14,8 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
@@ -38,18 +40,21 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
     MecanumDrive drive;
 
-    ElapsedTime DifferentialSwerveTimer;
+    ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer;
+
+    YawPitchRollAngles robotOrientation;
+
 
     // private final Telemetry telemetry;
 
 
-    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, GamepadEx gamepad, double maxPowerLimit) {
+    public DifferentialSwerveDrivetrain(HardwareMap hardwareMap, Pose2d currentPose, double maxPowerLimit) {
         // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = new MecanumDrive(hardwareMap, currentPose);
-        ForwardSupplier = gamepad::getRightY;
-        StrafeSupplier = gamepad::getRightX;
-        TurnSupplier = gamepad::getLeftX;
-        ThrottleSupplier = () -> gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+        ForwardSupplier = SubsystemDataTransfer.driver::getRightY;
+        StrafeSupplier = SubsystemDataTransfer.driver::getRightX;
+        TurnSupplier = SubsystemDataTransfer.driver::getLeftX;
+        ThrottleSupplier = () -> SubsystemDataTransfer.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
         // telemetry = telemetryInput;
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
@@ -59,6 +64,7 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
 
     public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
@@ -72,10 +78,14 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         drive.updatePoseEstimate(); // update localization
         SubsystemDataTransfer.setCurrentRobotPose(drive.pose);
 
-        if (RobotLog.hasGlobalWarningMsg() && RobotLog.getGlobalWarningMessage().message.contains("Road Runner: IMU imu continues to return invalid data after 500 ms")) {
-            SubsystemDataTransfer.IMUWorking = false;
-            absoluteDriving = false;
-        }
+        robotOrientation = SubsystemDataTransfer.imuChecker.get().getRobotYawPitchRollAngles();
+
+        if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
+            if (imuNotWorkingTimer.time() > 500) {
+                SubsystemDataTransfer.IMUWorking = false;
+                absoluteDriving = false;
+            }
+        } else imuNotWorkingTimer.reset();
 
         double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
         double forward = -1 * ForwardSupplier.getAsDouble();
@@ -84,10 +94,11 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
 
         if (!functions.inUse(turn) && SubsystemDataTransfer.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
-            if (SubsystemDataTransfer.OverrideDrivetrainRotation)
-                SubsystemDataTransfer.HeadingTargetPID.setTarget(SubsystemDataTransfer.OverrideDrivetrainTargetHeading);
-            else SubsystemDataTransfer.HeadingTargetPID.setTarget(headingHold);
-            turn = SubsystemDataTransfer.HeadingTargetPID.getPower();
+            if (SubsystemDataTransfer.OverrideDrivetrainRotation) headingHold = SubsystemDataTransfer.OverrideDrivetrainTargetHeading;
+
+            double headingChange = functions.angleDifference(drive.pose.heading.toDouble(), headingHold, 360);
+            turn = SubsystemDataTransfer.HeadingTargetPID.getPower(0.0, headingChange);
+
         } else {
             SubsystemDataTransfer.OverrideDrivetrainRotation = false;
             turn = turn * throttleControl;
@@ -132,12 +143,12 @@ public class DifferentialSwerveDrivetrain extends SubsystemBase {
 
         // actually tell the pod to go to the angle at the power
         if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            rightModule.setModule(RightAngle, RightPower, maxPower);
+            rightModule.setModule(RightAngle, RightPower.times(-1), maxPower);
             leftModule.setModule(LeftAngle, LeftPower, maxPower);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
         } else { // when no controller input, stop moving wheels
-            rightModule.setModule(lastRightAngle, RightPower, maxPower);
+            rightModule.setModule(lastRightAngle, RightPower.times(-1), maxPower);
             leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
         }
 

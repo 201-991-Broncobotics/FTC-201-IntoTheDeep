@@ -10,19 +10,17 @@ import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
 
 public class HuskyLensCamera extends SubsystemBase {
 
-    private final HuskyLens Camera;
-
-    private ElapsedTime CameraTimer;
+    private final ElapsedTime CameraTimer;
 
     public HuskyLensCamera(HardwareMap map) {
-        Camera = map.get(HuskyLens.class, "HuskyLens");
-        Camera.selectAlgorithm(HuskyLens.Algorithm.COLOR_RECOGNITION);
+        HuskyLensThreaded huskyLensThread = new HuskyLensThreaded(map);
+        SubsystemDataTransfer.HuskyLensThreadActive = true;
+        huskyLensThread.start();
         CameraTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
 
     public void ScanForSample() {
         CameraTimer.reset();
-        SubsystemDataTransfer.Vision = Camera.blocks();
         SubsystemDataTransfer.HuskyLensLoopTime = CameraTimer.time();
     }
 

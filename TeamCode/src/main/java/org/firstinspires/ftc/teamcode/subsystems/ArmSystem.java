@@ -35,7 +35,6 @@ public class ArmSystem extends SubsystemBase {
     public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
 
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
-    private double backPedalStart = 0; // where pivot is when command to move starts
 
     private boolean justPressedPreset = false, resetExtensionZero = false;
 
@@ -48,29 +47,30 @@ public class ArmSystem extends SubsystemBase {
     boolean PIDButtonPressed = false, PIDIncrementButtonPressed = false;
     double PIDVar = 0, PIDChangeIncrement = 0.01;
 
-    double LastTestingTime = 0;
     boolean telemetryEnabled = false;
 
-    double CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors one per update
-    double CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
+    double CurrentPivotAngleInst = 0; // this speeds up the code a lot by only checking sensors one per update
+    double CurrentExtensionLengthInst = 0;
 
 
-    public ArmSystem(HardwareMap map, GamepadEx operatorGamepad, Telemetry inputTelemetry, GamepadEx driver) { // Pivot, Extension, Claw, and Wrist initialization
+    public ArmSystem(HardwareMap map, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
         Pivot = map.get(DcMotorEx.class, "Pivot");
-        ExtensionF = map.get(DcMotorEx.class, "ExtensionFront");
-        ExtensionB = map.get(DcMotorEx.class, "ExtensionBack");
+        ExtensionF = map.get(DcMotorEx.class, "ExtensionF");
+        ExtensionB = map.get(DcMotorEx.class, "ExtensionB");
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
-        gamepad = operatorGamepad;
         ClawTargetPosition = Constants.ClawOpenPosition; // open claw
-        WristTargetAngle = 180; // point claw straight up
+        WristTargetAngle = 90; // claw can't point straight up at this pivot angle anymore
+
+        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
+        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
 
         CommandFrameTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // this is how fast the entire code updates / loop time of command scheduler
         FrameRate = 1 / (CommandFrameTime.time() / 1000.0);
         PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         ArmLoopTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
-        driverGamepad = driver;
+
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
@@ -79,6 +79,12 @@ public class ArmSystem extends SubsystemBase {
         ExtensionPID = new PIDController(0.006, 0, 0, 0, Constants.extensionMaxLength, 0,
                 1, 0, 5, true, false,
                 CurrentExtensionLength);
+    }
+
+
+    public void initializeArmGamepads() {
+        gamepad = SubsystemDataTransfer.operator;
+        driverGamepad = SubsystemDataTransfer.driver;
     }
 
     // Dictionary of things the arm has to do
@@ -99,6 +105,11 @@ public class ArmSystem extends SubsystemBase {
     // 13.score net zone
 
 
+    public void controlArmTeleOp() {
+
+    }
+
+
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         ArmLoopTimer.reset(); // time it takes the arm for 1 update
         double FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
@@ -109,26 +120,25 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("HuskyLens Loop Time:", SubsystemDataTransfer.HuskyLensLoopTime);
         telemetry.addLine(" ");
 
-        LastTestingTime = 0;
-
-        CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors one per update
+        CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors once per update
         CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
 
         // Manual arm control when controllers active
         if (manualArmControlActive()) {
             backPedalExtension = false;
             Vector2d targetClawPos = getTargetClawPoint();
+            double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
             if (FrameRate > 2) {
-                moveArmToPoint(new Vector2d(
-                        targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / FrameRate,
-                        targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() / FrameRate
-                ));
+                // moveArmToPoint(new Vector2d(targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / FrameRate, targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() / FrameRate));
+                moveArmDirectly(PivotTargetAngle + Constants.maxManualPivotSpeed * gamepad.getLeftY() * ArmThrottle / FrameRate,
+                        ExtensionTargetLength + Constants.maxManualExtensionSpeed * -1 * gamepad.getRightY() * ArmThrottle / FrameRate);
             }
-            justPressedPreset = false; // also reset button presses
-        } else if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && !justPressedPreset) { // Presets
+            // justPressedPreset = false; // also reset button presses
+        } /* else if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && !justPressedPreset) { // Presets
             resetArm();
             justPressedPreset = true;
         } else justPressedPreset = false;
+        */
 
         // Wrist and Claw
         if (gamepad.getButton(GamepadKeys.Button.Y)) {
@@ -139,21 +149,12 @@ public class ArmSystem extends SubsystemBase {
             WristTargetAngle = 0;
         }
 
-        telemetry.addData("Point 1:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
-
 
         // BACKPEDALING
 
         // The purpose of Backpedal is to retract the extension when the pivot needs to move a lot so that the arm is less likely to hit something and the pivot can rotate faster
         // if backpedal is enabled and the angle already traveled is less than half of the total angle that needs to be traversed
-        /* if (backPedalExtension && (CurrentPivotAngleInst - backPedalStart) < (PivotTargetAngle - backPedalStart) / 2) {
-            ExtensionPID.setTarget(0); // move extension towards 0
-        } else {
-            ExtensionPID.setTarget(ExtensionTargetLength);
-            backPedalExtension = false;
-        }
-         */
+
         if (Math.abs(PivotTargetAngle - CurrentPivotAngleInst) > 10) { // backpedals only if the pivot needs to move more than 10 degrees
             backPedalExtension = false; // otherwise disables backpedal
         }
@@ -187,9 +188,6 @@ public class ArmSystem extends SubsystemBase {
 
         Pivot.setPower(PivotPower);
 
-        telemetry.addData("Point 2:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
-
 
         // EXTENSION
 
@@ -202,7 +200,7 @@ public class ArmSystem extends SubsystemBase {
         }
 
         ExtensionF.setPower(ExtensionPower);
-        ExtensionB.setPower(-1 * ExtensionPower);
+        ExtensionB.setPower(ExtensionPower);
 
         if (resetExtensionZero && ExtensionTargetLength == 0) {
             // if Extension is close to where it thinks 0 is, tell it to keep retracting
@@ -216,21 +214,17 @@ public class ArmSystem extends SubsystemBase {
         // If the current extension length is ever negative, set the current value to zero
         if (CurrentExtensionLengthInst < 0) CurrentExtensionLengthZero = CurrentExtensionLengthInst;
 
-        telemetry.addData("Point 3:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
-
         // WRIST AND CLAW
 
-        if ((CurrentExtensionLengthInst < 40 || CurrentPivotAngleInst > 45) && WristTargetAngle < 80) {
+        if ((CurrentExtensionLengthInst < 40 || CurrentPivotAngleInst > 45) && WristTargetAngle < 80) { // prevents claw servo from hitting slides
             WristTargetAngle = 90;
+        } else if (CurrentPivotAngleInst < 45 && WristTargetAngle > 135) { // prevents huskyLens from hitting hook
+            WristTargetAngle = 135;
         }
         setWrist(WristTargetAngle - CurrentPivotAngleInst);
 
         // right trigger slightly loosens the claw's grip
         Claw.setPosition(ClawTargetPosition - (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)));
-
-        telemetry.addData("Point 4:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
 
         if (!SubsystemDataTransfer.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
         telemetry.addData("Heading:", Math.toDegrees(SubsystemDataTransfer.getCurrentRobotPose().heading.toDouble()));
@@ -268,27 +262,16 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("Extension PID Power:", ExtensionPIDPower);
             telemetry.addData("Extension Motor Power:", ExtensionPower);
             telemetry.addData("Extension Motor Current:", ExtensionF.getCurrent(CurrentUnit.AMPS));
-        }
 
-        telemetry.addData("Point 5:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
+            HuskyLens.Block[] VisionResults = SubsystemDataTransfer.Vision;
+            telemetry.addData("HuskyLens block count:", VisionResults.length);
+            for (HuskyLens.Block value : VisionResults) {
+                telemetry.addLine("ID:" + (value.id) + " x:" + (value.x) + " y:" + (value.y) + // Id, center X, center Y
+                        " h:" + (value.height) + " w:" + (value.width)); // height, width,  + " ox" + (value.left) + " oy" + (value.top)  origin X, Origin Y
+            }
+        }
 
         tunePIDsWithController(driverGamepad);
-        telemetry.addLine(" ");
-
-        telemetry.addData("Point 6:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
-
-        HuskyLens.Block[] VisionResults = SubsystemDataTransfer.Vision;
-        telemetry.addData("HuskyLens block count:", VisionResults.length);
-        for (HuskyLens.Block value : VisionResults) {
-            telemetry.addLine("ID:" + (value.id) + " x:" + (value.x) + " y:" + (value.y) + // Id, center X, center Y
-                    " h:" + (value.height) + " w:" + (value.width)); // height, width,  + " ox" + (value.left) + " oy" + (value.top)  origin X, Origin Y
-        }
-
-        telemetry.addData("Point 7:", CommandFrameTime.time() - LastTestingTime);
-        LastTestingTime = CommandFrameTime.time();
-
 
         ArmLoopTime = ArmLoopTimer.time(); // updates how long the arm loop took to run
     }
@@ -404,19 +387,24 @@ public class ArmSystem extends SubsystemBase {
 
 
     // MOVE ARM METHODS AND PRESETS:
-    private void moveArmToPoint(Vector2d point) { // units:mm, makes pivot and extension work together to go to a set point relative to the robot
+    private void moveArmDirectly(double pivotTarget, double extensionTarget) {
+        PivotTargetAngle = pivotTarget;
+        ExtensionTargetLength = extensionTarget;
+        if (PivotTargetAngle < 0) PivotTargetAngle = 0; // prevent pivot from exceeding max positions
+        else if (PivotTargetAngle > Constants.pivotMaxAngle) PivotTargetAngle = Constants.pivotMaxAngle;
+        // extension get realigned because it skips a lot instead of locking it at max positions
+        // if (ExtensionTargetLength < 0) ExtensionTargetLength = 0;
+        // else if (ExtensionTargetLength > Constants.extensionMaxLength) ExtensionTargetLength = Constants.extensionMaxLength;
+    }
+
+
+    private void moveArmToPoint(Vector2d point) { // units:mm, makes pivot and extension work together to go to a set point relative to the pivot axle on the robot
         double Y = point.y;
         double X = point.x;
 
         // This horizontal extension limiter allows for the arm to at least go to the correct height if the target x is outside the expansion limit
         if (X > Constants.freeHorizontalExpansion + Constants.retractedExtensionLength) X = Constants.freeHorizontalExpansion + Constants.retractedExtensionLength;
-
-        PivotTargetAngle = Math.toDegrees(Math.atan2(Y, X)); // forward 0 is at the pivot point, HEIGHT 0 IS FROM AXLE not from floor
-        ExtensionTargetLength = Math.hypot(X, Y) - Constants.retractedExtensionLength;
-        if (PivotTargetAngle < 0) PivotTargetAngle = 0;
-        else if (PivotTargetAngle > Constants.pivotMaxAngle) PivotTargetAngle = Constants.pivotMaxAngle;
-        if (ExtensionTargetLength < 0) ExtensionTargetLength = 0;
-        else if (ExtensionTargetLength > Constants.extensionMaxLength) ExtensionTargetLength = Constants.extensionMaxLength;
+        moveArmDirectly(Math.toDegrees(Math.atan2(Y, X)), Math.hypot(X, Y) - Constants.retractedExtensionLength);
     }
 
 
@@ -435,10 +423,22 @@ public class ArmSystem extends SubsystemBase {
 
     public void moveClawToTopBasket() {
         backPedalExtension = true;
-        backPedalStart = CurrentPivotAngleInst;
         PivotTargetAngle = 90;
         ExtensionTargetLength = 696;
         WristTargetAngle = 200;
+    }
+
+
+    public void moveClawToTopRung() {
+        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 660 - Constants.pivotAxleHeight));
+        WristTargetAngle = 90;
+    }
+
+
+    public void moveClawToHumanPickup() {
+        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 28 - Constants.pivotAxleHeight));
+        WristTargetAngle = 90;
+        openClaw();
     }
 
 

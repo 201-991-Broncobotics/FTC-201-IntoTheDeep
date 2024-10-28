@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.ftc.LazyImu;
+import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
@@ -32,6 +34,12 @@ public class SubsystemDataTransfer {
     public static double HuskyLensFrameRate = 0;
 
     public static double HuskyLensLoopTime = 0, DrivetrainLoopTime = 0;
+    public static boolean HuskyLensThreadActive = false;
+    public static double[] imuData = new double[] {0, 0, 0};
+
+    public static LazyImu imuChecker;
+
+    public static GamepadEx operator, driver;
 
 
 }
