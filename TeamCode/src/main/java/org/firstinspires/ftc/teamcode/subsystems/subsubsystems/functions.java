@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
+import com.acmerobotics.roadrunner.Vector2d;
+
 import org.firstinspires.ftc.teamcode.Constants;
 
 public class functions {
@@ -21,7 +23,6 @@ public class functions {
         return (Math.abs(value) > Constants.controllerDeadZone);
     }
 
-
     public static void Sleep(long milliseconds) {
         try {
             Thread.sleep(milliseconds);
@@ -29,5 +30,15 @@ public class functions {
             // Wait the set amount of time in milliseconds
         }
     }
+
+    public static Vector2d tileCoords(double X, double Y) { // convert field coords in tiles to coords in inches
+        return new Vector2d(X / Constants.tileLength, Y / Constants.tileLength);
+    }
+
+
+    public static double tiles(double tiles) { // convert number of tiles to inches
+        return tiles * Constants.tileLength;
+    }
+
 
 }

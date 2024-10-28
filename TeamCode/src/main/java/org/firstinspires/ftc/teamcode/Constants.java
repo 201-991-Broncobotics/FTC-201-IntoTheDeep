@@ -4,7 +4,9 @@ public class Constants {
 
     public static double encoderResolution = 8192; // differential swerve module encoders
 
-    public static double minimumPivotSpeedPercent = 0.4; // for when extension is fully extended
+    public static double tileLength = 23.5625; // in inches
+
+    public static double minimumPivotSpeedPercent = 0.3; // for when extension is fully extended
     public static double extensionMaxLength = 696;
     public static double pivotMaxAngle = 90;
     public static double pivotAxleHeight = 82.242420; //mm not including how much the robot sinks into the tiles
@@ -12,7 +14,7 @@ public class Constants {
     public static double retractedExtensionLength = 264; //mm from center of pivot axle to end of linear slide when retracted
 
     public static double maxManualClawSpeedVertical = 200, maxManualClawSpeedHorizontal = 200; // mm per second
-    public static double maxManualExtensionSpeed = 300, maxManualPivotSpeed = 30; // mm, degrees
+    public static double maxManualExtensionSpeed = 300, maxManualPivotSpeed = 60; // mm, degrees
 
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;

@@ -34,14 +34,15 @@ public class SwerveModule {
 
     public void setModule(double angle, DualNum<Time> speed, double maxPowerLimit) {
         // find current angle in degrees of the wheel and wrap it to between -90 and 90
-        double currentAngle = getCurrentAngle();
-        double angleChange = functions.angleDifference(currentAngle, angle, 180);
+        //double currentAngle = getCurrentAngle();
+        //double angleChange = functions.angleDifference(currentAngle, angle, 180);
 
-        double rotation = modulePID.getPower(0.0, angleChange);
+        //double rotation = modulePID.getPower(0.0, angleChange);
+        double rotation = modulePID.getPowerWrapped(angle, 180);
         LastRotation = rotation;
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
-        speed = speed.times(Math.sin(((Math.abs(functions.angleDifference(currentAngle, angle, 360)) / 90) - 1) * Math.PI / 2));
+        speed = speed.times(Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
 
         // maintain the correct motor speed balance
         DualNum<Time> R1Power = speed.plus(rotation);

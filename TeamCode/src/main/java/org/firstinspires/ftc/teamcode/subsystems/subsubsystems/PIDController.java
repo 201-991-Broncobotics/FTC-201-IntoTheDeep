@@ -56,9 +56,8 @@ public class PIDController {
             if (newTargetPosition > activeMaxPosition) newTargetPosition = activeMaxPosition;
             else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
         }
+        if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
         targetPosition = newTargetPosition;
-        previousTime = mRuntime.time() / 1000.0;
-        integral = 0; // reset integral so it doesn't go crazy
     }
 
 
@@ -68,9 +67,8 @@ public class PIDController {
             if (newTargetPosition > activeMaxPosition) newTargetPosition = activeMaxPosition;
             else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
         }
+        if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
         targetPosition = newTargetPosition;
-        previousTime = mRuntime.time() / 1000.0;
-        integral = 0; // reset integral so it doesn't go crazy
     }
 
 
@@ -158,13 +156,31 @@ public class PIDController {
     }
 
 
-    public boolean closeEnough() {
-        return Math.abs(targetPosition - encoderPosition.getAsDouble()) <= tolerance;
+    // this lets the target position and all positions that are multiples of the target position (ex: 0, 360, 720, 1080, -360)
+    // be treated the same so the pid just targets the closest one
+    public double getPowerWrapped(double targetPosition, int wrapAmount) {
+        // wrapAmount is confusing to explain but if the encoderPosition uses degrees and you want the pid to treat
+        // all angles that are equivalent to the target angle the same, wrapAmount would be 360
+        return getPower(0.0, angleDifference(encoderPosition.getAsDouble(), targetPosition, wrapAmount));
+    }
+
+
+    // this is copied here in case anyone wants to use this exact PID class in a future code
+    private double angleDifference(double currentAngle, double targetAngle, int wrapAngle) {
+        double result1 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), wrapAngle * 100L) * 0.01;
+        double result2 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), -wrapAngle * 100L) * 0.01;
+        if (Math.abs(result1) <= Math.abs(result2)) return result1;
+        else return result2;
     }
 
 
     public void setPercentMaxSpeed(double PercentMaxSpeed) { // between 0 to 1 and only works when speed limiting is on
         percentMaxSpeed = PercentMaxSpeed;
+    }
+
+
+    public boolean closeEnough() {
+        return Math.abs(targetPosition - encoderPosition.getAsDouble()) <= tolerance;
     }
 
 }

@@ -7,7 +7,7 @@ import com.qualcomm.hardware.dfrobot.HuskyLens;
 
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 
-public class SubsystemDataTransfer {
+public class SubsystemData {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
 
@@ -27,15 +27,10 @@ public class SubsystemDataTransfer {
 
     public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
-    public static double driveSystemFrameRate = 0;
-
     public static HuskyLens.Block[] Vision;
 
-    public static double HuskyLensFrameRate = 0;
-
-    public static double HuskyLensLoopTime = 0, DrivetrainLoopTime = 0;
+    public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0;
     public static boolean HuskyLensThreadActive = false;
-    public static double[] imuData = new double[] {0, 0, 0};
 
     public static LazyImu imuChecker;
 

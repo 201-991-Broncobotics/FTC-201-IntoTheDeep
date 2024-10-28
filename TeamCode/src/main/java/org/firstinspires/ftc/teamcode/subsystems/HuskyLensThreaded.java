@@ -1,12 +1,10 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
-import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.SubsystemDataTransfer;
+import org.firstinspires.ftc.teamcode.SubsystemData;
 
 public class HuskyLensThreaded extends Thread {
 
@@ -16,10 +14,10 @@ public class HuskyLensThreaded extends Thread {
 
     @Override
     public void run() {
-        while (SubsystemDataTransfer.HuskyLensThreadActive) {
+        while (SubsystemData.HuskyLensThreadActive) {
             ThreadTimer.reset();
-            SubsystemDataTransfer.Vision = Camera.blocks();
-            SubsystemDataTransfer.HuskyLensLoopTime = ThreadTimer.time();
+            SubsystemData.Vision = Camera.blocks();
+            SubsystemData.HuskyLensThreadLoopTime = ThreadTimer.time();
         }
     }
 
@@ -27,7 +25,7 @@ public class HuskyLensThreaded extends Thread {
         Camera = map.get(HuskyLens.class, "HuskyLens");
         Camera.selectAlgorithm(HuskyLens.Algorithm.COLOR_RECOGNITION);
         ThreadTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
-        SubsystemDataTransfer.Vision = Camera.blocks();
+        SubsystemData.Vision = Camera.blocks();
     }
 
 }
