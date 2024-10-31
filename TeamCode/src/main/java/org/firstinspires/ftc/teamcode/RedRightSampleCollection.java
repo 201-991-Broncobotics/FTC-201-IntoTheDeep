@@ -34,7 +34,7 @@ public class RedRightSampleCollection extends CommandOpMode {
         Pose2d startPose = new Pose2d(new Vector2d(functions.tiles(0.5), functions.tiles(-3) + 7.09), Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8);
+        DiffySwerve drivetrain = new DiffySwerve(drive, 0.75, telemetry);
         ArmSystem armClaw = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 

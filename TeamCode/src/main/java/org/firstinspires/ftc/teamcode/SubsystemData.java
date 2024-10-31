@@ -1,21 +1,19 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.ftc.LazyImu;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 
 public class SubsystemData {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
 
-    private static Pose2d CurrentRobotPose;
-
-    public static Pose2d getCurrentRobotPose() { return CurrentRobotPose; } // TODO: why did I do this for only robot pose????
-
-    public static void setCurrentRobotPose(Pose2d CurrentPose) { CurrentRobotPose = CurrentPose; }
+    public static Pose2d CurrentRobotPose;
 
     public static boolean OverrideDrivetrainRotation = false;
     public static double OverrideDrivetrainTargetHeading = 0;
@@ -29,12 +27,18 @@ public class SubsystemData {
 
     public static HuskyLens.Block[] Vision;
 
-    public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0;
-    public static boolean HuskyLensThreadActive = false;
-
-    public static LazyImu imuChecker;
+    public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0, IMUThreadTime = 0;
+    public static boolean HuskyLensThreadActive = false, IMUThreadActive = false;
 
     public static GamepadEx operator, driver;
+
+    public static DcMotorEx brokenDiffyEncoder;
+
+    public static boolean HuskyLensConnected = false;
+
+    public static YawPitchRollAngles IMUAngles;
+
+    public static AngularVelocity IMUAngularVelocity;
 
 
 }

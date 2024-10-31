@@ -6,6 +6,7 @@ import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -36,7 +37,7 @@ public class ArmSystem extends SubsystemBase {
 
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
 
-    private boolean justPressedPreset = false, resetExtensionZero = false;
+    private boolean resetExtensionZero = false;
 
     ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime;
     double FrameRate = 1, ArmLoopTime = 0;
@@ -56,6 +57,8 @@ public class ArmSystem extends SubsystemBase {
         Pivot = map.get(DcMotorEx.class, "Pivot");
         ExtensionF = map.get(DcMotorEx.class, "ExtensionF");
         ExtensionB = map.get(DcMotorEx.class, "ExtensionB");
+        ExtensionF.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        ExtensionF.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
         ClawTargetPosition = Constants.ClawOpenPosition; // open claw
@@ -73,7 +76,7 @@ public class ArmSystem extends SubsystemBase {
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
-                1, Constants.pivotMaxAngle, 2, true, true,
+                1, 60, 2, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.006, 0, 0, 0, Constants.extensionMaxLength, 0,
                 1, 0, 5, true, false,
@@ -105,20 +108,21 @@ public class ArmSystem extends SubsystemBase {
         if (functions.inUse(gamepad.getLeftY()) || functions.inUse(gamepad.getRightY())) {
             backPedalExtension = false;
             Vector2d targetClawPos = getTargetClawPoint();
-            double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+            // double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
             if (FrameRate > 2) {
-                // moveArmToPoint(new Vector2d(targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / FrameRate, targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() / FrameRate));
+                telemetry.addLine("-----Arm should be moving rn-----");
+                moveArmToPoint(new Vector2d(targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / FrameRate, targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() / FrameRate));
+                /*
                 // slows down pivot when extension is fully extended
                 double pivotThrottle = 1 - (1 - Constants.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
-                moveArmDirectly(PivotTargetAngle + Constants.maxManualPivotSpeed * gamepad.getLeftY() * ArmThrottle * pivotThrottle / FrameRate,
-                        ExtensionTargetLength + Constants.maxManualExtensionSpeed * -1 * gamepad.getRightY() * ArmThrottle / FrameRate);
+                double manualPivot = PivotTargetAngle + Constants.maxManualPivotSpeed * gamepad.getLeftY() * ArmThrottle * pivotThrottle / FrameRate;
+                double manualExtension = ExtensionTargetLength + Constants.maxManualExtensionSpeed * -1 * gamepad.getRightY() * ArmThrottle / FrameRate;
+                moveArmDirectly(manualPivot, manualExtension);
+                telemetry.addData("manual pivot", manualPivot);
+                telemetry.addData("manual extension", manualExtension);
+                 */
             }
-            // justPressedPreset = false; // also reset button presses
-        } /* else if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && !justPressedPreset) { // Presets
-            resetArm();
-            justPressedPreset = true;
-        } else justPressedPreset = false;
-        */
+        }
 
         ClawAdjustment = (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
 
@@ -130,17 +134,21 @@ public class ArmSystem extends SubsystemBase {
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         ArmLoopTimer.reset(); // time it takes the arm for 1 update
+        double LastArmLoopTime = 0;
         double FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
         CommandFrameTime.reset();
         telemetry.addData("Code FrameRate:", FrameRate);
         telemetry.addData("Arm System Loop Time:", ArmLoopTime);
         telemetry.addData("Drive System Loop Time:", SubsystemData.DrivetrainLoopTime);
         telemetry.addData("HuskyLens Loop Time:", SubsystemData.HuskyLensLoopTime);
+        telemetry.addData("HuskyLens Thread Loop Time:", SubsystemData.HuskyLensThreadLoopTime);
         telemetry.addLine(" ");
 
         CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors once per update
         CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
 
+        telemetry.addData("Point 1:", ArmLoopTimer.time() - LastArmLoopTime);
+        LastArmLoopTime = ArmLoopTimer.time();
 
         // BACKPEDALING
 
@@ -177,6 +185,9 @@ public class ArmSystem extends SubsystemBase {
         }
 
         Pivot.setPower(PivotPower);
+
+        telemetry.addData("Point 2:", ArmLoopTimer.time() - LastArmLoopTime);
+        LastArmLoopTime = ArmLoopTimer.time();
 
 
         // EXTENSION
@@ -219,24 +230,24 @@ public class ArmSystem extends SubsystemBase {
         // right trigger slightly loosens the claw's grip
         Claw.setPosition(ClawTargetPosition - ClawAdjustment);
 
+        telemetry.addData("Point 3:", ArmLoopTimer.time() - LastArmLoopTime);
+        LastArmLoopTime = ArmLoopTimer.time();
+
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
-        telemetry.addData("Heading:", Math.toDegrees(SubsystemData.getCurrentRobotPose().heading.toDouble()));
+        telemetry.addData("Heading:", Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
         telemetry.addLine("Robot Pose (in) X: " +
-                functions.round(SubsystemData.getCurrentRobotPose().position.x, 2) + " Y: " +
-                functions.round(SubsystemData.getCurrentRobotPose().position.y, 2));
+                functions.round(SubsystemData.CurrentRobotPose.position.x, 2) + " Y: " +
+                functions.round(SubsystemData.CurrentRobotPose.position.y, 2));
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
             Pose2d CurrentClawPosition = getCurrentClawPose(); // avoiding calling this method twice
-            telemetry.addLine("Claw Pose X: " +
+            telemetry.addLine("Claw Field Pose X: " +
                     functions.round(CurrentClawPosition.position.x, 2) + " Y: " +
                     functions.round(CurrentClawPosition.position.y, 2) + " H: " +
                     functions.round(getCurrentClawHeight(), 2));
-            Pose2d TargetClawPosition = getTargetClawPose(); // avoiding calling this method twice
-            telemetry.addLine("Target Claw Pose X: " +
-                    functions.round(TargetClawPosition.position.x, 2) + " Y: " +
-                    functions.round(TargetClawPosition.position.y, 2) + " H: " +
-                    functions.round(getTargetClawHeight(), 2));
+            //Pose2d TargetClawPosition = getTargetClawPose(); // avoiding calling this method twice
+            //telemetry.addLine("Target Claw Pose X: " + functions.round(TargetClawPosition.position.x, 2) + " Y: " + functions.round(TargetClawPosition.position.y, 2) + " H: " + functions.round(getTargetClawHeight(), 2));
             telemetry.addData("Pivot Motor Power:", PivotPower);
             telemetry.addData("Extension Motor Power:", ExtensionPower);
             telemetry.addData("Extension Motor Current:", ExtensionF.getCurrent(CurrentUnit.AMPS));
@@ -252,6 +263,7 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("LB High Current", SubsystemData.DriveMotorHighCurrents[1]);
             telemetry.addData("RT High Current", SubsystemData.DriveMotorHighCurrents[3]);
             telemetry.addData("RB High Current", SubsystemData.DriveMotorHighCurrents[2]);
+            // telemetry.addData("Schrödinger's Encoder:", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
             telemetry.addLine(" ");
             telemetry.addData("Pivot PID Power:", PivotPIDPower);
             telemetry.addData("Extension PID Power:", ExtensionPIDPower);
@@ -259,14 +271,20 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("Pivot Difference", PivotTargetAngle - CurrentPivotAngleInst);
 
 
-
+            telemetry.addLine(" ");
+            if (SubsystemData.HuskyLensConnected) telemetry.addLine("HuskyLens Active");
+            else telemetry.addLine("HuskyLens not responding");
             HuskyLens.Block[] VisionResults = SubsystemData.Vision;
             telemetry.addData("HuskyLens block count:", VisionResults.length);
             for (HuskyLens.Block value : VisionResults) {
                 telemetry.addLine("ID:" + (value.id) + " x:" + (value.x) + " y:" + (value.y) + // Id, center X, center Y
                         " h:" + (value.height) + " w:" + (value.width)); // height, width,  + " ox" + (value.left) + " oy" + (value.top)  origin X, Origin Y
             }
+            telemetry.addLine(" \n \n \n \n \n \n \n \n "); // adds spacing so I can actually read the huskylens data without it scrolling
         }
+
+        telemetry.addData("Point 4:", ArmLoopTimer.time() - LastArmLoopTime);
+        LastArmLoopTime = ArmLoopTimer.time();
 
         ArmLoopTime = ArmLoopTimer.time(); // updates how long the arm loop took to run
     }
@@ -341,7 +359,7 @@ public class ArmSystem extends SubsystemBase {
 
 
     public Pose2d getCurrentClawPose() { // Note: HEADING IN RADIANS and field centric
-        Pose2d CurrentPose = SubsystemData.getCurrentRobotPose();
+        Pose2d CurrentPose = SubsystemData.CurrentRobotPose;
         Vector2d CurrentClawPoint = getCurrentClawPoint(); // Claw Position relative to robot
         return new Pose2d((new Vector2d(
                 CurrentClawPoint.x * Math.cos(CurrentPose.heading.toDouble()),
@@ -351,7 +369,7 @@ public class ArmSystem extends SubsystemBase {
 
 
     public Pose2d getTargetClawPose() { // Note: HEADING IN RADIANS and field centric
-        Pose2d CurrentPose = SubsystemData.getCurrentRobotPose();
+        Pose2d CurrentPose = SubsystemData.CurrentRobotPose;
         Vector2d TargetClawPoint = getTargetClawPoint(); // Claw Target Position relative to robot
         return new Pose2d((new Vector2d(
                 TargetClawPoint.x * Math.cos(CurrentPose.heading.toDouble()),
@@ -399,7 +417,7 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void moveClawToFieldCoordinate(Vector2d TargetClawPos, double TargetHeight) { // needs to be called constantly while in use, HEIGHT IS FROM FIELD TILES
-        Pose2d CurrentPose = SubsystemData.getCurrentRobotPose();
+        Pose2d CurrentPose = SubsystemData.CurrentRobotPose;
         Vector2d DeltaPose = TargetClawPos.minus(CurrentPose.position); // Vector of where the arm needs to go relative to the robot
 
         // tell the drivetrain to point towards the target point
@@ -456,12 +474,6 @@ public class ArmSystem extends SubsystemBase {
     public void setWristToBasket() { WristTargetAngle = 190; }
     public void setWristToFloorPickup() { WristTargetAngle = 0; }
 
-    /*
-    public void toggleClaw() {
-        if (ClawTargetPosition < 70) ClawTargetPosition = 90;
-        else ClawTargetPosition = 0;
-    }
-    */
 
     public void toggleTelemetry() { telemetryEnabled = !telemetryEnabled; }
 

@@ -17,6 +17,7 @@ public class HuskyLensThreaded extends Thread {
         while (SubsystemData.HuskyLensThreadActive) {
             ThreadTimer.reset();
             SubsystemData.Vision = Camera.blocks();
+            SubsystemData.HuskyLensConnected = Camera.knock();
             SubsystemData.HuskyLensThreadLoopTime = ThreadTimer.time();
         }
     }
@@ -25,6 +26,7 @@ public class HuskyLensThreaded extends Thread {
         Camera = map.get(HuskyLens.class, "HuskyLens");
         Camera.selectAlgorithm(HuskyLens.Algorithm.COLOR_RECOGNITION);
         ThreadTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        SubsystemData.HuskyLensConnected = Camera.knock();
         SubsystemData.Vision = Camera.blocks();
     }
 

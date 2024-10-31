@@ -32,7 +32,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.operator = new GamepadEx(gamepad2);
 
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8);
+        DiffySwerve drivetrain = new DiffySwerve(drive, 0.75, telemetry);
         ArmSystem armClaw = new ArmSystem(hardwareMap, telemetry);
 
 

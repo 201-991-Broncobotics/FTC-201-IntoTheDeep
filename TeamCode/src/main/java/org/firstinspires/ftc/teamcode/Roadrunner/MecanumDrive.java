@@ -57,6 +57,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputs
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.IMUThread;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -244,6 +245,18 @@ public final class MecanumDrive {
         rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
         rightFront.setDirection(DcMotorSimple.Direction.FORWARD);
 
+        leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        leftBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+
+
+        SubsystemData.brokenDiffyEncoder = rightFront;
+
         // secretly initializing diffy alongside mecanum...
         DiffySwerve.setupDiffy(rightFront, leftFront);
 
@@ -252,12 +265,15 @@ public final class MecanumDrive {
 
         // TODO: make sure your config has an IMU with this name (can be BNO or BHI)
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
+
         lazyImu = new LazyImu(hardwareMap, "imu", new RevHubOrientationOnRobot(
                 PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        SubsystemData.imuChecker = lazyImu; // passing the imu thing to the diffy swerve to check so I can make sure it is working
+        // SubsystemData.IMUThreadActive = true;
+        // IMUThread threadedIMU = new IMUThread(lazyImu.get());
+        // threadedIMU.start();
 
         localizer = new TwoDeadWheelLocalizer(hardwareMap, lazyImu.get(), PARAMS.inPerTick);
 
