@@ -4,6 +4,8 @@ import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.Time;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.SubsystemData;
+
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import java.util.function.DoubleSupplier;
@@ -24,7 +26,10 @@ public class SwerveModule {
 
     public SwerveModule(DcMotorEx top_motor) { // initialize the module
         topMotorEncoder = () -> functions.angleDifference(top_motor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360);
-        modulePID = new PIDController(0.01, 0, 0, topMotorEncoder);
+        SubsystemData.SwerveModuleKp = 0.005;
+        SubsystemData.SwerveModuleKi = 0;
+        SubsystemData.SwerveModuleKd = 0;
+        modulePID = new PIDController(0.005, 0, 0, topMotorEncoder);
     }
 
 
@@ -38,6 +43,11 @@ public class SwerveModule {
         //double angleChange = functions.angleDifference(currentAngle, angle, 180);
 
         //double rotation = modulePID.getPower(0.0, angleChange);
+
+        modulePID.kP = SubsystemData.SwerveModuleKp;
+        modulePID.kI = SubsystemData.SwerveModuleKi;
+        modulePID.kD = SubsystemData.SwerveModuleKd;
+
         double rotation = modulePID.getPowerWrapped(angle, 180);
         LastRotation = rotation;
 

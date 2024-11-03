@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import androidx.annotation.NonNull;
+
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
@@ -19,6 +23,9 @@ import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.function.DoubleSupplier;
 
 
@@ -39,7 +46,7 @@ public class ArmSystem extends SubsystemBase {
 
     private boolean resetExtensionZero = false;
 
-    ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime;
+    ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime, runTime;
     double FrameRate = 1, ArmLoopTime = 0;
     Telemetry telemetry;
 
@@ -51,6 +58,10 @@ public class ArmSystem extends SubsystemBase {
 
     double CurrentPivotAngleInst = 0, CurrentExtensionLengthInst = 0; // this speeds up the code a lot by only checking sensors one per update
     double ClawAdjustment = 0;
+
+    boolean LoosenClaw = false;
+
+    private DoubleSupplier HeightSupplier, ForwardSupplier;
 
 
     public ArmSystem(HardwareMap map, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
@@ -71,7 +82,10 @@ public class ArmSystem extends SubsystemBase {
         FrameRate = 1 / (CommandFrameTime.time() / 1000.0);
         PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         ArmLoopTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        runTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // never resets, mainly for auton
 
+        HeightSupplier = SubsystemData.operator::getRightY;
+        ForwardSupplier = SubsystemData.operator::getLeftY;
 
         telemetry = inputTelemetry;
 
@@ -105,26 +119,26 @@ public class ArmSystem extends SubsystemBase {
     public void controlArmTeleOp() {
         GamepadEx gamepad = SubsystemData.operator;
         // Manual arm control when controllers active
-        if (functions.inUse(gamepad.getLeftY()) || functions.inUse(gamepad.getRightY())) {
+        double HeightJoystick = HeightSupplier.getAsDouble();
+        double ForwardJoystick = ForwardSupplier.getAsDouble();
+        if (functions.inUse(ForwardJoystick) || functions.inUse(HeightJoystick)) {
             backPedalExtension = false;
-            Vector2d targetClawPos = getTargetClawPoint();
-            // double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
             if (FrameRate > 2) {
-                telemetry.addLine("-----Arm should be moving rn-----");
-                moveArmToPoint(new Vector2d(targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() / FrameRate, targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() / FrameRate));
-                /*
-                // slows down pivot when extension is fully extended
-                double pivotThrottle = 1 - (1 - Constants.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
-                double manualPivot = PivotTargetAngle + Constants.maxManualPivotSpeed * gamepad.getLeftY() * ArmThrottle * pivotThrottle / FrameRate;
-                double manualExtension = ExtensionTargetLength + Constants.maxManualExtensionSpeed * -1 * gamepad.getRightY() * ArmThrottle / FrameRate;
-                moveArmDirectly(manualPivot, manualExtension);
-                telemetry.addData("manual pivot", manualPivot);
-                telemetry.addData("manual extension", manualExtension);
-                 */
+                double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
+
+                if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) { // coords control (one joystick controls height, one controls forward distance)
+                    Vector2d targetClawPos = getTargetClawPoint();
+                    moveArmToPoint(new Vector2d(targetClawPos.x + Constants.maxManualClawSpeedHorizontal * ForwardJoystick * ArmThrottle / FrameRate, targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * HeightJoystick * ArmThrottle / FrameRate));
+                } else { // direct control (one joystick controls pivot, the other controls extension)
+                    double pivotThrottle = 1 - (1 - Constants.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
+                    double manualPivot = PivotTargetAngle + Constants.maxManualPivotSpeed * ForwardJoystick * ArmThrottle * pivotThrottle / FrameRate;
+                    double manualExtension = ExtensionTargetLength + Constants.maxManualExtensionSpeed * -1 * HeightJoystick * ArmThrottle / FrameRate;
+                    moveArmDirectly(manualPivot, manualExtension);
+                }
             }
         }
 
-        ClawAdjustment = (0.05 * gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+        LoosenClaw = functions.inUse(gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
 
         tunePIDsWithController(SubsystemData.driver);
 
@@ -135,7 +149,7 @@ public class ArmSystem extends SubsystemBase {
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         ArmLoopTimer.reset(); // time it takes the arm for 1 update
         double LastArmLoopTime = 0;
-        double FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
+        FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
         CommandFrameTime.reset();
         telemetry.addData("Code FrameRate:", FrameRate);
         telemetry.addData("Arm System Loop Time:", ArmLoopTime);
@@ -143,12 +157,19 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("HuskyLens Loop Time:", SubsystemData.HuskyLensLoopTime);
         telemetry.addData("HuskyLens Thread Loop Time:", SubsystemData.HuskyLensThreadLoopTime);
         telemetry.addLine(" ");
+        // very important that this is updating or it doesn't work correctly, WHY? you may ask, i haven't the foggiest clue
+        telemetry.addData("Schrödinger's Encoder:", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
+
+
+        // Run any delayed auton methods that are ready to run
+        runAnyPreparedMethods();
+
 
         CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors once per update
         CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
 
-        telemetry.addData("Point 1:", ArmLoopTimer.time() - LastArmLoopTime);
-        LastArmLoopTime = ArmLoopTimer.time();
+        //telemetry.addData("Point 1:", ArmLoopTimer.time() - LastArmLoopTime);
+        //LastArmLoopTime = ArmLoopTimer.time();
 
         // BACKPEDALING
 
@@ -186,8 +207,6 @@ public class ArmSystem extends SubsystemBase {
 
         Pivot.setPower(PivotPower);
 
-        telemetry.addData("Point 2:", ArmLoopTimer.time() - LastArmLoopTime);
-        LastArmLoopTime = ArmLoopTimer.time();
 
 
         // EXTENSION
@@ -228,10 +247,10 @@ public class ArmSystem extends SubsystemBase {
 
 
         // right trigger slightly loosens the claw's grip
+        if (LoosenClaw) ClawAdjustment = 0.05;
+        else ClawAdjustment = 0;
         Claw.setPosition(ClawTargetPosition - ClawAdjustment);
 
-        telemetry.addData("Point 3:", ArmLoopTimer.time() - LastArmLoopTime);
-        LastArmLoopTime = ArmLoopTimer.time();
 
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
         telemetry.addData("Heading:", Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
@@ -263,7 +282,6 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("LB High Current", SubsystemData.DriveMotorHighCurrents[1]);
             telemetry.addData("RT High Current", SubsystemData.DriveMotorHighCurrents[3]);
             telemetry.addData("RB High Current", SubsystemData.DriveMotorHighCurrents[2]);
-            // telemetry.addData("Schrödinger's Encoder:", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
             telemetry.addLine(" ");
             telemetry.addData("Pivot PID Power:", PivotPIDPower);
             telemetry.addData("Extension PID Power:", ExtensionPIDPower);
@@ -283,9 +301,6 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addLine(" \n \n \n \n \n \n \n \n "); // adds spacing so I can actually read the huskylens data without it scrolling
         }
 
-        telemetry.addData("Point 4:", ArmLoopTimer.time() - LastArmLoopTime);
-        LastArmLoopTime = ArmLoopTimer.time();
-
         ArmLoopTime = ArmLoopTimer.time(); // updates how long the arm loop took to run
     }
 
@@ -297,11 +312,11 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 12) PIDVar = 0;
+            if (PIDVar > 15) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 12;
+            if (PIDVar < 0) PIDVar = 15;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -321,6 +336,9 @@ public class ArmSystem extends SubsystemBase {
             else if (PIDVar == 10) SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5);
             else if (PIDVar == 11) SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5);
             else if (PIDVar == 12) SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5);
+            else if (PIDVar == 13) SubsystemData.SwerveModuleKp = functions.round(SubsystemData.SwerveModuleKp + PIDChangeIncrement / 10, 5);
+            else if (PIDVar == 14) SubsystemData.SwerveModuleKi = functions.round(SubsystemData.SwerveModuleKi + PIDChangeIncrement / 10, 5);
+            else if (PIDVar == 15) SubsystemData.SwerveModuleKd = functions.round(SubsystemData.SwerveModuleKd + PIDChangeIncrement / 10, 5);
             // else if (PIDVar == 13) Constants.ClawOpenPosition = functions.round(Constants.ClawOpenPosition + PIDChangeIncrement * 10, 3);
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
@@ -342,6 +360,9 @@ public class ArmSystem extends SubsystemBase {
         else if (PIDVar == 10) telemetry.addData("Editing: Heading Kp - ", SubsystemData.HeadingTargetPID.kP);
         else if (PIDVar == 11) telemetry.addData("Editing: Heading Ki - ", SubsystemData.HeadingTargetPID.kI);
         else if (PIDVar == 12) telemetry.addData("Editing: Heading Kd - ", SubsystemData.HeadingTargetPID.kD);
+        else if (PIDVar == 13) telemetry.addData("Editing: Swerve Kp - ", SubsystemData.SwerveModuleKp);
+        else if (PIDVar == 14) telemetry.addData("Editing: Swerve Ki - ", SubsystemData.SwerveModuleKi);
+        else if (PIDVar == 15) telemetry.addData("Editing: Swerve Kd - ", SubsystemData.SwerveModuleKd);
         // else if (PIDVar == 13) telemetry.addData("Editing: Claw Offset - ", Constants.ClawOpenPosition);
     }
 
@@ -465,16 +486,86 @@ public class ArmSystem extends SubsystemBase {
 
 
 
+
     // WRIST AND CLAW METHODS
 
     public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.29); } // make wrist go to that specific angle
     public void openClaw() { ClawTargetPosition = Constants.ClawOpenPosition; }
     public void closeClaw() { ClawTargetPosition = Constants.ClawClosedPosition; }
+    public void toggleClaw() {
+        if (ClawTargetPosition < (Constants.ClawClosedPosition + Constants.ClawOpenPosition) / 2) openClaw();
+        else closeClaw();
+    }
+    public void enableLoosenClaw() { LoosenClaw = true; }
+    public void disableLoosenClaw() { LoosenClaw = false; }
+    public void toggleLoosenClaw() { LoosenClaw = !LoosenClaw; }
     public void setWristToCenter() { WristTargetAngle = 90; }
     public void setWristToBasket() { WristTargetAngle = 190; }
     public void setWristToFloorPickup() { WristTargetAngle = 0; }
 
 
     public void toggleTelemetry() { telemetryEnabled = !telemetryEnabled; }
+
+
+
+    // ROADRUNNER AND AUTON METHODS
+
+    ArrayList<Double> AwaitingMethodCallingTimes = new ArrayList<Double>();
+    ArrayList<String> AwaitingMethodCallingNames = new ArrayList<String>();
+
+    private void runAnyPreparedMethods() {
+        if (!AwaitingMethodCallingTimes.isEmpty()) { // saves time if the list is empty
+            ArrayList<Double> NewAwaitingMethodCallingTimes = new ArrayList<Double>();
+            ArrayList<String> NewAwaitingMethodCallingNames = new ArrayList<String>();
+
+            for (int i = 0; i < AwaitingMethodCallingTimes.size(); i++) {
+                if (AwaitingMethodCallingTimes.get(i) > runTime.time()) {
+                    try {
+                        Method method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i));
+                        method.invoke(this);
+                    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    NewAwaitingMethodCallingTimes.add(AwaitingMethodCallingTimes.get(i));
+                    NewAwaitingMethodCallingNames.add(AwaitingMethodCallingNames.get(i));
+                }
+            }
+            AwaitingMethodCallingTimes = NewAwaitingMethodCallingTimes;
+            AwaitingMethodCallingNames = NewAwaitingMethodCallingNames;
+        }
+    }
+
+    // Roadrunner's stupid action things but I simplified them to run only only method after a delay (without interrupting auton)
+    public static class RRFinishCommand implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return false;
+    }}
+
+    public Action RunMethod(String methodName, double delaySeconds) {
+        AwaitingMethodCallingTimes.add(runTime.time() + delaySeconds * 1000);
+        AwaitingMethodCallingNames.add(methodName);
+        return new RRFinishCommand();
+    }
+
+    public Action RunMethod(String methodName) {
+        return RunMethod(methodName, 0);
+    }
+
+    double StartWaitTime, WaitTime;
+    public class RRWaitCommand implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return runTime.time() - StartWaitTime < WaitTime;
+    }}
+    public Action Wait(double delaySeconds) {
+        StartWaitTime = runTime.time();
+        WaitTime = delaySeconds * 1000;
+        return new RRWaitCommand();
+    }
+
+    public class RRWaitUntilFinished implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return !AwaitingMethodCallingTimes.isEmpty();
+    }}
+    public Action waitUntilFinishedMoving() {
+        return new RRWaitUntilFinished();
+    }
 
 }

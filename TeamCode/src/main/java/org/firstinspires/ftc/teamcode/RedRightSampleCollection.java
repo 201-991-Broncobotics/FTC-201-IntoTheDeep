@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import androidx.annotation.NonNull;
+
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
@@ -34,7 +37,7 @@ public class RedRightSampleCollection extends CommandOpMode {
         Pose2d startPose = new Pose2d(new Vector2d(functions.tiles(0.5), functions.tiles(-3) + 7.09), Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.75, telemetry);
+        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, false);
         ArmSystem armClaw = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
@@ -45,6 +48,8 @@ public class RedRightSampleCollection extends CommandOpMode {
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
+
+        // setup roadrunner trajectories
         TrajectoryActionBuilder DriveToRungs = drive.actionBuilder(startPose)
                 .strafeToConstantHeading(functions.tileCoords(0.2, -1.6))
                 .waitSeconds(2);
@@ -56,14 +61,26 @@ public class RedRightSampleCollection extends CommandOpMode {
 
         waitForStart();
 
+        if (isStopRequested()) return;
+
+        // ArmClaw method names:
+        // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup,
+        // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
+        // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
+
         Actions.runBlocking(
                 new SequentialAction(
+                        armClaw.RunMethod("openClaw"),
+                        armClaw.RunMethod("moveClawToTopRung", 1),
                         DriveToRungs.build(),
-                        DriveToFirstSample.build()
+                        armClaw.Wait(5),
+                        armClaw.RunMethod("closeClaw"),
+                        armClaw.RunMethod("resetArm", 2),
+                        DriveToFirstSample.build(),
+                        armClaw.waitUntilFinishedMoving()
                 )
         );
         telemetry.addLine("Finished Auton");
-
 
     }
 

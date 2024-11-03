@@ -33,7 +33,7 @@ public class DiffySwerve extends SubsystemBase {
 
     private static DualNum<Time> RightTop, RightBottom, LeftTop, LeftBottom;
 
-    public boolean absoluteDriving = true;
+    public boolean absoluteDriving;
 
     private double headingHold;
 
@@ -47,13 +47,14 @@ public class DiffySwerve extends SubsystemBase {
     // private final Telemetry telemetry;
 
 
-    public DiffySwerve(MecanumDrive roadrunnerDrive, double maxPowerLimit, Telemetry inputTelemetry) {
+    public DiffySwerve(MecanumDrive roadrunnerDrive, double maxPowerLimit, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
         // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = roadrunnerDrive;
         ForwardSupplier = SubsystemData.driver::getRightY;
         StrafeSupplier = SubsystemData.driver::getRightX;
         TurnSupplier = SubsystemData.driver::getLeftX;
         ThrottleSupplier = () -> SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+        absoluteDriving = absoluteDrivingEnabled;
         // telemetry = telemetryInput;
         drive.updatePoseEstimate(); // update localization
         SubsystemData.CurrentRobotPose = drive.pose;
@@ -77,14 +78,11 @@ public class DiffySwerve extends SubsystemBase {
         DifferentialSwerveTimer.reset();
         double lastDiffySwerveTime = 0;
 
-        telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
+        //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
+        //lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
         drive.updatePoseEstimate(); // update localization
         SubsystemData.CurrentRobotPose = drive.pose;
-
-        telemetry.addData("Diffy Point 2:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
         YawPitchRollAngles robotOrientation = SubsystemData.IMUAngles;
 
@@ -96,14 +94,12 @@ public class DiffySwerve extends SubsystemBase {
             }
         } else imuNotWorkingTimer.reset();
 
-        telemetry.addData("Diffy Point 3:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
-
         double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
         double forward = -1 * ForwardSupplier.getAsDouble();
         double strafe = StrafeSupplier.getAsDouble();
         double turn = -0.6 * TurnSupplier.getAsDouble();
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
+        if (!absoluteDriving) heading = 90;
 
         if (!functions.inUse(turn) && SubsystemData.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
             if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
@@ -115,29 +111,18 @@ public class DiffySwerve extends SubsystemBase {
             headingHold = Math.toDegrees(drive.pose.heading.toDouble());
         }
 
-        telemetry.addData("Diffy Point 4:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
-
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
         double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude;
 
-        if (absoluteDriving) {
-            driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
-        } else driveDirection = 90;
+        driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
 
         double forwardNorm = Math.sin(Math.toRadians(driveDirection)) * drivePower; // convert vector to x and y
         double strafeNorm = Math.cos(Math.toRadians(driveDirection)) * drivePower;
 
-        telemetry.addData("Diffy Point 5:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
-
         drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
                 strafeNorm * throttleControl), turn));
-
-        telemetry.addData("Diffy Point 6:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }
@@ -181,6 +166,8 @@ public class DiffySwerve extends SubsystemBase {
     public void toggleAbsoluteDriving() {
         absoluteDriving = !absoluteDriving;
     }
+    public void absoluteDrivingOff() { absoluteDriving = false; }
+    public void absoluteDrivingOn() { absoluteDriving = true; }
 
 
     // idk how to create an array of "Dual<Time>"s to return with

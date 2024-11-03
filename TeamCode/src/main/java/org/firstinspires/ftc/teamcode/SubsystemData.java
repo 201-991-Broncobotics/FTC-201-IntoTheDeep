@@ -40,5 +40,7 @@ public class SubsystemData {
 
     public static AngularVelocity IMUAngularVelocity;
 
+    public static double SwerveModuleKp, SwerveModuleKi, SwerveModuleKd;
+
 
 }

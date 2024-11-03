@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
+import com.arcrobotics.ftclib.command.button.Trigger;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -32,7 +33,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.operator = new GamepadEx(gamepad2);
 
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.75, telemetry);
+        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, true);
         ArmSystem armClaw = new ArmSystem(hardwareMap, telemetry);
 
 
@@ -42,8 +43,8 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
 
         // Claw
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::closeClaw));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::openClaw));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::toggleClaw));
+        // SubsystemData.operator.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).toggleWhenPressed(new InstantCommand(armClaw::openClaw));
 
         // Presets
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.DPAD_DOWN).toggleWhenPressed(new InstantCommand(armClaw::resetArm));
@@ -53,12 +54,13 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).toggleWhenPressed(new InstantCommand(armClaw::setWristToFloorPickup));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(armClaw::setWristToCenter));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.Y).toggleWhenPressed(new InstantCommand(armClaw::setWristToBasket));
+        // SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(armClaw::enableLoosenClaw)).whenReleased(new InstantCommand(armClaw::disableLoosenClaw));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenHeld(new HuskyLensCommand(HuskyLensSystem));
 
 
         // always running
         drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
         armClaw.setDefaultCommand(new ArmClawCommand(armClaw));
-        HuskyLensSystem.setDefaultCommand(new HuskyLensCommand(HuskyLensSystem));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
     }

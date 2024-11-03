@@ -13,8 +13,8 @@ public class Constants {
     public static double pivotAxleOffset = -156.0; //mm of distance toward the back of the robot from center of robot
     public static double retractedExtensionLength = 264; //mm from center of pivot axle to end of linear slide when retracted
 
-    public static double maxManualClawSpeedVertical = 200, maxManualClawSpeedHorizontal = 200; // mm per second
-    public static double maxManualExtensionSpeed = 300, maxManualPivotSpeed = 60; // mm, degrees
+    public static double maxManualClawSpeedVertical = 400, maxManualClawSpeedHorizontal = 400; // mm per second
+    public static double maxManualExtensionSpeed = 400, maxManualPivotSpeed = 60; // mm, degrees
 
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;
