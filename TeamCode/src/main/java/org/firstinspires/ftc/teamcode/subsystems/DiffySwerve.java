@@ -59,7 +59,7 @@ public class DiffySwerve extends SubsystemBase {
         drive.updatePoseEstimate(); // update localization
         SubsystemData.CurrentRobotPose = drive.pose;
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
-        SubsystemData.HeadingTargetPID = new PIDController(0.002, 0, 0, () -> Math.toDegrees(drive.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID = new PIDController(0.005, 0.005, 0.001, () -> Math.toDegrees(drive.pose.heading.toDouble()));
 
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
 
@@ -90,16 +90,18 @@ public class DiffySwerve extends SubsystemBase {
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
             if (imuNotWorkingTimer.time() > 3000) {
                 SubsystemData.IMUWorking = false;
-                absoluteDriving = false;
             }
-        } else imuNotWorkingTimer.reset();
+        } else {
+            SubsystemData.IMUWorking = true;
+            imuNotWorkingTimer.reset();
+        }
 
         double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
         double forward = -1 * ForwardSupplier.getAsDouble();
         double strafe = StrafeSupplier.getAsDouble();
         double turn = -0.6 * TurnSupplier.getAsDouble();
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
-        if (!absoluteDriving) heading = 90;
+        if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!functions.inUse(turn) && SubsystemData.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
             if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
@@ -133,6 +135,7 @@ public class DiffySwerve extends SubsystemBase {
         DualNum<Time> strafe = command.linearVel.x;
         DualNum<Time> turn = command.angVel.times(trackWidth);
 
+
         DualNum<Time> A = forward.times(-1).minus(turn); // diffy swerve drive math
         DualNum<Time> B = forward.times(-1).plus(turn);
         DualNum<Time> RightPower = ((strafe.times(strafe)).plus((A.times(A)))).sqrt(); // who knows if this will work
@@ -163,11 +166,11 @@ public class DiffySwerve extends SubsystemBase {
     }
 
 
-    public void toggleAbsoluteDriving() {
-        absoluteDriving = !absoluteDriving;
-    }
+    public void toggleAbsoluteDriving() { absoluteDriving = !absoluteDriving; }
     public void absoluteDrivingOff() { absoluteDriving = false; }
     public void absoluteDrivingOn() { absoluteDriving = true; }
+
+    public void realignHeading() { SubsystemData.imuInstance.resetYaw(); }
 
 
     // idk how to create an array of "Dual<Time>"s to return with

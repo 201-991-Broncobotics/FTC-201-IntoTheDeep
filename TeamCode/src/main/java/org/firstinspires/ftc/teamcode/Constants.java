@@ -6,20 +6,20 @@ public class Constants {
 
     public static double tileLength = 23.5625; // in inches
 
-    public static double minimumPivotSpeedPercent = 0.3; // for when extension is fully extended
+    public static double minimumPivotSpeedPercent = 0.4; // for when extension is fully extended
     public static double extensionMaxLength = 696;
     public static double pivotMaxAngle = 90;
     public static double pivotAxleHeight = 82.242420; //mm not including how much the robot sinks into the tiles
     public static double pivotAxleOffset = -156.0; //mm of distance toward the back of the robot from center of robot
     public static double retractedExtensionLength = 264; //mm from center of pivot axle to end of linear slide when retracted
 
-    public static double maxManualClawSpeedVertical = 400, maxManualClawSpeedHorizontal = 400; // mm per second
-    public static double maxManualExtensionSpeed = 400, maxManualPivotSpeed = 60; // mm, degrees
+    public static double maxManualClawSpeedVertical = 500, maxManualClawSpeedHorizontal = 500; // mm per second
+    public static double maxManualExtensionSpeed = 500, maxManualPivotSpeed = 75; // mm, degrees
 
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;
 
-    public static double controllerDeadZone = 0.03; // Not really necessary but anyways
+    public static double controllerDeadZone = 0.03; // Not really necessary but here anyways
     public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.497, extensionGravityPower = 0.080; // 0.097
 
     public static double horizontalExpansionLimit = 1066.8; // in millimeters

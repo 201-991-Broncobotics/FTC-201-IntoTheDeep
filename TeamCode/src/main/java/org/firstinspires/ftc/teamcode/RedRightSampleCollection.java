@@ -32,7 +32,7 @@ public class RedRightSampleCollection extends CommandOpMode {
     @Override
     public void initialize() {
 
-        // assume a position of 0, 0, 0 is in the exact center of the field pointing away from audience
+        // assume a position of 0, 0, 0 would be at the exact center of the field pointing away from audience
 
         Pose2d startPose = new Pose2d(new Vector2d(functions.tiles(0.5), functions.tiles(-3) + 7.09), Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
@@ -71,9 +71,9 @@ public class RedRightSampleCollection extends CommandOpMode {
         Actions.runBlocking(
                 new SequentialAction(
                         armClaw.RunMethod("openClaw"),
-                        armClaw.RunMethod("moveClawToTopRung", 1),
+                        armClaw.RunMethod("moveClawToTopRung"),
                         DriveToRungs.build(),
-                        armClaw.Wait(5),
+                        armClaw.Wait(3),
                         armClaw.RunMethod("closeClaw"),
                         armClaw.RunMethod("resetArm", 2),
                         DriveToFirstSample.build(),

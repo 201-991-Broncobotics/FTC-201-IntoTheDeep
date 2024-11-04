@@ -8,9 +8,10 @@ import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.Roadrunner.ThreeDeadWheelLocalizer;
 import org.firstinspires.ftc.teamcode.Roadrunner.TwoDeadWheelLocalizer;
+import org.firstinspires.ftc.teamcode.SubsystemData;
 
 public final class ManualFeedbackTuner extends LinearOpMode {
-    public static double DISTANCE = 64;
+    public static double DISTANCE = 16;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -31,8 +32,10 @@ public final class ManualFeedbackTuner extends LinearOpMode {
             while (opModeIsActive()) {
                 Actions.runBlocking(
                     drive.actionBuilder(new Pose2d(0, 0, 0))
-                            .lineToX(DISTANCE)
-                            .lineToX(0)
+                            .lineToXConstantHeading(DISTANCE)
+                            .waitSeconds(1)
+                            .lineToXConstantHeading(0)
+                            .waitSeconds(1)
                             .build());
             }
         } else if (TuningOpModes.DRIVE_CLASS.equals(TankDrive.class)) {

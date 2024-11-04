@@ -4,6 +4,7 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
@@ -21,7 +22,8 @@ public class SubsystemData {
 
     public static PIDController HeadingTargetPID; // temporarily here so I can tune the PID
 
-    public static boolean IMUWorking = true;
+    public static boolean IMUWorking;
+    public static IMU imuInstance;
 
     public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
@@ -41,6 +43,10 @@ public class SubsystemData {
     public static AngularVelocity IMUAngularVelocity;
 
     public static double SwerveModuleKp, SwerveModuleKi, SwerveModuleKd;
+
+    public static boolean needToResetModuleEncoders = true;
+
+    public static double RRVoltage = 0;
 
 
 }

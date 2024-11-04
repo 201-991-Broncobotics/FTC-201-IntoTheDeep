@@ -58,6 +58,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.IMUThread;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -76,14 +77,14 @@ public final class MecanumDrive {
                 RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD;
 
         // drive model parameters
-        public double inPerTick = 32 / 25.4 / 2000; // should be this
+        public double inPerTick = (32 / 25.4 / 2000) * (140.5 / 40.3852); // should be the first term but isn't for some reason
         public double lateralInPerTick = inPerTick;
-        public double trackWidthTicks = 0;
+        public double trackWidthTicks = 341.4816515824069;
 
         // feedforward parameters (in tick units)
-        public double kS = 0;
-        public double kV = 0;
-        public double kA = 0;
+        public double kS = 3.7576427826935133;
+        public double kV = 0.0019895240817372076;
+        public double kA = 2.0;
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
@@ -95,9 +96,9 @@ public final class MecanumDrive {
         public double maxAngAccel = Math.PI;
 
         // path controller gains
-        public double axialGain = 0.0;
-        public double lateralGain = 0.0;
-        public double headingGain = 0.0; // shared with turn
+        public double axialGain = 0.1;
+        public double lateralGain = 0.1;
+        public double headingGain = 0.01; // shared with turn
 
         public double axialVelGain = 0.0;
         public double lateralVelGain = 0.0;
@@ -105,6 +106,8 @@ public final class MecanumDrive {
     }
 
     public static Params PARAMS = new Params();
+
+    private static final double RRMaxPower = 0.75;
 
     public final MecanumKinematics kinematics = new MecanumKinematics(
             PARAMS.inPerTick * PARAMS.trackWidthTicks, PARAMS.inPerTick / PARAMS.lateralInPerTick);
@@ -240,10 +243,11 @@ public final class MecanumDrive {
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
+        leftFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
         leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
         rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightFront.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
+
 
         leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -254,6 +258,8 @@ public final class MecanumDrive {
         rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
+
+        SubsystemData.IMUWorking = true;
 
         SubsystemData.brokenDiffyEncoder = rightFront;
 
@@ -275,7 +281,10 @@ public final class MecanumDrive {
         // IMUThread threadedIMU = new IMUThread(lazyImu.get());
         // threadedIMU.start();
 
-        localizer = new TwoDeadWheelLocalizer(hardwareMap, lazyImu.get(), PARAMS.inPerTick);
+        IMU newImu = lazyImu.get();
+        SubsystemData.imuInstance = newImu;
+
+        localizer = new TwoDeadWheelLocalizer(hardwareMap, newImu, PARAMS.inPerTick);
 
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
     }
@@ -352,6 +361,7 @@ public final class MecanumDrive {
 
             MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
+            if (SubsystemData.RRVoltage < voltage) SubsystemData.RRVoltage = voltage;
 
             // Aidan deciding to force using diffy into mecanum:
             DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
@@ -359,13 +369,14 @@ public final class MecanumDrive {
 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            double leftFrontPower = feedforward.compute(DiffySwerve.getLeftTop()) / voltage;
-            double leftBackPower = feedforward.compute(DiffySwerve.getLeftBottom()) / voltage;
-            double rightBackPower = feedforward.compute(DiffySwerve.getRightBottom()) / voltage;
-            double rightFrontPower = feedforward.compute(DiffySwerve.getRightTop()) / voltage;
+            double leftFrontPower = functions.capValue(feedforward.compute(DiffySwerve.getLeftTop()) / voltage, RRMaxPower);
+            double leftBackPower = functions.capValue(feedforward.compute(DiffySwerve.getLeftBottom()) / voltage, RRMaxPower);
+            double rightBackPower = functions.capValue(feedforward.compute(DiffySwerve.getRightBottom()) / voltage, RRMaxPower);
+            double rightFrontPower = functions.capValue(feedforward.compute(DiffySwerve.getRightTop()) / voltage, RRMaxPower);
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
+
 
             leftFront.setPower(leftFrontPower);
             leftBack.setPower(leftBackPower);
@@ -447,25 +458,27 @@ public final class MecanumDrive {
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
+            // double voltage = 1;
             double voltage = voltageSensor.getVoltage();
+            if (SubsystemData.RRVoltage < voltage) SubsystemData.RRVoltage = voltage;
 
             // Aidan Diffy implementation 2
             DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            double leftFrontPower = feedforward.compute(DiffySwerve.getLeftTop()) / voltage;
-            double leftBackPower = feedforward.compute(DiffySwerve.getLeftBottom()) / voltage;
-            double rightBackPower = feedforward.compute(DiffySwerve.getRightBottom()) / voltage;
-            double rightFrontPower = feedforward.compute(DiffySwerve.getRightTop()) / voltage;
+            double leftFrontPower = functions.capValue(feedforward.compute(DiffySwerve.getLeftTop()) / voltage, RRMaxPower);
+            double leftBackPower = functions.capValue(feedforward.compute(DiffySwerve.getLeftBottom()) / voltage, RRMaxPower);
+            double rightBackPower = functions.capValue(feedforward.compute(DiffySwerve.getRightBottom()) / voltage, RRMaxPower);
+            double rightFrontPower = functions.capValue(feedforward.compute(DiffySwerve.getRightTop()) / voltage, RRMaxPower);
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
 
-            leftFront.setPower(feedforward.compute(DiffySwerve.getLeftTop()) / voltage);
-            leftBack.setPower(feedforward.compute(DiffySwerve.getLeftBottom()) / voltage);
-            rightBack.setPower(feedforward.compute(DiffySwerve.getRightBottom()) / voltage);
-            rightFront.setPower(feedforward.compute(DiffySwerve.getRightTop()) / voltage);
+            leftFront.setPower(functions.capValue(feedforward.compute(DiffySwerve.getLeftTop()) / voltage, RRMaxPower));
+            leftBack.setPower(functions.capValue(feedforward.compute(DiffySwerve.getLeftBottom()) / voltage, RRMaxPower));
+            rightBack.setPower(functions.capValue(feedforward.compute(DiffySwerve.getRightBottom()) / voltage, RRMaxPower));
+            rightFront.setPower(functions.capValue(feedforward.compute(DiffySwerve.getRightTop()) / voltage, RRMaxPower));
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);

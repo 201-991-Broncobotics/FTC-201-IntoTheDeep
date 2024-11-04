@@ -4,14 +4,14 @@ import com.arcrobotics.ftclib.command.RunCommand;
 
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 
-/*
+
 public class HuskyLensCommand extends RunCommand {
     public HuskyLensCommand(HuskyLensCamera Camera) {
         super(Camera::ScanForSample, Camera);
     }
 }
- */
 
+/*
 public class HuskyLensCommand extends CommandBase {
 
     private final HuskyLensCamera HuskyLensSubsystem;
@@ -38,3 +38,5 @@ public class HuskyLensCommand extends CommandBase {
     }
 
 }
+
+ */

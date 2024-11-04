@@ -40,5 +40,10 @@ public class functions {
         return tiles * Constants.tileLength;
     }
 
+    public static double capValue(double input, double maxValue) {
+        if (Math.abs(input) > maxValue) input = maxValue * Math.signum(input);
+        return input;
+    }
+
 
 }
