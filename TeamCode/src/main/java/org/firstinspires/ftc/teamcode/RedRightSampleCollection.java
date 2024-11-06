@@ -14,6 +14,7 @@ import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
+import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.commands.HuskyLensCommand;
@@ -44,7 +45,7 @@ public class RedRightSampleCollection extends CommandOpMode {
         // always running
         HuskyLensSystem.setDefaultCommand(new HuskyLensCommand(HuskyLensSystem));
         drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
-        armClaw.setDefaultCommand(new ArmClawCommand(armClaw));
+        armClaw.setDefaultCommand(new ArmClawAutonCommand(armClaw));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 

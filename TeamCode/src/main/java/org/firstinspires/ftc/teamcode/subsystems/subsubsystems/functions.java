@@ -23,6 +23,11 @@ public class functions {
         return (Math.abs(value) > Constants.controllerDeadZone);
     }
 
+    public static double deadZone(double value) {
+        if (Math.abs(value) > Constants.controllerDeadZone) return value;
+        else return 0.0;
+    }
+
     public static void Sleep(long milliseconds) {
         try {
             Thread.sleep(milliseconds);

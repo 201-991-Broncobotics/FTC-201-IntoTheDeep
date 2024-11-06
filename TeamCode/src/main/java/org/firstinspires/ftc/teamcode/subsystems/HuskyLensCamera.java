@@ -23,6 +23,7 @@ public class HuskyLensCamera extends SubsystemBase {
 
     public void ScanForSample() {
         CameraTimer.reset();
+
         SubsystemData.HuskyLensLoopTime = CameraTimer.time();
     }
 

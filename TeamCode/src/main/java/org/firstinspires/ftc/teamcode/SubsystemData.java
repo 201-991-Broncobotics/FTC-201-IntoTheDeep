@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2dDual;
+import com.acmerobotics.roadrunner.Time;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -47,6 +49,8 @@ public class SubsystemData {
     public static boolean needToResetModuleEncoders = true;
 
     public static double RRVoltage = 0;
+
+    public static boolean HoldClawFieldPos;
 
 
 }

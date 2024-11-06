@@ -46,7 +46,7 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
 
-        double DISTANCE = 20;
+        double DISTANCE = 8;
 
         waitForStart();
 
@@ -54,9 +54,7 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
             Actions.runBlocking(
                     drive.actionBuilder(new Pose2d(0, 0, 90))
                             .strafeToConstantHeading(new Vector2d(0, DISTANCE))
-                            .waitSeconds(1)
-                            .strafeToConstantHeading(new Vector2d(0, 0))
-                            .waitSeconds(1)
+                            .waitSeconds(3)
                             .build());
         }
 

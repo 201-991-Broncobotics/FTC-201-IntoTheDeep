@@ -14,7 +14,7 @@ public class Constants {
     public static double retractedExtensionLength = 264; //mm from center of pivot axle to end of linear slide when retracted
 
     public static double maxManualClawSpeedVertical = 500, maxManualClawSpeedHorizontal = 500; // mm per second
-    public static double maxManualExtensionSpeed = 500, maxManualPivotSpeed = 75; // mm, degrees
+    public static double maxManualExtensionSpeed = 500, maxManualPivotSpeed = 75, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
 
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;

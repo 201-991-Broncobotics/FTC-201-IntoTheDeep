@@ -84,11 +84,11 @@ public final class MecanumDrive {
         // feedforward parameters (in tick units)
         public double kS = 3.7576427826935133;
         public double kV = 0.0019895240817372076;
-        public double kA = 2.0;
+        public double kA = 0.01; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
-        public double minProfileAccel = -30;
+        public double minProfileAccel = -225;
         public double maxProfileAccel = 50;
 
         // turn profile parameters (in radians)
@@ -96,9 +96,9 @@ public final class MecanumDrive {
         public double maxAngAccel = Math.PI;
 
         // path controller gains
-        public double axialGain = 0.1;
-        public double lateralGain = 0.1;
-        public double headingGain = 0.01; // shared with turn
+        public double axialGain = 0.0;
+        public double lateralGain = 0.0;
+        public double headingGain = 0.0; // shared with turn
 
         public double axialVelGain = 0.0;
         public double lateralVelGain = 0.0;
@@ -107,7 +107,7 @@ public final class MecanumDrive {
 
     public static Params PARAMS = new Params();
 
-    private static final double RRMaxPower = 0.75;
+    private static final double RRMaxPower = 0.8;
 
     public final MecanumKinematics kinematics = new MecanumKinematics(
             PARAMS.inPerTick * PARAMS.trackWidthTicks, PARAMS.inPerTick / PARAMS.lateralInPerTick);
@@ -293,7 +293,7 @@ public final class MecanumDrive {
         MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(
                 PoseVelocity2dDual.constant(powers, 1));
 
-        DiffySwerve.driveDifferentialSwerve(PoseVelocity2dDual.constant(powers, 1), 1);
+        DiffySwerve.driveDifferentialSwerve(PoseVelocity2dDual.constant(powers, 1), 1, false, false, false);
         // PARAMS.inPerTick * PARAMS.trackWidthTicks
 
         leftFront.setPower(DiffySwerve.getLeftTop().get(0));
@@ -357,6 +357,7 @@ public final class MecanumDrive {
                     PARAMS.axialVelGain, PARAMS.lateralVelGain, PARAMS.headingVelGain
             )
                     .compute(txWorldTarget, pose, robotVelRobot);
+
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
@@ -364,7 +365,7 @@ public final class MecanumDrive {
             if (SubsystemData.RRVoltage < voltage) SubsystemData.RRVoltage = voltage;
 
             // Aidan deciding to force using diffy into mecanum:
-            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
+            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, false, true, false);
 
 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
@@ -463,7 +464,7 @@ public final class MecanumDrive {
             if (SubsystemData.RRVoltage < voltage) SubsystemData.RRVoltage = voltage;
 
             // Aidan Diffy implementation 2
-            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks);
+            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, false, true, false);
 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);

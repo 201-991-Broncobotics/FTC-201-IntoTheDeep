@@ -96,10 +96,10 @@ public class DiffySwerve extends SubsystemBase {
             imuNotWorkingTimer.reset();
         }
 
-        double throttleControl = 0.5 + 0.5 * ThrottleSupplier.getAsDouble();
-        double forward = -1 * ForwardSupplier.getAsDouble();
-        double strafe = StrafeSupplier.getAsDouble();
-        double turn = -0.6 * TurnSupplier.getAsDouble();
+        double throttleControl = 0.5 + 0.5 * functions.deadZone(ThrottleSupplier.getAsDouble());
+        double forward = -1 * functions.deadZone(ForwardSupplier.getAsDouble());
+        double strafe = functions.deadZone(StrafeSupplier.getAsDouble());
+        double turn = -0.6 * functions.deadZone(TurnSupplier.getAsDouble());
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
         if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
@@ -111,6 +111,7 @@ public class DiffySwerve extends SubsystemBase {
             SubsystemData.OverrideDrivetrainRotation = false;
             turn = turn * throttleControl;
             headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+            SubsystemData.HoldClawFieldPos = false;
         }
 
         // convert to vector and normalize values to make it easier for the driver to control
@@ -129,11 +130,19 @@ public class DiffySwerve extends SubsystemBase {
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }
 
+    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) {
+        driveDifferentialSwerve(command, trackWidth, false, false, false);
+    }
 
-    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) { // this is only accessed from roadrunner's MecanumDrive
+
+    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, boolean invForward, boolean invStrafe, boolean invTurn) { // this is only accessed from roadrunner's MecanumDrive
         DualNum<Time> forward = command.linearVel.y;
         DualNum<Time> strafe = command.linearVel.x;
         DualNum<Time> turn = command.angVel.times(trackWidth);
+
+        if (invForward) forward = forward.times(-1);
+        if (invStrafe) strafe = strafe.times(-1);
+        if (invTurn) turn = turn.times(-1);
 
 
         DualNum<Time> A = forward.times(-1).minus(turn); // diffy swerve drive math
