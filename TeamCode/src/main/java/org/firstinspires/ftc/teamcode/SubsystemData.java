@@ -50,7 +50,12 @@ public class SubsystemData {
 
     public static double RRVoltage = 0;
 
+    public static double RRMaxVoltage = 0;
+
     public static boolean HoldClawFieldPos;
+
+
+    public static double OperatorTurningPower = 0;
 
 
 }

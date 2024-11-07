@@ -37,7 +37,7 @@ public class functions {
     }
 
     public static Vector2d tileCoords(double X, double Y) { // convert field coords in tiles to coords in inches
-        return new Vector2d(X / Constants.tileLength, Y / Constants.tileLength);
+        return new Vector2d(X * Constants.tileLength, Y * Constants.tileLength);
     }
 
 

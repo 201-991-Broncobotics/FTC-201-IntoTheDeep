@@ -1,10 +1,12 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.roadrunner.DualNum;
+import com.acmerobotics.roadrunner.MotorFeedforward;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
+import com.acmerobotics.roadrunner.Vector2dDual;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -32,6 +34,8 @@ public class DiffySwerve extends SubsystemBase {
     private static double lastRightAngle = 0.0, lastLeftAngle = 0.0, maxPower = 1;
 
     private static DualNum<Time> RightTop, RightBottom, LeftTop, LeftBottom;
+
+    private static double RightTopDouble, RightBottomDouble, LeftTopDouble, LeftBottomDouble;
 
     public boolean absoluteDriving;
 
@@ -104,8 +108,10 @@ public class DiffySwerve extends SubsystemBase {
         if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!functions.inUse(turn) && SubsystemData.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
-            if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
-            turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
+            // if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
+            if (functions.inUse(SubsystemData.OperatorTurningPower)) {
+                turn = SubsystemData.OperatorTurningPower; // operator can turn robot
+            } else turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360); // otherwise hold current heading
 
         } else {
             SubsystemData.OverrideDrivetrainRotation = false;
@@ -135,7 +141,8 @@ public class DiffySwerve extends SubsystemBase {
     }
 
 
-    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, boolean invForward, boolean invStrafe, boolean invTurn) { // this is only accessed from roadrunner's MecanumDrive
+    // this is only accessed from roadrunner's MecanumDrive
+    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, boolean invForward, boolean invStrafe, boolean invTurn) {
         DualNum<Time> forward = command.linearVel.y;
         DualNum<Time> strafe = command.linearVel.x;
         DualNum<Time> turn = command.angVel.times(trackWidth);
@@ -175,6 +182,49 @@ public class DiffySwerve extends SubsystemBase {
     }
 
 
+    public static void driveDifferentialSwerveDouble(double forward, double strafe, double turn, double trackWidth) {
+        driveDifferentialSwerveDouble(forward, strafe, turn, trackWidth, false, false, false);
+    }
+
+
+    // only use one of these diffy serve methods at one time as some of the values are shared
+    public static void driveDifferentialSwerveDouble(double forward, double strafe, double turn, double trackWidth, boolean invForward, boolean invStrafe, boolean invTurn) {
+
+        if (invForward) forward = -forward;
+        if (invStrafe) strafe = -strafe;
+        if (invTurn) turn = -turn;
+
+
+        double A = -forward - turn; // diffy swerve drive math
+        double B = -forward + turn;
+        double RightPower = Math.hypot(strafe, A); // who knows if this will work
+        double LeftPower = Math.hypot(strafe, B);
+
+        double max_power = Math.max(1, Math.max(RightPower, LeftPower)); // keeps all motor powers under 1
+        RightPower = RightPower / max_power; // target motor speeds
+        LeftPower = LeftPower / max_power;
+        double RightAngle = Math.toDegrees(Math.atan2(strafe, A)); // Target wheel angles
+        double LeftAngle = Math.toDegrees(Math.atan2(strafe, B));
+
+
+        // actually tell the pod to go to the angle at the power
+        if (Math.abs(strafe) > 0 || Math.abs(forward) > 0 || Math.abs(turn) > 0) {
+            rightModule.setModuleDouble(RightAngle, RightPower, maxPower);
+            leftModule.setModuleDouble(LeftAngle, LeftPower, maxPower);
+            lastRightAngle = RightAngle;
+            lastLeftAngle = LeftAngle;
+        } else { // when no controller input, stop moving wheels
+            rightModule.setModuleDouble(lastRightAngle, RightPower, maxPower);
+            leftModule.setModuleDouble(lastLeftAngle, LeftPower, maxPower);
+        }
+
+        RightTopDouble = rightModule.getTopMotorPowerDouble();
+        RightBottomDouble = rightModule.getBottomMotorPowerDouble();
+        LeftTopDouble = leftModule.getTopMotorPowerDouble();
+        LeftBottomDouble = leftModule.getBottomMotorPowerDouble();
+    }
+
+
     public void toggleAbsoluteDriving() { absoluteDriving = !absoluteDriving; }
     public void absoluteDrivingOff() { absoluteDriving = false; }
     public void absoluteDrivingOn() { absoluteDriving = true; }
@@ -187,6 +237,11 @@ public class DiffySwerve extends SubsystemBase {
     public static DualNum<Time> getRightBottom() { return RightBottom; }
     public static DualNum<Time> getLeftTop() { return LeftTop; }
     public static DualNum<Time> getLeftBottom() { return LeftBottom; }
+
+    public static double getRightTopDouble() { return RightTopDouble; }
+    public static double getRightBottomDouble() { return RightBottomDouble; }
+    public static double getLeftTopDouble() { return LeftTopDouble; }
+    public static double getLeftBottomDouble() { return LeftBottomDouble; }
 
 
 }

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
+
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -52,12 +54,15 @@ public class RedRightSampleCollection extends CommandOpMode {
 
         // setup roadrunner trajectories
         TrajectoryActionBuilder DriveToRungs = drive.actionBuilder(startPose)
-                .strafeToConstantHeading(functions.tileCoords(0.2, -1.6))
-                .waitSeconds(2);
+                .strafeToConstantHeading(tileCoords(0.2, -1.6));
 
         TrajectoryActionBuilder DriveToFirstSample = DriveToRungs.fresh()
+                .waitSeconds(1.5)
                 .setTangent(Math.toRadians(-60))
-                .splineToLinearHeading(new Pose2d(functions.tileCoords(1.25, -1.75), Math.toRadians(45)), Math.toRadians(0));
+                .splineToLinearHeading(new Pose2d(tileCoords(1.4, -1.6), Math.toRadians(45)), Math.toRadians(0));
+
+        TrajectoryActionBuilder PointTowardObservation = DriveToFirstSample.fresh()
+                .turnTo(Math.toRadians(-45));
 
 
         waitForStart();
@@ -65,20 +70,38 @@ public class RedRightSampleCollection extends CommandOpMode {
         if (isStopRequested()) return;
 
         // ArmClaw method names:
-        // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup,
+        // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
         // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
         // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
 
+        // Parameter methods:
+        // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
+
+        // Actions:
+        // Wait, RunMethod ^, waitUntilFinishedAwaiting, waitUntilFinishedMoving
+
         Actions.runBlocking(
                 new SequentialAction(
-                        armClaw.RunMethod("openClaw"),
+                        armClaw.RunMethod("closeClaw"),
                         armClaw.RunMethod("moveClawToTopRung"),
                         DriveToRungs.build(),
-                        armClaw.Wait(3),
-                        armClaw.RunMethod("closeClaw"),
-                        armClaw.RunMethod("resetArm", 2),
+                        armClaw.waitUntilFinishedMoving(5),
+                        armClaw.Wait(1.5),
+                        armClaw.RunMethod("depositSpecimen"),
+                        armClaw.Wait(1.5),
+                        armClaw.RunMethod("resetArm"),
+                        armClaw.RunMethod("moveArmToPoint", 2, new Vector2d(384.8, 10)), // Distance + PivotAxleOffset - RetractedExtensionLength
+                        armClaw.RunMethod("setWristToFloorPickup", 2.5),
                         DriveToFirstSample.build(),
-                        armClaw.waitUntilFinishedMoving()
+                        armClaw.waitUntilFinishedMoving(5),
+                        armClaw.RunMethod("closeClaw"),
+                        armClaw.Wait(1),
+                        armClaw.RunMethod("resetArm"),
+                        armClaw.RunMethod("moveArmToPoint", 1.5, new Vector2d(696, 10)),
+                        PointTowardObservation.build(),
+                        armClaw.waitUntilFinishedAwaiting(),
+                        armClaw.waitUntilFinishedMoving(5),
+                        armClaw.RunMethod("openClaw")
                 )
         );
         telemetry.addLine("Finished Auton");

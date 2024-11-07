@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Roadrunner.tuning;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -12,7 +13,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.TwoDeadWheelLocalizer;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 
 public final class ManualFeedbackTuner extends LinearOpMode {
-    public static double DISTANCE = 16;
+    public static double DISTANCE = 20;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -30,12 +31,14 @@ public final class ManualFeedbackTuner extends LinearOpMode {
             }
             waitForStart();
 
+            PoseVelocity2d currentPose = drive.updatePoseEstimate();
+
             while (opModeIsActive()) {
                 Actions.runBlocking(
-                    drive.actionBuilder(new Pose2d(0, 0, Math.toRadians(90)))
-                            .strafeToConstantHeading(new Vector2d(0, DISTANCE))
+                    drive.actionBuilder(new Pose2d(currentPose.linearVel.x, currentPose.linearVel.y, currentPose.angVel))
+                            .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y + DISTANCE))
                             .waitSeconds(1)
-                            .strafeToConstantHeading(new Vector2d(0, 0))
+                            .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y))
                             .waitSeconds(1)
                             .build());
             }

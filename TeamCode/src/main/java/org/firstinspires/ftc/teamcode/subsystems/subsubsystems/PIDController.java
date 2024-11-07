@@ -6,19 +6,16 @@ import java.util.function.DoubleSupplier;
 
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, maxSpeed, tolerance; // all of these variables can be change elsewhere in the code
-    public double maxIntegral = 1; // helps prevent integral from constantly adding up if the mechanism is stuck
+    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
 
     public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false;
 
     public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble()
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
-    private double percentMaxSpeed = 1;
+    private double maxIntegral = 1, percentMaxSpeed = 1, PIDFrameRate = 0;
 
     ElapsedTime mRuntime;
-
-    private double PIDFrameRate = 0;
 
 
     // full PID with all of the possible settings
@@ -28,9 +25,8 @@ public class PIDController {
         this.kP = kP;
         this.kI = kI;
         this.kD = kD;
-        this.minPosition = minPosition; // doesn't matter what this is if position limiting is false
-        this.maxPosition = maxPosition; // doesn't matter what this is if position limiting is false
-        activeMaxPosition = maxPosition;
+        this.minPosition = minPosition; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
+        this.maxPosition = maxPosition; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         this.minPower = minPower;
         this.maxPower = maxPower;
         this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false, in units per second
@@ -39,11 +35,15 @@ public class PIDController {
         this.speedLimitingEnabled = speedLimitingEnabled;
         this.encoderPosition = encoderPosition;
         mRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+
+        correctValues();
+        if (kI > 0) maxIntegral = maxPower / kI;
+
         reset();
     }
 
 
-    // simplified versions of calling this PID controller
+    // simple version of this PID controller
     public PIDController(double kP, double kI, double kD, DoubleSupplier encoderPosition) { // simplest version
         this(kP, kI, kD, 0, 0, 0, 1, 0, 0, false, false, encoderPosition);
     }
@@ -53,8 +53,8 @@ public class PIDController {
     public void setTarget(double newTargetPosition) {
         speedLimitingOverride = false; // if target is set without specifying speed limiter override, reset to off
         if (positionLimitingEnabled) { // makes sure target is always between max and min limits if enabled
-            if (newTargetPosition > activeMaxPosition) newTargetPosition = activeMaxPosition;
-            else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
+            if (newTargetPosition > maxPosition) newTargetPosition = maxPosition;
+            else if (newTargetPosition < minPosition) newTargetPosition = minPosition;
         }
         if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
         targetPosition = newTargetPosition;
@@ -64,8 +64,8 @@ public class PIDController {
     public void setTarget(double newTargetPosition, boolean OverrideSpeedLimiter) { // override only works if speedLimitingEnabled is set to true
         speedLimitingOverride = OverrideSpeedLimiter;
         if (positionLimitingEnabled) { // makes sure target is always between max and min limits if enabled
-            if (newTargetPosition > activeMaxPosition) newTargetPosition = activeMaxPosition;
-            else if (newTargetPosition < activeMinPosition) newTargetPosition = activeMinPosition;
+            if (newTargetPosition > maxPosition) newTargetPosition = maxPosition;
+            else if (newTargetPosition < minPosition) newTargetPosition = minPosition;
         }
         if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
         targetPosition = newTargetPosition;
@@ -114,34 +114,30 @@ public class PIDController {
 
         // make sure power obeys all of the set limits
         if (Math.abs(power) > maxPower) power = Math.signum(power) * maxPower;
-        else if (Math.abs(power) < minPower) power = 0.0;
+        else if (Math.abs(power) < minPower) power = 0.0; // minPower resets to 0 to stop mechanism though is only useful for making a dead Zone
 
-        // prevent motor from continuing to move outside of min and max limits if enabled
+        // prevent motor from continuing to be powered outside of min and max limits if enabled
         if (positionLimitingEnabled) {
-            if (overrideCurrentPosition < activeMinPosition && power < 0) power = 0;
-            else if (overrideCurrentPosition > activeMaxPosition && power > 0) power = 0;
+            if (overrideCurrentPosition < minPosition && power < 0) power = 0;
+            else if (overrideCurrentPosition > maxPosition && power > 0) power = 0;
         }
 
         return power;
     }
 
 
-    private void correctValues() { // kind of unnecessary but makes there be less steps when creating code to edit these on the fly
+    private void correctValues() { // kind of unnecessary but makes there be less steps when creating code to edit these while driving
         if (kP < 0) kP = 0;
         if (kI < 0) kI = 0;
         if (kD < 0) kD = 0;
-        if (minPosition > maxPosition) { // flip max and min values when the min is above the max
-            activeMinPosition = maxPosition;
-            activeMaxPosition = minPosition;
-        } else {
-            activeMinPosition = minPosition;
-            activeMaxPosition = maxPosition;
-        }
+        if (minPosition > maxPosition) minPosition = maxPosition;
         if (minPower < 0) minPower = 0;
         if (maxPower > 1) maxPower = 1;
         if (minPower > maxPower) minPower = maxPower;
         if (maxSpeed < 0) maxSpeed = 0;
         if (tolerance < 0) tolerance = Math.abs(tolerance);
+        if (kI > 0) maxIntegral = maxPower / kI;
+        else maxIntegral = 1;
     }
 
 
@@ -165,7 +161,7 @@ public class PIDController {
     }
 
 
-    // this is copied here in case anyone wants to use this exact PID class in a future code
+    // this awesome method is copied here in case anyone wants to use this exact PID class in future code
     private double angleDifference(double currentAngle, double targetAngle, int wrapAngle) {
         double result1 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), wrapAngle * 100L) * 0.01;
         double result2 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), -wrapAngle * 100L) * 0.01;

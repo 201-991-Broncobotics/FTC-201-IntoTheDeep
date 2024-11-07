@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.Trajectory;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
@@ -30,6 +31,8 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 @TeleOp(name="CommandManualFeedbackTuner")
 public class CommandManualFeedbackTuner extends CommandOpMode {
 
+    public static double DISTANCE = 20;
+
     @Override
     public void initialize() {
 
@@ -45,16 +48,17 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
-
-        double DISTANCE = 8;
-
         waitForStart();
+
+        PoseVelocity2d currentPose = drive.updatePoseEstimate();
 
         while (opModeIsActive()) {
             Actions.runBlocking(
-                    drive.actionBuilder(new Pose2d(0, 0, 90))
+                    drive.actionBuilder(new Pose2d(0, 0, Math.toRadians(-90)))
                             .strafeToConstantHeading(new Vector2d(0, DISTANCE))
-                            .waitSeconds(3)
+                            .waitSeconds(0.5)
+                            .strafeToConstantHeading(new Vector2d(0, 0))
+                            .waitSeconds(0.5)
                             .build());
         }
 

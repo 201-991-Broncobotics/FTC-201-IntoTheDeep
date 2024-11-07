@@ -90,10 +90,10 @@ public class ArmSystem extends SubsystemBase {
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
-                1, 90, 2, true, true,
+                1, 90, 3, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.006, 0, 0, 0, Constants.extensionMaxLength, 0,
-                1, 0, 5, false, false,
+                1, 0, 5, true, false,
                 CurrentExtensionLength);
     }
 
@@ -124,10 +124,9 @@ public class ArmSystem extends SubsystemBase {
                     moveArmToPoint(new Vector2d(
                             targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() * ArmThrottle / FrameRate,
                             targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() * ArmThrottle / FrameRate));
-                    SubsystemData.OverrideDrivetrainRotation = true;
-                    SubsystemData.OverrideDrivetrainTargetHeading = functions.angleDifference(
-                            SubsystemData.OverrideDrivetrainTargetHeading + Constants.maxManualHeadingSpeed * gamepad.getLeftX() * ArmThrottle / FrameRate,
-                            0, 360);
+                    if (!functions.inUse(SubsystemData.driver.getLeftX())) {
+                        SubsystemData.OperatorTurningPower = -0.25 * functions.deadZone(gamepad.getLeftX());
+                    } else SubsystemData.OperatorTurningPower = 0;
 
                     //Pose2d targetClawFieldCoord = getTargetClawPose();
                     //FieldCoordHoldPos = new Vector2d((targetClawFieldCoord.position.x * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftY() * ArmThrottle / FrameRate) / 25.4, (targetClawFieldCoord.position.y * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftX() * ArmThrottle / FrameRate) / 25.4);
@@ -141,7 +140,7 @@ public class ArmSystem extends SubsystemBase {
                     //SubsystemData.HoldClawFieldPos = false;
                 }
             }
-        }
+        } else SubsystemData.OperatorTurningPower = 0;
 
         LoosenClaw = functions.inUse(gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
 
@@ -245,10 +244,10 @@ public class ArmSystem extends SubsystemBase {
         if (CurrentExtensionLengthInst < 0) CurrentExtensionLengthZero = CurrentExtensionLengthInst;
         if (CurrentExtensionLengthInst > 697) CurrentExtensionLengthZero = CurrentExtensionLengthInst - 697;
 
-        if (RealignExtension && ExtensionF.getCurrent(CurrentUnit.AMPS) > 2) {
-            CurrentExtensionLengthZero = 0; // TODO: this may break some stuff
-            RealignExtension = false;
-        }
+        // if (RealignExtension && ExtensionF.getCurrent(CurrentUnit.AMPS) > 2) {
+            // CurrentExtensionLengthZero = 0; // TODO: this may break some stuff
+            // RealignExtension = false;
+        // }
 
         // WRIST AND CLAW
 
@@ -271,6 +270,8 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addLine("Robot Pose (in) X: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.x, 2) + " Y: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.y, 2));
+
+        telemetry.addData("RR voltage:", SubsystemData.RRVoltage);
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
@@ -499,6 +500,7 @@ public class ArmSystem extends SubsystemBase {
     public void moveClawToHumanPickup() {
         ReadyForDepositOnRung = false;
         RealignExtension = false;
+        backPedalExtension = true;
         moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 280 - Constants.pivotAxleHeight));
         WristTargetAngle = 90;
         openClaw();
@@ -506,6 +508,9 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void moveClawIntoSubmersible() {
+        ReadyForDepositOnRung = false;
+        backPedalExtension = true;
+        RealignExtension = false;
         //SubsystemData.HoldClawFieldPos = true;
         moveClawToFieldCoordinate(new Vector2d(0, 0), 120);
         setWristToFloorPickup();
@@ -551,34 +556,86 @@ public class ArmSystem extends SubsystemBase {
 
     ArrayList<Double> AwaitingMethodCallingTimes = new ArrayList<Double>();
     ArrayList<String> AwaitingMethodCallingNames = new ArrayList<String>();
+    ArrayList<ArrayList<Object>> AwaitingMethodCallingParams = new ArrayList<ArrayList<Object>>();
 
-    private void runMethodAfterSec(String methodName, double delaySeconds) {
+    private void runMethodAfterSec(String methodName, double delaySeconds, ArrayList<Object> parameters) {
         AwaitingMethodCallingTimes.add(runTime.time() + delaySeconds * 1000);
         AwaitingMethodCallingNames.add(methodName);
+        AwaitingMethodCallingParams.add(parameters);
+    }
+
+    private void runMethodAfterSec(String methodName, double delaySeconds) {
+        runMethodAfterSec(methodName, delaySeconds, new ArrayList<Object>());
+    }
+
+    private void runMethodAfterSec(String methodName, double delaySeconds, Object Param1) {
+        ArrayList<Object> parameters = new ArrayList<Object>();
+        parameters.add(Param1);
+        runMethodAfterSec(methodName, delaySeconds, parameters);
+    }
+
+    private void runMethodAfterSec(String methodName, double delaySeconds, Object Param1, Object Param2) {
+        ArrayList<Object> parameters = new ArrayList<Object>();
+        parameters.add(Param1);
+        parameters.add(Param2);
+        runMethodAfterSec(methodName, delaySeconds, parameters);
     }
 
     private void runAnyPreparedMethods() {
         if (!AwaitingMethodCallingTimes.isEmpty()) { // saves time if the list is empty
             ArrayList<Double> NewAwaitingMethodCallingTimes = new ArrayList<Double>();
             ArrayList<String> NewAwaitingMethodCallingNames = new ArrayList<String>();
+            ArrayList<ArrayList<Object>> NewAwaitingMethodCallingParams = new ArrayList<ArrayList<Object>>();
 
             for (int i = 0; i < AwaitingMethodCallingTimes.size(); i++) {
                 telemetry.addLine(AwaitingMethodCallingNames.get(i) + "() running in " + (AwaitingMethodCallingTimes.get(i) - runTime.time()) / 1000 + " seconds");
 
                 if (AwaitingMethodCallingTimes.get(i) > runTime.time()) {
                     try {
-                        Method method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i));
-                        method.invoke(this.getClass());
+                        ArrayList<Object> ParameterArray = AwaitingMethodCallingParams.get(i);
+                        Method method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i)); // backup method call if none of the parameters match
+
+                        /*
+                        This is a very painful and confusing box of annoyance:
+                        Basically in order for me to call a method by its name as a string and use parameters,
+                        I have to create a ArrayList<Object> of all of the parameters, determine
+                        what each parameter's type is, and then recreate the getMethod() method with whatever
+                        the combination of parameters I have is before I can invoke the actually method
+                        with those parameters. This is all so I can call the moveArmToPoint() with a
+                        any target position I want at a set time in the future
+                         */
+                        if (!ParameterArray.isEmpty()) {
+                            if (ParameterArray.size() == 2) {
+                                if (ParameterArray.get(0).getClass() == Vector2d.class && ParameterArray.get(1).getClass() == double.class) {
+                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), Vector2d.class, double.class);
+                                    method.invoke(this.getClass(), (Vector2d) ParameterArray.get(0), (double) ParameterArray.get(1));
+                                } else if (ParameterArray.get(0).getClass() == double.class && ParameterArray.get(1).getClass() == double.class) {
+                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), double.class, double.class);
+                                    method.invoke(this.getClass(), (double) ParameterArray.get(0), (double) ParameterArray.get(1));
+                                }
+                            } else if (ParameterArray.size() == 1) {
+                                if (ParameterArray.get(0).getClass() == Vector2d.class) {
+                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), Vector2d.class);
+                                    method.invoke(this.getClass(), (Vector2d) ParameterArray.get(0));
+                                } else if (ParameterArray.get(0).getClass() == double.class) {
+                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), double.class);
+                                    method.invoke(this.getClass(), (double) ParameterArray.get(0));
+                                }
+                            }
+                        } else method.invoke(this.getClass());
+
                     } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
                 } else {
                     NewAwaitingMethodCallingTimes.add(AwaitingMethodCallingTimes.get(i));
                     NewAwaitingMethodCallingNames.add(AwaitingMethodCallingNames.get(i));
+                    NewAwaitingMethodCallingParams.add(AwaitingMethodCallingParams.get(i));
                 }
             }
             AwaitingMethodCallingTimes = NewAwaitingMethodCallingTimes;
             AwaitingMethodCallingNames = NewAwaitingMethodCallingNames;
+            AwaitingMethodCallingParams = NewAwaitingMethodCallingParams;
         }
     }
 
@@ -586,6 +643,17 @@ public class ArmSystem extends SubsystemBase {
     public static class RRFinishCommand implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
         return false;
     }}
+
+
+    public Action RunMethod(String methodName, double delaySeconds, Object Param1, Object Param2) {
+        runMethodAfterSec(methodName, delaySeconds, Param1, Param2);
+        return new RRFinishCommand();
+    }
+
+    public Action RunMethod(String methodName, double delaySeconds, Object Param1) {
+        runMethodAfterSec(methodName, delaySeconds, Param1);
+        return new RRFinishCommand();
+    }
 
     public Action RunMethod(String methodName, double delaySeconds) {
         runMethodAfterSec(methodName, delaySeconds);
@@ -606,11 +674,40 @@ public class ArmSystem extends SubsystemBase {
         return new RRWaitCommand();
     }
 
-    public class RRWaitUntilFinished implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+
+    ElapsedTime timeoutTimer;
+    private double TimeoutTime;
+
+    public class RRWaitUntilFinishedAwaiting implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
         return !AwaitingMethodCallingTimes.isEmpty();
     }}
+    public Action waitUntilFinishedAwaiting() {
+        return new RRWaitUntilFinishedAwaiting();
+    }
+    public class RRWaitUntilFinishedAwaitingTimeout implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return (!AwaitingMethodCallingTimes.isEmpty() || (timeoutTimer.time() > TimeoutTime));
+    }}
+    public Action waitUntilFinishedAwaiting(double TimeoutSeconds) {
+        timeoutTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        TimeoutTime = TimeoutSeconds * 1000;
+        return new RRWaitUntilFinishedAwaitingTimeout();
+    }
+
+
+
+    public class RRWaitUntilFinishedMoving implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return (ExtensionPID.closeEnough() && PivotPID.closeEnough());
+    }}
     public Action waitUntilFinishedMoving() {
-        return new RRWaitUntilFinished();
+        return new RRWaitUntilFinishedMoving();
+    }
+    public class RRWaitUntilFinishedMovingTimeout implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return ((ExtensionPID.closeEnough() && PivotPID.closeEnough()) || (timeoutTimer.time() > TimeoutTime));
+    }}
+    public Action waitUntilFinishedMoving(double TimeoutSeconds) {
+        timeoutTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        TimeoutTime = TimeoutSeconds * 1000;
+        return new RRWaitUntilFinishedMovingTimeout();
     }
 
 }

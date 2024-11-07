@@ -17,6 +17,7 @@ public class SwerveModule {
     private final PIDController modulePID;
 
     private DualNum<Time> topMotorPower, bottomMotorPower;
+    private double topMotorPowerDouble, bottomMotorPowerDouble;
 
     private final DoubleSupplier topMotorEncoder;
 
@@ -38,12 +39,6 @@ public class SwerveModule {
     }
 
     public void setModule(double angle, DualNum<Time> speed, double maxPowerLimit) {
-        // find current angle in degrees of the wheel and wrap it to between -90 and 90
-        //double currentAngle = getCurrentAngle();
-        //double angleChange = functions.angleDifference(currentAngle, angle, 180);
-
-        //double rotation = modulePID.getPower(0.0, angleChange);
-
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
@@ -63,9 +58,32 @@ public class SwerveModule {
         bottomMotorPower = R2Power.times(-1).div(divider);
     }
 
+    public void setModuleDouble(double angle, double speed, double maxPowerLimit) {
+        modulePID.kP = SubsystemData.SwerveModuleKp;
+        modulePID.kI = SubsystemData.SwerveModuleKi;
+        modulePID.kD = SubsystemData.SwerveModuleKd;
+
+        double rotation = modulePID.getPowerWrapped(angle, 180);
+        LastRotation = rotation;
+
+        // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
+        speed = speed * (Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
+
+        // maintain the correct motor speed balance
+        double R1Power = speed + rotation;
+        double R2Power = -1 * speed + rotation;
+        double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
+
+        topMotorPowerDouble = -1 * R1Power / divider;
+        bottomMotorPowerDouble = -1 * R2Power / divider;
+    }
+
 
     public DualNum<Time> getTopMotorPower() { return topMotorPower; }
     public DualNum<Time> getBottomMotorPower() { return bottomMotorPower; }
+
+    public double getTopMotorPowerDouble() { return topMotorPowerDouble; }
+    public double getBottomMotorPowerDouble() { return bottomMotorPowerDouble; }
 
     public double getRotation() { return LastRotation; }
 
