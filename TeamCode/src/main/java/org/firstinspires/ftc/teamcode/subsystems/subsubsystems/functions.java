@@ -51,4 +51,12 @@ public class functions {
     }
 
 
+    public static boolean intListContains(int[] list, int value) {
+        for (int item : list) {
+            if (item == value) return true;
+        }
+        return false;
+    }
+
+
 }

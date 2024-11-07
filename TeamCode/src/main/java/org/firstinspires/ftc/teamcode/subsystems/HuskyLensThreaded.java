@@ -20,6 +20,7 @@ public class HuskyLensThreaded extends Thread {
             SubsystemData.HuskyLensConnected = Camera.knock();
             SubsystemData.HuskyLensThreadLoopTime = ThreadTimer.time();
         }
+        SubsystemData.CameraSeesValidObject = false;
     }
 
     public HuskyLensThreaded(HardwareMap map) {

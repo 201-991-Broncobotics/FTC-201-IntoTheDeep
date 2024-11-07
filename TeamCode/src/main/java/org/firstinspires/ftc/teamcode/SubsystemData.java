@@ -12,6 +12,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 
+import java.util.ArrayList;
+
 public class SubsystemData {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
@@ -30,6 +32,14 @@ public class SubsystemData {
     public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
     public static HuskyLens.Block[] Vision;
+
+    public static double CameraTargetPixelsX, CameraTargetPixelsY;
+
+    public static int[] AcceptableIds = new int[] {0, 1, 2, 3};
+
+    public static boolean CameraSeesValidObject = false;
+
+    public static double CameraTargetId = 0;
 
     public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0, IMUThreadTime = 0;
     public static boolean HuskyLensThreadActive = false, IMUThreadActive = false;
@@ -56,6 +66,7 @@ public class SubsystemData {
 
 
     public static double OperatorTurningPower = 0;
+    public static double AutoAimHeading = 0;
 
 
 }

@@ -111,6 +111,9 @@ public class DiffySwerve extends SubsystemBase {
             } else if (sinceLastTurnInputTimer.time() > 500 && SubsystemData.IMUWorking) {
                 // otherwise hold current heading if no driver input for some time and imu is working
                 turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
+                if (SubsystemData.OverrideDrivetrainRotation) { // auto aim
+                    turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(SubsystemData.AutoAimHeading , 360);
+                }
             }
 
         } else {

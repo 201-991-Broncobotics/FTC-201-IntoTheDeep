@@ -54,10 +54,12 @@ public class ArmSystem extends SubsystemBase {
     double CurrentPivotAngleInst = 0, CurrentExtensionLengthInst = 0; // this speeds up the code a lot by only checking sensors one per update
 
     double ClawAdjustment = 0;
-    private boolean LoosenClaw = false, ReadyForDepositOnRung = false, RealignExtension = false;
+    private boolean LoosenClaw = false, ReadyForDepositOnRung = false, RealignExtension = false, cameraToggle;
 
     Vector2d FieldCoordHoldPos;
     double FieldCoordHoldHeight;
+
+    HuskyLensCamera camera;
 
 
 
@@ -70,12 +72,14 @@ public class ArmSystem extends SubsystemBase {
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
         ClawTargetPosition = Constants.ClawOpenPosition; // open claw
-        WristTargetAngle = 90; // claw can't point straight up at this pivot angle anymore
+        WristTargetAngle = 90; // claw can't point straight up when arm is down anymore because of the hook
 
         SubsystemData.HoldClawFieldPos = false; // makes sure this is off on startup
 
         CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
         CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
+
+        camera = new HuskyLensCamera(map);
 
 
         // Timers
@@ -137,14 +141,50 @@ public class ArmSystem extends SubsystemBase {
                 }
             }
         }
-        SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX()); // operator can turn slowly when driver isn't turning
 
         if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 2500) {
             CurrentExtensionLengthZero = CurrentExtensionLengthInst; // set current length to zero if reset arm is held
             resetArmAlignmentHoldTimer.reset();
         } else resetArmAlignmentHoldTimer.reset();
 
-        LoosenClaw = functions.inUse(gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+
+        // AUTO AIM
+        double CameraTargetingPower = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+        if (functions.inUse(CameraTargetingPower)) {
+            SubsystemData.OperatorTurningPower = 0; // make sure not actively turning
+            if (!cameraToggle) {
+                cameraToggle = true;
+                camera.StartHuskyLensThread();
+            }
+            camera.ScanForSample();
+
+            if (SubsystemData.CameraSeesValidObject) {
+                // no need to change pivot angle
+                moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + Constants.maxCameraTargetingSpeed * CameraTargetingPower * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
+
+                // slows down camera auto aim turn speed the further extension is extended
+                double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
+                //SubsystemData.OperatorTurningPower = -0.15 * CameraTargetingPower * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+
+                double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * CameraTargetingPower * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160) / FrameRate;
+                SubsystemData.AutoAimHeading = SubsystemData.CurrentRobotPose.heading.toDouble() + AutoAimHeadingChange;
+                SubsystemData.OverrideDrivetrainRotation = true;
+                telemetry.addData("Auto Aim Heading:", SubsystemData.AutoAimHeading);
+                telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
+
+            } else SubsystemData.OverrideDrivetrainRotation = false;
+
+        } else if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
+            cameraToggle = false;
+            camera.EndHuskyLensThread();
+
+            // operator can control turn when not auto aiming and driver isn't turning
+        } else {
+            SubsystemData.OverrideDrivetrainRotation = false;
+            SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX());
+        }
+
+
 
         tunePIDsWithController(SubsystemData.driver);
 
@@ -310,6 +350,13 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addLine(" ");
             if (SubsystemData.HuskyLensConnected) telemetry.addLine("HuskyLens Active");
             else telemetry.addLine("HuskyLens not responding");
+            telemetry.addLine(" ");
+            if (SubsystemData.CameraSeesValidObject) {
+                telemetry.addData("Target ID:", SubsystemData.CameraTargetId);
+                telemetry.addData("Target X:", SubsystemData.CameraTargetPixelsX);
+                telemetry.addData("Target Y:", SubsystemData.CameraTargetPixelsY);
+                telemetry.addLine(" ");
+            }
             HuskyLens.Block[] VisionResults = SubsystemData.Vision;
             telemetry.addData("HuskyLens block count:", VisionResults.length);
             for (HuskyLens.Block value : VisionResults) {

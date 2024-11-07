@@ -31,7 +31,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.driver = new GamepadEx(gamepad1);
         SubsystemData.operator = new GamepadEx(gamepad2);
 
-        HuskyLensCamera huskyLensSystem = new HuskyLensCamera(hardwareMap);
+        // HuskyLensCamera huskyLensSystem = new HuskyLensCamera(hardwareMap);
         DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, true);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
 
@@ -53,13 +53,13 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).whenPressed(new InstantCommand(armSystem::setWristToFloorPickup));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::setWristToCenter));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(armSystem::setWristToBasket));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(huskyLensSystem::StartHuskyLensThread)).whenReleased(new InstantCommand(huskyLensSystem::EndHuskyLensThread));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(armSystem::enableLoosenClaw)).whenReleased(new InstantCommand(armSystem::disableLoosenClaw));
 
 
         // always running
         drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
-        huskyLensSystem.setDefaultCommand(new HuskyLensCommand(huskyLensSystem));
+        // huskyLensSystem.setDefaultCommand(new HuskyLensCommand(huskyLensSystem));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
     }
