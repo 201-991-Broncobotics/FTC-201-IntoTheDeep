@@ -23,8 +23,6 @@ import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.function.DoubleSupplier;
 
@@ -43,7 +41,7 @@ public class ArmSystem extends SubsystemBase {
     public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
 
-    ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime, runTime;
+    ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime, runTime, resetArmAlignmentHoldTimer;
     double FrameRate = 1, ArmLoopTime = 0;
     Telemetry telemetry;
     boolean telemetryEnabled = false;
@@ -86,11 +84,12 @@ public class ArmSystem extends SubsystemBase {
         PIDButtonPressTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         ArmLoopTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         runTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // never resets, mainly for auton
+        resetArmAlignmentHoldTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // resets extension if resetArm is held
 
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
-                1, 90, 3, true, true,
+                1, 135, 3, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.006, 0, 0, 0, Constants.extensionMaxLength, 0,
                 1, 0, 5, true, false,
@@ -124,9 +123,6 @@ public class ArmSystem extends SubsystemBase {
                     moveArmToPoint(new Vector2d(
                             targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() * ArmThrottle / FrameRate,
                             targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() * ArmThrottle / FrameRate));
-                    if (!functions.inUse(SubsystemData.driver.getLeftX())) {
-                        SubsystemData.OperatorTurningPower = -0.25 * functions.deadZone(gamepad.getLeftX());
-                    } else SubsystemData.OperatorTurningPower = 0;
 
                     //Pose2d targetClawFieldCoord = getTargetClawPose();
                     //FieldCoordHoldPos = new Vector2d((targetClawFieldCoord.position.x * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftY() * ArmThrottle / FrameRate) / 25.4, (targetClawFieldCoord.position.y * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftX() * ArmThrottle / FrameRate) / 25.4);
@@ -140,7 +136,13 @@ public class ArmSystem extends SubsystemBase {
                     //SubsystemData.HoldClawFieldPos = false;
                 }
             }
-        } else SubsystemData.OperatorTurningPower = 0;
+        }
+        SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX()); // operator can turn slowly when driver isn't turning
+
+        if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 2500) {
+            CurrentExtensionLengthZero = CurrentExtensionLengthInst; // set current length to zero if reset arm is held
+            resetArmAlignmentHoldTimer.reset();
+        } else resetArmAlignmentHoldTimer.reset();
 
         LoosenClaw = functions.inUse(gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
 
@@ -152,7 +154,6 @@ public class ArmSystem extends SubsystemBase {
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         ArmLoopTimer.reset(); // time it takes the arm for 1 update
-        double LastArmLoopTime = 0;
         FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
         CommandFrameTime.reset();
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
@@ -198,10 +199,12 @@ public class ArmSystem extends SubsystemBase {
         if (Math.abs(PivotTargetAngle - CurrentPivotAngleInst) < 10) backPedalExtension = false;
 
         if (backPedalExtension) {
-            if (CurrentExtensionLengthInst < 50) { // if extension is already retracted
+            if (CurrentExtensionLengthInst < 70) { // if extension is already retracted
                 PivotPID.setTarget(PivotTargetAngle); // move pivot
-            } // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
-            ExtensionPID.setTarget(0);
+                ExtensionPID.setTarget(0);
+            } else if (CurrentPivotAngleInst < 10) { // if claw could be hanging low to the ground
+                PivotPID.setTarget(15); // raise pivot a little first
+            } else ExtensionPID.setTarget(0); // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
         } else {
             PivotPID.setTarget(PivotTargetAngle);
 
@@ -587,45 +590,78 @@ public class ArmSystem extends SubsystemBase {
             ArrayList<String> NewAwaitingMethodCallingNames = new ArrayList<String>();
             ArrayList<ArrayList<Object>> NewAwaitingMethodCallingParams = new ArrayList<ArrayList<Object>>();
 
-            for (int i = 0; i < AwaitingMethodCallingTimes.size(); i++) {
+            double arraySize = AwaitingMethodCallingTimes.size();
+            for (int i = 0; i < arraySize; i++) {
                 telemetry.addLine(AwaitingMethodCallingNames.get(i) + "() running in " + (AwaitingMethodCallingTimes.get(i) - runTime.time()) / 1000 + " seconds");
 
                 if (AwaitingMethodCallingTimes.get(i) > runTime.time()) {
-                    try {
-                        ArrayList<Object> ParameterArray = AwaitingMethodCallingParams.get(i);
-                        Method method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i)); // backup method call if none of the parameters match
 
-                        /*
-                        This is a very painful and confusing box of annoyance:
-                        Basically in order for me to call a method by its name as a string and use parameters,
-                        I have to create a ArrayList<Object> of all of the parameters, determine
-                        what each parameter's type is, and then recreate the getMethod() method with whatever
-                        the combination of parameters I have is before I can invoke the actually method
-                        with those parameters. This is all so I can call the moveArmToPoint() with a
-                        any target position I want at a set time in the future
-                         */
-                        if (!ParameterArray.isEmpty()) {
-                            if (ParameterArray.size() == 2) {
-                                if (ParameterArray.get(0).getClass() == Vector2d.class && ParameterArray.get(1).getClass() == double.class) {
-                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), Vector2d.class, double.class);
-                                    method.invoke(this.getClass(), (Vector2d) ParameterArray.get(0), (double) ParameterArray.get(1));
-                                } else if (ParameterArray.get(0).getClass() == double.class && ParameterArray.get(1).getClass() == double.class) {
-                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), double.class, double.class);
-                                    method.invoke(this.getClass(), (double) ParameterArray.get(0), (double) ParameterArray.get(1));
-                                }
-                            } else if (ParameterArray.size() == 1) {
-                                if (ParameterArray.get(0).getClass() == Vector2d.class) {
-                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), Vector2d.class);
-                                    method.invoke(this.getClass(), (Vector2d) ParameterArray.get(0));
-                                } else if (ParameterArray.get(0).getClass() == double.class) {
-                                    method = this.getClass().getMethod(AwaitingMethodCallingNames.get(i), double.class);
-                                    method.invoke(this.getClass(), (double) ParameterArray.get(0));
-                                }
-                            }
-                        } else method.invoke(this.getClass());
+                    // ArmClaw method names:
+                    // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
+                    // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
+                    // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
 
-                    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                        throw new RuntimeException(e);
+                    // Parameter methods:
+                    // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
+
+                    ArrayList<Object> params = AwaitingMethodCallingParams.get(i);
+
+                    switch (AwaitingMethodCallingNames.get(i)) {
+                        case "openClaw":
+                            openClaw();
+                            break;
+                        case "closeClaw":
+                            closeClaw();
+                            break;
+                        case "toggleClaw":
+                            toggleClaw();
+                            break;
+                        case "setWristToCenter":
+                            setWristToCenter();
+                            break;
+                        case "setWristToBasket":
+                            setWristToBasket();
+                            break;
+                        case "setWristToFloorPickup":
+                            setWristToFloorPickup();
+                            break;
+                        case "depositSpecimen":
+                            depositSpecimen();
+                            break;
+                        case "enableLoosenClaw":
+                            enableLoosenClaw();
+                            break;
+                        case "disableLoosenClaw":
+                            disableLoosenClaw();
+                            break;
+                        case "toggleLoosenClaw":
+                            toggleLoosenClaw();
+                            break;
+                        case "moveClawToTopBasket":
+                            moveClawToTopBasket();
+                            break;
+                        case "moveClawToTopRung":
+                            moveClawToTopRung();
+                            break;
+                        case "moveClawToHumanPickup":
+                            moveClawToHumanPickup();
+                            break;
+                        case "resetArm":
+                            resetArm();
+                            break;
+
+                        case "moveArmToPoint":
+                            moveArmToPoint((Vector2d) params.get(0));
+                            break;
+                        case "moveClawToFieldCoordinate":
+                            moveClawToFieldCoordinate((Vector2d) params.get(0), (double) params.get(1));
+                            break;
+                        case "moveArmDirectly":
+                            moveArmDirectly((double) params.get(0), (double) params.get(1));
+                            break;
+                        case "setWrist":
+                            setWrist((double) params.get(0));
+                            break;
                     }
                 } else {
                     NewAwaitingMethodCallingTimes.add(AwaitingMethodCallingTimes.get(i));

@@ -2,13 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
 
-import androidx.annotation.NonNull;
-
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
-import com.acmerobotics.roadrunner.Trajectory;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
@@ -17,11 +12,8 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
-import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
-import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.commands.HuskyLensCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
-import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 
 import com.arcrobotics.ftclib.command.RunCommand;
@@ -40,13 +32,11 @@ public class RedRightSampleCollection extends CommandOpMode {
         Pose2d startPose = new Pose2d(new Vector2d(functions.tiles(0.5), functions.tiles(-3) + 7.09), Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, false);
         ArmSystem armClaw = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
         // always running
         HuskyLensSystem.setDefaultCommand(new HuskyLensCommand(HuskyLensSystem));
-        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
         armClaw.setDefaultCommand(new ArmClawAutonCommand(armClaw));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled

@@ -39,10 +39,6 @@ public class SwerveModule {
     }
 
     public void setModule(double angle, DualNum<Time> speed, double maxPowerLimit) {
-        modulePID.kP = SubsystemData.SwerveModuleKp;
-        modulePID.kI = SubsystemData.SwerveModuleKi;
-        modulePID.kD = SubsystemData.SwerveModuleKd;
-
         double rotation = modulePID.getPowerWrapped(angle, 180);
         LastRotation = rotation;
 

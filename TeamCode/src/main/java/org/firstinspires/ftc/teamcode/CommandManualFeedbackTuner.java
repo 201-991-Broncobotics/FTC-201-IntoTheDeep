@@ -41,10 +41,10 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         Pose2d startPose = new Pose2d(new Vector2d(0, 0), Math.toRadians(90));
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, true);
+        // DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, true);
 
         // always running
-        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
+        // drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
@@ -54,7 +54,7 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
 
         while (opModeIsActive()) {
             Actions.runBlocking(
-                    drive.actionBuilder(new Pose2d(0, 0, Math.toRadians(-90)))
+                    drive.actionBuilder(new Pose2d(0, 0, Math.toRadians(90)))
                             .strafeToConstantHeading(new Vector2d(0, DISTANCE))
                             .waitSeconds(0.5)
                             .strafeToConstantHeading(new Vector2d(0, 0))

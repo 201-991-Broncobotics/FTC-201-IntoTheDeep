@@ -1,16 +1,13 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.roadrunner.DualNum;
-import com.acmerobotics.roadrunner.MotorFeedforward;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.Vector2dDual;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -18,7 +15,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.IMUThread;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
@@ -43,7 +39,7 @@ public class DiffySwerve extends SubsystemBase {
 
     MecanumDrive drive;
 
-    ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer;
+    ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer, sinceLastTurnInputTimer;
 
     Telemetry telemetry;
 
@@ -61,7 +57,6 @@ public class DiffySwerve extends SubsystemBase {
         absoluteDriving = absoluteDrivingEnabled;
         // telemetry = telemetryInput;
         drive.updatePoseEstimate(); // update localization
-        SubsystemData.CurrentRobotPose = drive.pose;
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
         SubsystemData.HeadingTargetPID = new PIDController(0.005, 0.005, 0.001, () -> Math.toDegrees(drive.pose.heading.toDouble()));
 
@@ -69,6 +64,7 @@ public class DiffySwerve extends SubsystemBase {
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
         telemetry = inputTelemetry;
     }
@@ -92,7 +88,7 @@ public class DiffySwerve extends SubsystemBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 3000) {
+            if (imuNotWorkingTimer.time() > 2500) {
                 SubsystemData.IMUWorking = false;
             }
         } else {
@@ -107,13 +103,18 @@ public class DiffySwerve extends SubsystemBase {
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
         if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
-        if (!functions.inUse(turn) && SubsystemData.IMUWorking) { // hold robot orientation or point at claw target when driver isn't turning
+        if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't turning
             // if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
             if (functions.inUse(SubsystemData.OperatorTurningPower)) {
-                turn = SubsystemData.OperatorTurningPower; // operator can turn robot
-            } else turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360); // otherwise hold current heading
+                turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
+
+            } else if (sinceLastTurnInputTimer.time() > 500 && SubsystemData.IMUWorking) {
+                // otherwise hold current heading if no driver input for some time and imu is working
+                turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
+            }
 
         } else {
+            sinceLastTurnInputTimer.reset();
             SubsystemData.OverrideDrivetrainRotation = false;
             turn = turn * throttleControl;
             headingHold = Math.toDegrees(drive.pose.heading.toDouble());

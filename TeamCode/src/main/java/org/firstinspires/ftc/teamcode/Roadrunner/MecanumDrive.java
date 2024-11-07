@@ -49,7 +49,6 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumCommandMessage;
@@ -57,8 +56,6 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputs
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.IMUThread;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -87,7 +84,7 @@ public final class MecanumDrive {
         public double kA = 0.01; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 50;
+        public double maxWheelVel = 70;
         public double minProfileAccel = -225;
         public double maxProfileAccel = 50;
 
@@ -96,7 +93,7 @@ public final class MecanumDrive {
         public double maxAngAccel = Math.PI;
 
         // path controller gains
-        public double axialGain = 1.0;
+        public double axialGain = 2.0;
         public double lateralGain = axialGain;
         public double headingGain = 0.1; // shared with turn
 
@@ -278,10 +275,6 @@ public final class MecanumDrive {
                 PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
-
-        // SubsystemData.IMUThreadActive = true;
-        // IMUThread threadedIMU = new IMUThread(lazyImu.get());
-        // threadedIMU.start();
 
         IMU newImu = lazyImu.get();
         SubsystemData.imuInstance = newImu;
@@ -544,6 +537,7 @@ public final class MecanumDrive {
         }
 
         estimatedPoseWriter.write(new PoseMessage(pose));
+        SubsystemData.CurrentRobotPose = pose;
 
         return twist.velocity().value();
     }

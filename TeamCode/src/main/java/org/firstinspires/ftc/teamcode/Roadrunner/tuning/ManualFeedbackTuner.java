@@ -37,9 +37,9 @@ public final class ManualFeedbackTuner extends LinearOpMode {
                 Actions.runBlocking(
                     drive.actionBuilder(new Pose2d(currentPose.linearVel.x, currentPose.linearVel.y, currentPose.angVel))
                             .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y + DISTANCE))
-                            .waitSeconds(1)
+                            .waitSeconds(0.75)
                             .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y))
-                            .waitSeconds(1)
+                            .waitSeconds(0.75)
                             .build());
             }
         } else if (TuningOpModes.DRIVE_CLASS.equals(TankDrive.class)) {
