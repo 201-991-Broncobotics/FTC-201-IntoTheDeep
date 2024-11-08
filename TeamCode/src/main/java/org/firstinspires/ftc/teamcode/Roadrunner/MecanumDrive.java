@@ -39,6 +39,7 @@ import com.acmerobotics.roadrunner.ftc.LynxFirmware;
 import com.acmerobotics.roadrunner.ftc.OverflowEncoder;
 import com.acmerobotics.roadrunner.ftc.PositionVelocityPair;
 import com.acmerobotics.roadrunner.ftc.RawEncoder;
+import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -62,7 +63,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 @Config
-public final class MecanumDrive {
+public final class MecanumDrive extends SubsystemBase {
 
     public static class Params {
         // IMU orientation
@@ -104,9 +105,8 @@ public final class MecanumDrive {
 
     public static Params PARAMS = new Params();
 
-    private static final double RRMaxPower = 0.8;
 
-    private static final boolean ForceLimitMaxPower = true;
+    public static DiffySwerve diffySwerve;
 
     public final MecanumKinematics kinematics = new MecanumKinematics(
             PARAMS.inPerTick * PARAMS.trackWidthTicks, PARAMS.inPerTick / PARAMS.lateralInPerTick);
@@ -263,7 +263,8 @@ public final class MecanumDrive {
         SubsystemData.brokenDiffyEncoder = rightFront;
 
         // secretly initializing diffy alongside mecanum...
-        DiffySwerve.setupDiffy(leftFront, leftBack, rightBack, rightFront);
+
+        diffySwerve = new DiffySwerve(leftFront, leftBack, rightBack, rightFront, 0.8);
 
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -289,7 +290,7 @@ public final class MecanumDrive {
 
         //MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(TheCommand);
 
-        DiffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
+        diffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
@@ -329,7 +330,7 @@ public final class MecanumDrive {
             }
 
             if (t >= timeTrajectory.duration) {
-                DiffySwerve.driveDifferentialSwerve(0, 0, 0);
+                diffySwerve.driveDifferentialSwerve(0, 0, 0);
                 return false;
             }
 
@@ -360,7 +361,7 @@ public final class MecanumDrive {
 
              */
 
-            DiffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -416,7 +417,7 @@ public final class MecanumDrive {
             }
 
             if (t >= turn.duration) {
-                DiffySwerve.driveDifferentialSwerve(0, 0, 0);
+                diffySwerve.driveDifferentialSwerve(0, 0, 0);
                 return false;
             }
 
@@ -439,7 +440,7 @@ public final class MecanumDrive {
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
-            DiffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
             /*
 
@@ -518,4 +519,12 @@ public final class MecanumDrive {
                 defaultVelConstraint, defaultAccelConstraint
         );
     }
+
+    public void realignHeading() { SubsystemData.imuInstance.resetYaw(); }
+
+
+    public void updateDifferentialSwerve() {
+        diffySwerve.updateKinematicDifferentialSwerve();
+    }
+
 }

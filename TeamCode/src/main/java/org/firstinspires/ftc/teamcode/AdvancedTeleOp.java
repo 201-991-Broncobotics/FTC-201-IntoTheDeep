@@ -32,15 +32,13 @@ public class AdvancedTeleOp extends CommandOpMode {
         SubsystemData.operator = new GamepadEx(gamepad2);
 
         // HuskyLensCamera huskyLensSystem = new HuskyLensCamera(hardwareMap);
-        DiffySwerve drivetrain = new DiffySwerve(drive, 0.8, telemetry, true);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
 
 
         // BUTTONS
 
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleTelemetry));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(drivetrain::realignHeading));
-        //SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(drivetrain::toggleAbsoluteDriving));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(drive::realignHeading));
 
         // Claw
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(new InstantCommand(armSystem::toggleClaw));
@@ -57,7 +55,7 @@ public class AdvancedTeleOp extends CommandOpMode {
 
 
         // always running
-        drivetrain.setDefaultCommand(new DriveCommand(drivetrain));
+        drive.setDefaultCommand(new DriveCommand(drive, telemetry, true));
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
         // huskyLensSystem.setDefaultCommand(new HuskyLensCommand(huskyLensSystem));
 
