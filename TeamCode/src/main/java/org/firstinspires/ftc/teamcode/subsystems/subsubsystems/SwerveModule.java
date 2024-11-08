@@ -12,21 +12,17 @@ import java.util.function.DoubleSupplier;
 
 public class SwerveModule {
 
-    //private final DcMotorEx top_motor, bottom_motor;
-
     private final PIDController modulePID;
-
-    private DualNum<Time> topMotorPower, bottomMotorPower;
-    private double topMotorPowerDouble, bottomMotorPowerDouble;
 
     private final DoubleSupplier topMotorEncoder;
 
+    private final DcMotorEx topMotor, bottomMotor;
 
-    private double LastRotation;
 
-
-    public SwerveModule(DcMotorEx top_motor) { // initialize the module
-        topMotorEncoder = () -> functions.angleDifference(top_motor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360);
+    public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor) { // initialize the module
+        topMotor = newTopMotor;
+        bottomMotor = newBottomMotor;
+        topMotorEncoder = () -> functions.angleDifference(topMotor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360);
         SubsystemData.SwerveModuleKp = 0.005;
         SubsystemData.SwerveModuleKi = 0;
         SubsystemData.SwerveModuleKd = 0;
@@ -38,29 +34,13 @@ public class SwerveModule {
         return topMotorEncoder.getAsDouble();
     }
 
-    public void setModule(double angle, DualNum<Time> speed, double maxPowerLimit) {
-        double rotation = modulePID.getPowerWrapped(angle, 180);
-        LastRotation = rotation;
 
-        // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
-        speed = speed.times(Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
-
-        // maintain the correct motor speed balance
-        DualNum<Time> R1Power = speed.plus(rotation);
-        DualNum<Time> R2Power = speed.times(-1).plus(rotation);
-        double divider = Math.max(1, Math.max(R1Power.value() / maxPowerLimit, R2Power.value() / maxPowerLimit));
-
-        topMotorPower = R1Power.times(-1).div(divider);
-        bottomMotorPower = R2Power.times(-1).div(divider);
-    }
-
-    public void setModuleDouble(double angle, double speed, double maxPowerLimit) {
+    public void setModule(double angle, double speed, double maxPowerLimit, double voltage) {
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
-        LastRotation = rotation;
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
         speed = speed * (Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
@@ -70,17 +50,8 @@ public class SwerveModule {
         double R2Power = -1 * speed + rotation;
         double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
 
-        topMotorPowerDouble = -1 * R1Power / divider;
-        bottomMotorPowerDouble = -1 * R2Power / divider;
+        topMotor.setPower(-1 * R1Power / divider / voltage);
+        bottomMotor.setPower(-1 * R2Power / divider / voltage);
     }
-
-
-    public DualNum<Time> getTopMotorPower() { return topMotorPower; }
-    public DualNum<Time> getBottomMotorPower() { return bottomMotorPower; }
-
-    public double getTopMotorPowerDouble() { return topMotorPowerDouble; }
-    public double getBottomMotorPowerDouble() { return bottomMotorPowerDouble; }
-
-    public double getRotation() { return LastRotation; }
 
 }

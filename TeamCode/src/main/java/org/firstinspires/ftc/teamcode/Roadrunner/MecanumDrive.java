@@ -263,7 +263,7 @@ public final class MecanumDrive {
         SubsystemData.brokenDiffyEncoder = rightFront;
 
         // secretly initializing diffy alongside mecanum...
-        DiffySwerve.setupDiffy(rightFront, leftFront);
+        DiffySwerve.setupDiffy(leftFront, leftBack, rightBack, rightFront);
 
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -289,18 +289,7 @@ public final class MecanumDrive {
 
         //MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(TheCommand);
 
-        DiffySwerve.driveDifferentialSwerveDouble(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
-        // PARAMS.inPerTick * PARAMS.trackWidthTicks
-
-        double maxPowerMag = Math.max(1, Math.max(
-                Math.max(DiffySwerve.getLeftTopDouble(), DiffySwerve.getLeftBottomDouble()),
-                Math.max(DiffySwerve.getRightBottomDouble(), DiffySwerve.getRightTopDouble())));
-
-
-        leftFront.setPower(DiffySwerve.getLeftTopDouble() / maxPowerMag);
-        leftBack.setPower(DiffySwerve.getLeftBottomDouble() / maxPowerMag);
-        rightBack.setPower(DiffySwerve.getRightBottomDouble() / maxPowerMag);
-        rightFront.setPower(DiffySwerve.getRightTopDouble() / maxPowerMag);
+        DiffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
@@ -340,12 +329,7 @@ public final class MecanumDrive {
             }
 
             if (t >= timeTrajectory.duration) {
-                DiffySwerve.driveDifferentialSwerveDouble(0, 0, 0);
-                leftFront.setPower(DiffySwerve.getLeftTopDouble());
-                leftBack.setPower(DiffySwerve.getLeftBottomDouble());
-                rightBack.setPower(DiffySwerve.getRightBottomDouble());
-                rightFront.setPower(DiffySwerve.getRightTopDouble());
-
+                DiffySwerve.driveDifferentialSwerve(0, 0, 0);
                 return false;
             }
 
@@ -366,41 +350,17 @@ public final class MecanumDrive {
             double voltage = voltageSensor.getVoltage();
 
 
-            // Aidan deciding to force using diffy into mecanum:
-            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, false, false, false);
-
-
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            //double leftFrontPower = feedforward.compute(DiffySwerve.getLeftTop()) / voltage;
-            //double leftBackPower = feedforward.compute(DiffySwerve.getLeftBottom()) / voltage;
-            //double rightBackPower = feedforward.compute(DiffySwerve.getRightBottom()) / voltage;
-            //double rightFrontPower = feedforward.compute(DiffySwerve.getRightTop()) / voltage;
-            double leftFrontPower = DiffySwerve.getLeftTop().get(0);
-            double leftBackPower = DiffySwerve.getLeftBottom().get(0);
-            double rightBackPower = DiffySwerve.getRightBottom().get(0);
-            double rightFrontPower = DiffySwerve.getRightTop().get(0);
-
-            double maxPowerMag = Math.max(1, Math.max(
-                    Math.max(leftFrontPower / RRMaxPower, leftBackPower / RRMaxPower),
-                    Math.max(rightBackPower / RRMaxPower, rightFrontPower / RRMaxPower)));
-
-            if (ForceLimitMaxPower) {
-                leftFrontPower = leftFrontPower / maxPowerMag;
-                leftBackPower = leftBackPower / maxPowerMag;
-                rightBackPower = rightBackPower / maxPowerMag;
-                rightFrontPower = rightFrontPower / maxPowerMag;
-            }
+            /*
 
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
 
+             */
 
-            leftFront.setPower(leftFrontPower / maxPowerMag);
-            leftBack.setPower(leftBackPower / maxPowerMag);
-            rightBack.setPower(rightBackPower / maxPowerMag);
-            rightFront.setPower(rightFrontPower / maxPowerMag);
+            DiffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -456,12 +416,7 @@ public final class MecanumDrive {
             }
 
             if (t >= turn.duration) {
-                DiffySwerve.driveDifferentialSwerveDouble(0, 0, 0);
-                leftFront.setPower(DiffySwerve.getLeftTopDouble());
-                leftBack.setPower(DiffySwerve.getLeftBottomDouble());
-                rightBack.setPower(DiffySwerve.getRightBottomDouble());
-                rightFront.setPower(DiffySwerve.getRightTopDouble());
-
+                DiffySwerve.driveDifferentialSwerve(0, 0, 0);
                 return false;
             }
 
@@ -480,36 +435,19 @@ public final class MecanumDrive {
             // MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
 
-            // Aidan Diffy implementation 2
-            DiffySwerve.driveDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, false, false, false);
 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
-            double leftFrontPower = feedforward.compute(DiffySwerve.getLeftTop()) / voltage;
-            double leftBackPower = feedforward.compute(DiffySwerve.getLeftBottom()) / voltage;
-            double rightBackPower = feedforward.compute(DiffySwerve.getRightBottom()) / voltage;
-            double rightFrontPower = feedforward.compute(DiffySwerve.getRightTop()) / voltage;
+            DiffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
-            double maxPowerMag = Math.max(1, Math.max(
-                    Math.max(leftFrontPower / RRMaxPower, leftBackPower / RRMaxPower),
-                    Math.max(rightBackPower / RRMaxPower, rightFrontPower / RRMaxPower)));
-
-            if (ForceLimitMaxPower) {
-                leftFrontPower = leftFrontPower / maxPowerMag;
-                leftBackPower = leftBackPower / maxPowerMag;
-                rightBackPower = rightBackPower / maxPowerMag;
-                rightFrontPower = rightFrontPower / maxPowerMag;
-            }
+            /*
 
             mecanumCommandWriter.write(new MecanumCommandMessage(
                     voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
             ));
 
-            leftFront.setPower(leftFrontPower);
-            leftBack.setPower(leftBackPower);
-            rightBack.setPower(rightBackPower);
-            rightFront.setPower(rightFrontPower);
+             */
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);

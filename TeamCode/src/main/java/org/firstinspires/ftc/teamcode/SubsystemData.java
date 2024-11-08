@@ -44,8 +44,8 @@ public class SubsystemData {
 
     public static int CameraTargetId = 0;
 
-    public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0, IMUThreadTime = 0;
-    public static boolean HuskyLensThreadActive = false, IMUThreadActive = false;
+    public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0;
+    public static boolean HuskyLensThreadActive = false;
 
     public static GamepadEx operator, driver;
 
@@ -55,15 +55,9 @@ public class SubsystemData {
 
     public static YawPitchRollAngles IMUAngles;
 
-    public static AngularVelocity IMUAngularVelocity;
-
     public static double SwerveModuleKp, SwerveModuleKi, SwerveModuleKd;
 
-    public static boolean needToResetModuleEncoders = true;
-
     public static double RRVoltage = 0;
-
-    public static double RRMaxVoltage = 0;
 
     public static boolean HoldClawFieldPos;
 

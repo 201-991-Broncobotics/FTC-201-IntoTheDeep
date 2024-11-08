@@ -30,10 +30,6 @@ public class DiffySwerve extends SubsystemBase {
 
     private static double lastRightAngle = 0.0, lastLeftAngle = 0.0, maxPower = 1;
 
-    private static DualNum<Time> RightTop, RightBottom, LeftTop, LeftBottom;
-
-    private static double RightTopDouble, RightBottomDouble, LeftTopDouble, LeftBottomDouble;
-
     public boolean absoluteDriving;
 
     private double headingHold;
@@ -44,8 +40,6 @@ public class DiffySwerve extends SubsystemBase {
 
     Telemetry telemetry;
 
-
-    // private final Telemetry telemetry;
 
 
     public DiffySwerve(MecanumDrive roadrunnerDrive, double maxPowerLimit, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
@@ -70,9 +64,9 @@ public class DiffySwerve extends SubsystemBase {
         telemetry = inputTelemetry;
     }
 
-    public static void setupDiffy(DcMotorEx topRightMotor, DcMotorEx topLeftMotor) {
-        rightModule = new SwerveModule(topRightMotor); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        leftModule = new SwerveModule(topLeftMotor);
+    public static void setupDiffy(DcMotorEx newLeftTop, DcMotorEx newLeftBottom, DcMotorEx newRightBottom, DcMotorEx newRightTop) {
+        rightModule = new SwerveModule(newRightTop, newRightBottom); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
+        leftModule = new SwerveModule(newLeftTop, newLeftBottom);
     }
 
     public void controlDifferentialSwerve() {
@@ -146,54 +140,10 @@ public class DiffySwerve extends SubsystemBase {
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }
 
-    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth) {
-        driveDifferentialSwerve(command, trackWidth, false, false, false);
-    }
-
-
-    // this is only accessed from roadrunner's MecanumDrive
-    public static void driveDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, boolean invForward, boolean invStrafe, boolean invTurn) {
-        DualNum<Time> forward = command.linearVel.y;
-        DualNum<Time> strafe = command.linearVel.x;
-        DualNum<Time> turn = command.angVel.times(trackWidth);
-
-        if (invForward) forward = forward.times(-1);
-        if (invStrafe) strafe = strafe.times(-1);
-        if (invTurn) turn = turn.times(-1);
-
-
-        DualNum<Time> A = forward.times(-1).minus(turn); // diffy swerve drive math
-        DualNum<Time> B = forward.times(-1).plus(turn);
-        DualNum<Time> RightPower = ((strafe.times(strafe)).plus((A.times(A)))).sqrt(); // who knows if this will work
-        DualNum<Time> LeftPower = ((strafe.times(strafe)).plus((B.times(B)))).sqrt();
-
-        double max_power = Math.max(1, Math.max(RightPower.value(), LeftPower.value())); // keeps all motor powers under 1
-        RightPower = RightPower.div(max_power); // target motor speeds
-        LeftPower = LeftPower.div(max_power);
-        double RightAngle = Math.toDegrees(Math.atan2(strafe.value(), A.value())); // Target wheel angles
-        double LeftAngle = Math.toDegrees(Math.atan2(strafe.value(), B.value()));
-
-
-        // actually tell the pod to go to the angle at the power
-        if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            rightModule.setModule(RightAngle, RightPower, maxPower);
-            leftModule.setModule(LeftAngle, LeftPower, maxPower);
-            lastRightAngle = RightAngle;
-            lastLeftAngle = LeftAngle;
-        } else { // when no controller input, stop moving wheels
-            rightModule.setModule(lastRightAngle, RightPower, maxPower);
-            leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
-        }
-
-        RightTop = rightModule.getTopMotorPower();
-        RightBottom = rightModule.getBottomMotorPower();
-        LeftTop = leftModule.getTopMotorPower();
-        LeftBottom = leftModule.getBottomMotorPower();
-    }
 
 
     // only use one of these diffy serve methods at one time as some of the values are shared
-    public static void driveDifferentialSwerveDouble(double forward, double strafe, double turn) {
+    public static void driveDifferentialSwerve(double forward, double strafe, double turn) {
         double A = -forward - turn; // diffy swerve drive math
         double B = -forward + turn;
         double RightPower = Math.hypot(strafe, A); // who knows if this will work
@@ -208,35 +158,31 @@ public class DiffySwerve extends SubsystemBase {
 
         // actually tell the pod to go to the angle at the power
         if (Math.abs(strafe) > 0 || Math.abs(forward) > 0 || Math.abs(turn) > 0) {
-            rightModule.setModuleDouble(RightAngle, RightPower, maxPower);
-            leftModule.setModuleDouble(LeftAngle, LeftPower, maxPower);
+            rightModule.setModule(RightAngle, RightPower, maxPower, 1);
+            leftModule.setModule(LeftAngle, LeftPower, maxPower, 1);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
         } else { // when no controller input, stop moving wheels
-            rightModule.setModuleDouble(lastRightAngle, RightPower, maxPower);
-            leftModule.setModuleDouble(lastLeftAngle, LeftPower, maxPower);
+            rightModule.setModule(lastRightAngle, RightPower, maxPower, 1);
+            leftModule.setModule(lastLeftAngle, LeftPower, maxPower, 1);
         }
-
-        RightTopDouble = rightModule.getTopMotorPowerDouble();
-        RightBottomDouble = rightModule.getBottomMotorPowerDouble();
-        LeftTopDouble = leftModule.getTopMotorPowerDouble();
-        LeftBottomDouble = leftModule.getBottomMotorPowerDouble();
     }
 
 
     private static PoseVelocity2dDual<Time> driveCommand;
-    private static double TrackWidth;
+    private static double TrackWidth, Voltage;
     private static MotorFeedforward FeedForward;
-    private static DcMotorEx leftTop, leftBottom, rightBottom, rightTop;
 
 
-    public static void inverseDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, MotorFeedforward feedForward) {
+    public static void setDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, double voltage, MotorFeedforward feedForward) {
         driveCommand = command;
         TrackWidth = trackWidth;
+        Voltage = voltage;
         FeedForward = feedForward;
+        updateKinematicDifferentialSwerve();
     }
 
-    public static void updateInverseDifferentialSwerve() {
+    public static void updateKinematicDifferentialSwerve() {
         DualNum<Time> forward = driveCommand.linearVel.y;
         DualNum<Time> strafe = driveCommand.linearVel.x;
         DualNum<Time> turn = driveCommand.angVel.times(TrackWidth);
@@ -254,19 +200,14 @@ public class DiffySwerve extends SubsystemBase {
 
         // tell the pod to go to the angle at the power
         if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            rightModule.setModule(RightAngle, RightPower, maxPower);
-            leftModule.setModule(LeftAngle, LeftPower, maxPower);
+            rightModule.setModule(RightAngle, FeedForward.compute(RightPower), maxPower, Voltage);
+            leftModule.setModule(LeftAngle, FeedForward.compute(LeftPower), maxPower, Voltage);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
         } else { // when no controller input, stop moving wheels
-            rightModule.setModule(lastRightAngle, RightPower, maxPower);
-            leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
+            rightModule.setModule(lastRightAngle, FeedForward.compute(RightPower), maxPower, Voltage);
+            leftModule.setModule(lastLeftAngle, FeedForward.compute(LeftPower), maxPower, Voltage);
         }
-
-        RightTop = rightModule.getTopMotorPower();
-        RightBottom = rightModule.getBottomMotorPower();
-        LeftTop = leftModule.getTopMotorPower();
-        LeftBottom = leftModule.getBottomMotorPower();
     }
 
 
@@ -276,18 +217,5 @@ public class DiffySwerve extends SubsystemBase {
     public void absoluteDrivingOn() { absoluteDriving = true; }
 
     public void realignHeading() { SubsystemData.imuInstance.resetYaw(); }
-
-
-    // idk how to create an array of "Dual<Time>"s to return with
-    public static DualNum<Time> getRightTop() { return RightTop; }
-    public static DualNum<Time> getRightBottom() { return RightBottom; }
-    public static DualNum<Time> getLeftTop() { return LeftTop; }
-    public static DualNum<Time> getLeftBottom() { return LeftBottom; }
-
-    public static double getRightTopDouble() { return RightTopDouble; }
-    public static double getRightBottomDouble() { return RightBottomDouble; }
-    public static double getLeftTopDouble() { return LeftTopDouble; }
-    public static double getLeftBottomDouble() { return LeftBottomDouble; }
-
 
 }
