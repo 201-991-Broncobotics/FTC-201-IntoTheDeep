@@ -26,20 +26,20 @@ public class HuskyLensCamera extends SubsystemBase {
     public void ScanForSample() {
         CameraTimer.reset();
         HuskyLens.Block[] VisionData = SubsystemData.Vision;
-        if (VisionData.length > 1) {
+        if (VisionData.length >= 1) {
 
             // find the closest object information
             HuskyLens.Block closestObject = VisionData[0];
             for (HuskyLens.Block value : VisionData) {
-                if (functions.intListContains(SubsystemData.AcceptableIds, value.id) && Math.hypot(value.x - 160, value.y - 120) < Math.hypot(closestObject.x - 160, closestObject.y - 120)) {
+                if (functions.intListContains(SubsystemData.AcceptableIds, value.id) && Math.hypot(value.x - SubsystemData.HuskyLensTargetX, value.y - SubsystemData.HuskyLensTargetY) < Math.hypot(closestObject.x - SubsystemData.HuskyLensTargetX, closestObject.y - SubsystemData.HuskyLensTargetY)) {
                     closestObject = value;
                 }
             }
 
             //  return information
             if (functions.intListContains(SubsystemData.AcceptableIds, closestObject.id)) {
-                SubsystemData.CameraTargetPixelsX = closestObject.x - 160;
-                SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - 120);
+                SubsystemData.CameraTargetPixelsX = closestObject.x - SubsystemData.HuskyLensTargetX;
+                SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - SubsystemData.HuskyLensTargetY);
                 SubsystemData.CameraTargetId = closestObject.id;
                 SubsystemData.CameraSeesValidObject = true;
 

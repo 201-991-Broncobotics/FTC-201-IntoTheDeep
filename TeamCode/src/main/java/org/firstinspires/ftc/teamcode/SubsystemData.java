@@ -35,11 +35,14 @@ public class SubsystemData {
 
     public static double CameraTargetPixelsX, CameraTargetPixelsY;
 
-    public static int[] AcceptableIds = new int[] {0, 1, 2, 3};
+    public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
+
+    public static double HuskyLensTargetX = 160, HuskyLensTargetY = 190; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
+    // note that 0,0 on the huskylens is the top left corner
 
     public static boolean CameraSeesValidObject = false;
 
-    public static double CameraTargetId = 0;
+    public static int CameraTargetId = 0;
 
     public static double HuskyLensLoopTime = 0, HuskyLensThreadLoopTime = 0, DrivetrainLoopTime = 0, IMUThreadTime = 0;
     public static boolean HuskyLensThreadActive = false, IMUThreadActive = false;
@@ -67,6 +70,8 @@ public class SubsystemData {
 
     public static double OperatorTurningPower = 0;
     public static double AutoAimHeading = 0;
+
+    public static double HeadingHold = 0;
 
 
 }

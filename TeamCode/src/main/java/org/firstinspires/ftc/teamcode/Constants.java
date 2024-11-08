@@ -16,7 +16,7 @@ public class Constants {
     public static double maxManualClawSpeedVertical = 500, maxManualClawSpeedHorizontal = 500; // mm per second
     public static double maxManualExtensionSpeed = 500, maxManualPivotSpeed = 75, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
 
-    public static double maxCameraTargetingSpeed = 40, maxCameraTargetingTurnSpeed = 15;
+    public static double maxCameraTargetingSpeed = 250, maxCameraTargetingTurnSpeed = 30;
 
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;

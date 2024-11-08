@@ -54,7 +54,9 @@ public class ArmSystem extends SubsystemBase {
     double CurrentPivotAngleInst = 0, CurrentExtensionLengthInst = 0; // this speeds up the code a lot by only checking sensors one per update
 
     double ClawAdjustment = 0;
-    private boolean LoosenClaw = false, ReadyForDepositOnRung = false, RealignExtension = false, cameraToggle;
+    private boolean LoosenClaw = false, RealignExtension = false, cameraToggle, activeExtensionReset = false;
+
+    private int CurrentlyReadyPreset = 0; // allows pressing a preset button twice to complete the second part of its action
 
     Vector2d FieldCoordHoldPos;
     double FieldCoordHoldHeight;
@@ -142,15 +144,17 @@ public class ArmSystem extends SubsystemBase {
             }
         }
 
-        if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 2500) {
-            CurrentExtensionLengthZero = CurrentExtensionLengthInst; // set current length to zero if reset arm is held
+        if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 2000) {
+            activeExtensionReset = true; // keep retracting extension past limits until button is unpressed and then reset extension length
+        } else if (!gamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) {
             resetArmAlignmentHoldTimer.reset();
-        } else resetArmAlignmentHoldTimer.reset();
+            activeExtensionReset = false;
+        }
 
 
         // AUTO AIM
-        double CameraTargetingPower = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
-        if (functions.inUse(CameraTargetingPower)) {
+        double AutoAimTrigger = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
+        if (functions.inUse(AutoAimTrigger)) {
             SubsystemData.OperatorTurningPower = 0; // make sure not actively turning
             if (!cameraToggle) {
                 cameraToggle = true;
@@ -159,18 +163,31 @@ public class ArmSystem extends SubsystemBase {
             camera.ScanForSample();
 
             if (SubsystemData.CameraSeesValidObject) {
-                // no need to change pivot angle
-                moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + Constants.maxCameraTargetingSpeed * CameraTargetingPower * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
+
+                // needs to move differently based on the wrist current angle
+                Vector2d targetClawPosition = getTargetClawPoint();
+                if (WristTargetAngle > 45) {
+                    moveArmToPoint(new Vector2d(
+                            targetClawPosition.x,
+                            targetClawPosition.y + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate));
+                } else {
+                    moveArmToPoint(new Vector2d(
+                            targetClawPosition.x + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate,
+                            targetClawPosition.y));
+                }
+
+                // moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
 
                 // slows down camera auto aim turn speed the further extension is extended
                 double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
-                //SubsystemData.OperatorTurningPower = -0.15 * CameraTargetingPower * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+                //SubsystemData.OperatorTurningPower = -0.15 * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
 
-                double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * CameraTargetingPower * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160) / FrameRate;
-                SubsystemData.AutoAimHeading = SubsystemData.CurrentRobotPose.heading.toDouble() + AutoAimHeadingChange;
+                double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+                SubsystemData.AutoAimHeading = AutoAimHeadingChange / FrameRate;
                 SubsystemData.OverrideDrivetrainRotation = true;
                 telemetry.addData("Auto Aim Heading:", SubsystemData.AutoAimHeading);
                 telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
+                telemetry.addData("Heading Hold:", SubsystemData.HeadingHold);
 
             } else SubsystemData.OverrideDrivetrainRotation = false;
 
@@ -181,8 +198,9 @@ public class ArmSystem extends SubsystemBase {
             // operator can control turn when not auto aiming and driver isn't turning
         } else {
             SubsystemData.OverrideDrivetrainRotation = false;
-            SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX());
         }
+
+        SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX());
 
 
 
@@ -207,12 +225,13 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("Schrödinger's Encoder:", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
 
 
+        CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors once per update
+        CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
+
+
         // Run any delayed auton methods that are ready to run
         runAnyPreparedMethods();
 
-
-        CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble(); // this speeds up the code a lot by only checking sensors once per update
-        CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
 
         //telemetry.addData("Point 1:", ArmLoopTimer.time() - LastArmLoopTime);
         //LastArmLoopTime = ArmLoopTimer.time();
@@ -229,6 +248,13 @@ public class ArmSystem extends SubsystemBase {
          */
 
 
+        // Keep targets within limits
+        if (PivotTargetAngle > Constants.pivotMaxAngle) PivotTargetAngle = Constants.pivotMaxAngle;
+        else if (PivotTargetAngle < 0) PivotTargetAngle = 0;
+        if (ExtensionTargetLength > Constants.extensionMaxLength + 2) ExtensionTargetLength = Constants.extensionMaxLength + 2;
+        else if (ExtensionTargetLength < -2) ExtensionTargetLength = -2;
+
+
 
         // BACKPEDALING
 
@@ -239,11 +265,11 @@ public class ArmSystem extends SubsystemBase {
         if (Math.abs(PivotTargetAngle - CurrentPivotAngleInst) < 10) backPedalExtension = false;
 
         if (backPedalExtension) {
-            if (CurrentExtensionLengthInst < 70) { // if extension is already retracted
+            if (CurrentPivotAngleInst < 10) { // if claw could be hanging low to the ground
+                PivotPID.setTarget(15); // raise pivot a little first
+            } else if (CurrentExtensionLengthInst < 70) { // if extension is already retracted
                 PivotPID.setTarget(PivotTargetAngle); // move pivot
                 ExtensionPID.setTarget(0);
-            } else if (CurrentPivotAngleInst < 10) { // if claw could be hanging low to the ground
-                PivotPID.setTarget(15); // raise pivot a little first
             } else ExtensionPID.setTarget(0); // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
         } else {
             PivotPID.setTarget(PivotTargetAngle);
@@ -280,11 +306,17 @@ public class ArmSystem extends SubsystemBase {
             ExtensionPower = 0; // limiter against continuing to power the extension motors outside of the horizontal limit (there are 3 other extension limiters)
         }
 
-        ExtensionF.setPower(ExtensionPower);
-        ExtensionB.setPower(ExtensionPower);
+        if (activeExtensionReset) { // reset extension length
+            ExtensionF.setPower(-0.4);
+            ExtensionB.setPower(-0.4);
+        } else {
+            ExtensionF.setPower(ExtensionPower);
+            ExtensionB.setPower(ExtensionPower);
+        }
+
 
         // If the current extension length is ever outside the limits, move the zero so it is again
-        if (CurrentExtensionLengthInst < 0) CurrentExtensionLengthZero = CurrentExtensionLengthInst;
+        if (CurrentExtensionLengthInst < -1) CurrentExtensionLengthZero = CurrentExtensionLengthInst - (-1);
         if (CurrentExtensionLengthInst > 697) CurrentExtensionLengthZero = CurrentExtensionLengthInst - 697;
 
         // if (RealignExtension && ExtensionF.getCurrent(CurrentUnit.AMPS) > 2) {
@@ -352,9 +384,11 @@ public class ArmSystem extends SubsystemBase {
             else telemetry.addLine("HuskyLens not responding");
             telemetry.addLine(" ");
             if (SubsystemData.CameraSeesValidObject) {
-                telemetry.addData("Target ID:", SubsystemData.CameraTargetId);
-                telemetry.addData("Target X:", SubsystemData.CameraTargetPixelsX);
-                telemetry.addData("Target Y:", SubsystemData.CameraTargetPixelsY);
+                switch (SubsystemData.CameraTargetId) {
+                    case 1: telemetry.addLine("Targeting Red");
+                    case 2: telemetry.addLine("Targeting Yellow");
+                    case 3: telemetry.addLine("Targeting Blue");
+                }
                 telemetry.addLine(" ");
             }
             HuskyLens.Block[] VisionResults = SubsystemData.Vision;
@@ -515,68 +549,86 @@ public class ArmSystem extends SubsystemBase {
     }
 
 
-    public void moveClawToTopBasket() {
-        RealignExtension = false;
-        ReadyForDepositOnRung = false;
+    // CurrentlyReadyPreset:
+    // 0 = none
+    // 1 = moveClawToTopBasket
+    // 2 = moveClawToTopRung
+    // 3 = moveClawToHumanPickup
+    // 4 = moveClawIntoSubmersible
+
+
+    public void resetArm() {
+        CurrentlyReadyPreset = 0;
+        SubsystemData.HoldClawFieldPos = false;
         backPedalExtension = true;
-        PivotTargetAngle = 90;
-        ExtensionTargetLength = 696;
-        WristTargetAngle = 200;
+        PivotTargetAngle = 0;
+        ExtensionTargetLength = 0;
+        WristTargetAngle = 180;
+    }
+
+
+    public void moveClawToTopBasket() {
+        if (CurrentlyReadyPreset == 1) {
+            enableLoosenClaw();
+            runMethodAfterSec("openClaw", 0.5);
+            runMethodAfterSec("disableLoosenClaw", 0.5);
+            CurrentlyReadyPreset = 0;
+        } else {
+            backPedalExtension = true;
+            PivotTargetAngle = 90;
+            ExtensionTargetLength = 696;
+            WristTargetAngle = 200;
+            CurrentlyReadyPreset = 1;
+        }
     }
 
 
     public void moveClawToTopRung() {
-        RealignExtension = false;
-        if (!ReadyForDepositOnRung) {
-            backPedalExtension = true;
-            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 740 - Constants.pivotAxleHeight));
-            WristTargetAngle = 50;
-            ReadyForDepositOnRung = true;
-        } else {
+        if (CurrentlyReadyPreset == 2) { // second action
             WristTargetAngle = 50;
             depositSpecimen();
-            ReadyForDepositOnRung = false;
+            CurrentlyReadyPreset = 0;
+        } else { // normal action
+            backPedalExtension = true;
+            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 760 - Constants.pivotAxleHeight));
+            WristTargetAngle = 50;
+            CurrentlyReadyPreset = 2;
         }
-
     }
 
 
     public void depositSpecimen() { // onto a rung
-        ExtensionTargetLength = CurrentExtensionLengthInst - 60;
-        runMethodAfterSec("openClaw", 0.75);
+        ExtensionTargetLength = CurrentExtensionLengthInst - 150;
+        runMethodAfterSec("openClaw", 1.25); // TODO: might need to remove this
     }
 
 
     public void moveClawToHumanPickup() {
-        ReadyForDepositOnRung = false;
-        RealignExtension = false;
-        backPedalExtension = true;
-        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 280 - Constants.pivotAxleHeight));
-        WristTargetAngle = 90;
-        openClaw();
+        if (CurrentlyReadyPreset == 3) { // second action
+            Vector2d currentArmPoint = getTargetClawPoint();
+            moveArmToPoint(new Vector2d(currentArmPoint.x + 50, currentArmPoint.y));
+            runMethodAfterSec("closeClaw", 0.75);
+            runMethodAfterSec("moveArmToPoint", 1.5, new Vector2d(currentArmPoint.x, currentArmPoint.y + 120));
+            CurrentlyReadyPreset = 0;
+        } else {
+            backPedalExtension = true;
+            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 280 - Constants.pivotAxleHeight));
+            WristTargetAngle = 90;
+            openClaw();
+            CurrentlyReadyPreset = 3;
+        }
     }
 
 
     public void moveClawIntoSubmersible() {
-        ReadyForDepositOnRung = false;
+        CurrentlyReadyPreset = 4;
         backPedalExtension = true;
-        RealignExtension = false;
         //SubsystemData.HoldClawFieldPos = true;
         moveClawToFieldCoordinate(new Vector2d(0, 0), 120);
         setWristToFloorPickup();
         openClaw();
     }
 
-
-    public void resetArm() {
-        ReadyForDepositOnRung = false;
-        SubsystemData.HoldClawFieldPos = false;
-        RealignExtension = true;
-        backPedalExtension = true;
-        PivotTargetAngle = 0;
-        ExtensionTargetLength = 0;
-        WristTargetAngle = 180;
-    }
 
 
 
@@ -654,48 +706,20 @@ public class ArmSystem extends SubsystemBase {
                     ArrayList<Object> params = AwaitingMethodCallingParams.get(i);
 
                     switch (AwaitingMethodCallingNames.get(i)) {
-                        case "openClaw":
-                            openClaw();
-                            break;
-                        case "closeClaw":
-                            closeClaw();
-                            break;
-                        case "toggleClaw":
-                            toggleClaw();
-                            break;
-                        case "setWristToCenter":
-                            setWristToCenter();
-                            break;
-                        case "setWristToBasket":
-                            setWristToBasket();
-                            break;
-                        case "setWristToFloorPickup":
-                            setWristToFloorPickup();
-                            break;
-                        case "depositSpecimen":
-                            depositSpecimen();
-                            break;
-                        case "enableLoosenClaw":
-                            enableLoosenClaw();
-                            break;
-                        case "disableLoosenClaw":
-                            disableLoosenClaw();
-                            break;
-                        case "toggleLoosenClaw":
-                            toggleLoosenClaw();
-                            break;
-                        case "moveClawToTopBasket":
-                            moveClawToTopBasket();
-                            break;
-                        case "moveClawToTopRung":
-                            moveClawToTopRung();
-                            break;
-                        case "moveClawToHumanPickup":
-                            moveClawToHumanPickup();
-                            break;
-                        case "resetArm":
-                            resetArm();
-                            break;
+                        case "openClaw": openClaw(); break; // I formatted this this way because it looks a lot easier to read
+                        case "closeClaw": closeClaw(); break;
+                        case "toggleClaw": toggleClaw(); break;
+                        case "setWristToCenter": setWristToCenter(); break;
+                        case "setWristToBasket": setWristToBasket(); break;
+                        case "setWristToFloorPickup": setWristToFloorPickup(); break;
+                        case "depositSpecimen": depositSpecimen(); break;
+                        case "enableLoosenClaw": enableLoosenClaw(); break;
+                        case "disableLoosenClaw": disableLoosenClaw(); break;
+                        case "toggleLoosenClaw": toggleLoosenClaw(); break;
+                        case "moveClawToTopBasket": moveClawToTopBasket(); break;
+                        case "moveClawToTopRung": moveClawToTopRung(); break;
+                        case "moveClawToHumanPickup": moveClawToHumanPickup(); break;
+                        case "resetArm": resetArm(); break;
 
                         case "moveArmToPoint":
                             moveArmToPoint((Vector2d) params.get(0));
