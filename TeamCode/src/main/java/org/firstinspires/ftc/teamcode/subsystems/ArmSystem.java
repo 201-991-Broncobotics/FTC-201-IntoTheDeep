@@ -95,10 +95,10 @@ public class ArmSystem extends SubsystemBase {
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
-                1, 135, 3, true, true,
+                1, 0, 135, 3, true, true,
                 CurrentPivotAngle);
         ExtensionPID = new PIDController(0.006, 0, 0, 0, Constants.extensionMaxLength, 0,
-                1, 0, 5, true, false,
+                1, 0, 0, 5, true, false,
                 CurrentExtensionLength);
     }
 
@@ -169,7 +169,7 @@ public class ArmSystem extends SubsystemBase {
                 if (WristTargetAngle > 45) {
                     moveArmToPoint(new Vector2d(
                             targetClawPosition.x,
-                            targetClawPosition.y + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate));
+                            targetClawPosition.y + Constants.maxCameraTargetingSpeed * AutoAimTrigger * -1 * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate));
                 } else {
                     moveArmToPoint(new Vector2d(
                             targetClawPosition.x + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate,
@@ -200,7 +200,7 @@ public class ArmSystem extends SubsystemBase {
             SubsystemData.OverrideDrivetrainRotation = false;
         }
 
-        SubsystemData.OperatorTurningPower = -0.25 * (Math.abs(gamepad.getLeftX()) * gamepad.getLeftX());
+        SubsystemData.OperatorTurningPower = -0.2 * Math.pow(gamepad.getLeftX(), 3);
 
 
 
@@ -411,11 +411,11 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 12) PIDVar = 0;
+            if (PIDVar > 17) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 12;
+            if (PIDVar < 0) PIDVar = 17;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -435,8 +435,11 @@ public class ArmSystem extends SubsystemBase {
             else if (PIDVar == 10) SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5);
             else if (PIDVar == 11) SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5);
             else if (PIDVar == 12) SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5);
-            //else if (PIDVar == 13) SubsystemData.SwerveModuleKp = functions.round(SubsystemData.SwerveModuleKp + PIDChangeIncrement / 10, 5);
-            //else if (PIDVar == 14) SubsystemData.SwerveModuleKi = functions.round(SubsystemData.SwerveModuleKi + PIDChangeIncrement / 10, 5);
+            else if (PIDVar == 13) SubsystemData.HeadingTargetPID.initialPower = functions.round(SubsystemData.HeadingTargetPID.initialPower + PIDChangeIncrement, 4);
+            else if (PIDVar == 14) SubsystemData.HeadingTargetPID.minPower = functions.round(SubsystemData.HeadingTargetPID.minPower + PIDChangeIncrement, 4);
+            else if (PIDVar == 15) SubsystemData.AutonKP = functions.round(SubsystemData.AutonKP + PIDChangeIncrement, 4);
+            else if (PIDVar == 16) SubsystemData.AutonKI = functions.round(SubsystemData.AutonKI + PIDChangeIncrement, 4);
+            else if (PIDVar == 17) SubsystemData.AutonKD = functions.round(SubsystemData.AutonKD + PIDChangeIncrement, 4);
             //else if (PIDVar == 15) SubsystemData.SwerveModuleKd = functions.round(SubsystemData.SwerveModuleKd + PIDChangeIncrement / 10, 5);
             // else if (PIDVar == 13) Constants.ClawOpenPosition = functions.round(Constants.ClawOpenPosition + PIDChangeIncrement * 10, 3);
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
@@ -459,8 +462,11 @@ public class ArmSystem extends SubsystemBase {
         else if (PIDVar == 10) telemetry.addData("Editing: Heading Kp - ", SubsystemData.HeadingTargetPID.kP);
         else if (PIDVar == 11) telemetry.addData("Editing: Heading Ki - ", SubsystemData.HeadingTargetPID.kI);
         else if (PIDVar == 12) telemetry.addData("Editing: Heading Kd - ", SubsystemData.HeadingTargetPID.kD);
-        //else if (PIDVar == 13) telemetry.addData("Editing: Swerve Kp - ", SubsystemData.SwerveModuleKp);
-        //else if (PIDVar == 14) telemetry.addData("Editing: Swerve Ki - ", SubsystemData.SwerveModuleKi);
+        else if (PIDVar == 13) telemetry.addData("Editing: Heading initialPower - ", SubsystemData.HeadingTargetPID.initialPower);
+        else if (PIDVar == 14) telemetry.addData("Editing: Heading minPower - ", SubsystemData.HeadingTargetPID.minPower);
+        else if (PIDVar == 15) telemetry.addData("Editing: Auton Kp - ", SubsystemData.AutonKP);
+        else if (PIDVar == 16) telemetry.addData("Editing: Auton Ki - ", SubsystemData.AutonKI);
+        else if (PIDVar == 17) telemetry.addData("Editing: Auton Kd - ", SubsystemData.AutonKD);
         //else if (PIDVar == 15) telemetry.addData("Editing: Swerve Kd - ", SubsystemData.SwerveModuleKd);
         // else if (PIDVar == 13) telemetry.addData("Editing: Claw Offset - ", Constants.ClawOpenPosition);
     }
@@ -599,15 +605,21 @@ public class ArmSystem extends SubsystemBase {
 
     public void depositSpecimen() { // onto a rung
         ExtensionTargetLength = CurrentExtensionLengthInst - 150;
-        runMethodAfterSec("openClaw", 1.25); // TODO: might need to remove this
+        runMethodAfterSec("openClaw", 1.5); // TODO: might need to remove this
+    }
+
+
+    public void driveClampSpecimenPosition() { // goes to the position needed to just drive into the rungs and instantly clamp the specimen
+        backPedalExtension = true;
+        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 700 - Constants.pivotAxleHeight));
+        WristTargetAngle = 180;
     }
 
 
     public void moveClawToHumanPickup() {
         if (CurrentlyReadyPreset == 3) { // second action
             Vector2d currentArmPoint = getTargetClawPoint();
-            moveArmToPoint(new Vector2d(currentArmPoint.x + 50, currentArmPoint.y));
-            runMethodAfterSec("closeClaw", 0.75);
+            closeClaw();
             runMethodAfterSec("moveArmToPoint", 1.5, new Vector2d(currentArmPoint.x, currentArmPoint.y + 120));
             CurrentlyReadyPreset = 0;
         } else {
@@ -691,7 +703,7 @@ public class ArmSystem extends SubsystemBase {
 
             double arraySize = AwaitingMethodCallingTimes.size();
             for (int i = 0; i < arraySize; i++) {
-                telemetry.addLine(AwaitingMethodCallingNames.get(i) + "() running in " + (AwaitingMethodCallingTimes.get(i) - runTime.time()) / 1000 + " seconds");
+                telemetry.addLine(AwaitingMethodCallingNames.get(i) + "() running in " + (AwaitingMethodCallingTimes.get(i) - runTime.time()) / 1000 + " sec");
 
                 if (AwaitingMethodCallingTimes.get(i) > runTime.time()) {
 

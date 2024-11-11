@@ -2,6 +2,10 @@ package org.firstinspires.ftc.teamcode;
 
 public class Constants {
 
+    public static double maxDrivetrainMotorPower = 0.5;
+
+    public static double ModuleGearRatio = (21 / 58.0) * (43 / 11.0) * (63.5 * Math.PI / 25.4); // units are in inches (move along the ground) per 1 motor revolution
+
     public static double encoderResolution = 8192; // differential swerve module encoders
 
     public static double tileLength = 23.5625; // in inches

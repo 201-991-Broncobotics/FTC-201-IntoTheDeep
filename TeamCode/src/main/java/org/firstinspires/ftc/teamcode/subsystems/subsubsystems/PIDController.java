@@ -6,7 +6,7 @@ import java.util.function.DoubleSupplier;
 
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
 
     public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false;
 
@@ -15,26 +15,32 @@ public class PIDController {
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
     private double maxIntegral = 1, percentMaxSpeed = 1, PIDFrameRate = 0;
 
+    private boolean stoppedUntilNextUse = false;
+
     ElapsedTime mRuntime;
 
 
     // full PID with all of the possible settings
     public PIDController(double kP, double kI, double kD, double minPosition, double maxPosition,
-                         double minPower, double maxPower, double maxSpeed, double tolerance,
+                         double minPower, double maxPower, double initialPower, double maxSpeed, double tolerance,
                          boolean positionLimitingEnabled, boolean speedLimitingEnabled, DoubleSupplier encoderPosition) { // units are the same as the units of the encoderPosition
         this.kP = kP;
         this.kI = kI;
         this.kD = kD;
         this.minPosition = minPosition; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         this.maxPosition = maxPosition; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
-        this.minPower = minPower;
+        this.minPower = minPower; // can be used as the initial power needed to start moving
         this.maxPower = maxPower;
+        this.initialPower = initialPower; // power needed to start turning the motor / SET A MINIMUM POWER WHEN THIS IS GREATER THAN 0 or the PID will oscillate
         this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false, in units per second
         this.tolerance = tolerance; // the range where closeEnough() will return true
         this.positionLimitingEnabled = positionLimitingEnabled;
         this.speedLimitingEnabled = speedLimitingEnabled;
         this.encoderPosition = encoderPosition;
         mRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+
+        // default minPower value when it isn't set and initial power is enabled
+        if (minPower == 0 && initialPower > 0) this.minPower = initialPower * 2;
 
         correctValues();
         if (kI > 0) maxIntegral = maxPower / kI;
@@ -45,7 +51,7 @@ public class PIDController {
 
     // simple version of this PID controller
     public PIDController(double kP, double kI, double kD, DoubleSupplier encoderPosition) { // simplest version
-        this(kP, kI, kD, 0, 0, 0, 1, 0, 0, false, false, encoderPosition);
+        this(kP, kI, kD, 0, 0, 0, 1, 0, 0, 0, false, false, encoderPosition);
     }
     // there probably is a way to make each value have a default value and only overwrite if you define it without copying this line 11^11 different times but idk what it is
 
@@ -96,6 +102,13 @@ public class PIDController {
 
     public double getPower(double overrideCurrentPosition) { // VERY IMPORTANT that this needs to be called constantly to work properly
         // overrideCurrentPosition is just the current encoder Position unless it is being overridden
+
+        if (stoppedUntilNextUse) { // reset all timers and integral when pid is first used again after being stopped
+            mRuntime.reset();
+            reset();
+            stoppedUntilNextUse = false;
+        }
+
         correctValues();
         double power;
         double timeSince = (mRuntime.time() / 1000.0) - previousTime;
@@ -111,10 +124,11 @@ public class PIDController {
         previousTime = mRuntime.time() / 1000.0;
         power = (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
 
+        power = (Math.abs(power) * (1 - initialPower) + initialPower) * Math.signum(power); // normalizes to start at initial power
 
-        // make sure power obeys all of the set limits
+        // make sure the power obeys all of the set limits
         if (Math.abs(power) > maxPower) power = Math.signum(power) * maxPower;
-        else if (Math.abs(power) < minPower) power = 0.0; // minPower resets to 0 to stop mechanism though is only useful for making a dead Zone
+        else if (Math.abs(power) < minPower) power = 0.0;
 
         // prevent motor from continuing to be powered outside of min and max limits if enabled
         if (positionLimitingEnabled) {
@@ -134,8 +148,10 @@ public class PIDController {
         if (minPower < 0) minPower = 0;
         if (maxPower > 1) maxPower = 1;
         if (minPower > maxPower) minPower = maxPower;
+        if (initialPower < 0) initialPower = 0;
+        if (minPower < initialPower) minPower = initialPower; // make sure minPower is at least initialPower
         if (maxSpeed < 0) maxSpeed = 0;
-        if (tolerance < 0) tolerance = Math.abs(tolerance);
+        if (tolerance < 0) tolerance = 0;
         if (kI > 0) maxIntegral = maxPower / kI;
         else maxIntegral = 1;
     }
@@ -177,6 +193,11 @@ public class PIDController {
 
     public boolean closeEnough() {
         return Math.abs(targetPosition - encoderPosition.getAsDouble()) <= tolerance;
+    }
+
+
+    public void stopUntilNextUse() {
+        stoppedUntilNextUse = true;
     }
 
 }

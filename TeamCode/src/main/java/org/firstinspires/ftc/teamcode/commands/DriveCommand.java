@@ -2,30 +2,16 @@ package org.firstinspires.ftc.teamcode.commands;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
-import com.arcrobotics.ftclib.command.RunCommand;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
+import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
-
-import java.util.function.DoubleSupplier;
-
-/*
-public class DriveCommand extends RunCommand {
-    public DriveCommand(DiffySwerve drivetrain) {
-        super(drivetrain::controlDifferentialSwerve, drivetrain);
-    }
-}
-
- */
 
 public class DriveCommand extends CommandBase {
 
@@ -33,34 +19,32 @@ public class DriveCommand extends CommandBase {
 
     private double headingHold;
 
-    MecanumDrive drive;
+    DifferentialSwerveDrive drive;
 
     ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer, sinceLastTurnInputTimer;
 
     Telemetry telemetry;
 
-    public DriveCommand(MecanumDrive roadrunnerDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
+    public DriveCommand(DifferentialSwerveDrive roadrunnerDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
         addRequirements(roadrunnerDrive);
         // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = roadrunnerDrive;
         drive.updatePoseEstimate(); // update localization
         absoluteDriving = absoluteDrivingEnabled;
-        drive.updatePoseEstimate(); // update localization
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
-        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.004, 0.0014, () -> Math.toDegrees(drive.pose.heading.toDouble()));
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
-        telemetry = inputTelemetry; // only if I need it for debugging
+        telemetry = inputTelemetry; // only here if I need it for debugging
     }
 
 
     @Override
     public void execute() {
         DifferentialSwerveTimer.reset();
-        double lastDiffySwerveTime = 0;
+        // double lastDiffySwerveTime = 0;
 
         //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
         //lastDiffySwerveTime = DifferentialSwerveTimer.time();

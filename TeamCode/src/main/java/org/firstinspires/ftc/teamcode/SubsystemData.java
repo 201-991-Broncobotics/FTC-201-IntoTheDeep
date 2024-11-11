@@ -1,8 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
+import com.acmerobotics.roadrunner.Vector2d;
+import com.acmerobotics.roadrunner.Vector2dDual;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -24,7 +27,11 @@ public class SubsystemData {
     public static double OverrideDrivetrainTargetHeading = 0;
 
 
-    public static PIDController HeadingTargetPID; // temporarily here so I can tune the PID
+    public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PID
+
+    public static double AutonKP = 0.01, AutonKI = 0.0, AutonKD = 0.0;
+
+    public static Pose2d AutonError = new Pose2d(new Vector2d(0, 0), 0);
 
     public static boolean IMUWorking;
     public static IMU imuInstance;

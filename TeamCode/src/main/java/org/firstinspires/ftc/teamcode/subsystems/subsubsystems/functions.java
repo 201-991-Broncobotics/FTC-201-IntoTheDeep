@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
+import com.acmerobotics.roadrunner.DualNum;
+import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
 
 import org.firstinspires.ftc.teamcode.Constants;
@@ -56,6 +58,11 @@ public class functions {
             if (item == value) return true;
         }
         return false;
+    }
+
+
+    public static DualNum<Time> roundDual(DualNum<Time> value, int decimalPlaces) {
+        return new DualNum<>(new double[] {round(value.get(0), decimalPlaces), round(value.get(1), decimalPlaces)});
     }
 
 

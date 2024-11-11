@@ -49,21 +49,24 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
-import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.subsystems.DiffySwerve;
+import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
 @Config
-public final class MecanumDrive extends SubsystemBase {
+public final class DifferentialSwerveDrive extends SubsystemBase { // This used to be Roadrunner's MecanumDrive
 
     public static class Params {
         // IMU orientation
@@ -82,21 +85,21 @@ public final class MecanumDrive extends SubsystemBase {
         // feedforward parameters (in tick units)
         public double kS = 3.7576427826935133;
         public double kV = 0.0019895240817372076;
-        public double kA = 0.01; // 2.0 is what this needs to be to match the peaks of v0 and vf
+        public double kA = 0.00001; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 30;
-        public double minProfileAccel = -225;
-        public double maxProfileAccel = 30;
+        public double maxWheelVel = 10;
+        public double minProfileAccel = -5;
+        public double maxProfileAccel = 5;
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI; // shared with path
-        public double maxAngAccel = Math.PI;
+        public double maxAngVel = Math.PI / 4; // shared with path
+        public double maxAngAccel = Math.PI / 4;
 
         // path controller gains
-        public double axialGain = 1.0;
+        public double axialGain = 0.0; // im using my own pids cause these suck
         public double lateralGain = axialGain;
-        public double headingGain = 0.25; // shared with turn
+        public double headingGain = 0.0;
 
         public double axialVelGain = 0.0;
         public double lateralVelGain = axialVelGain;
@@ -106,7 +109,9 @@ public final class MecanumDrive extends SubsystemBase {
     public static Params PARAMS = new Params();
 
 
-    public static DiffySwerve diffySwerve;
+    Telemetry telemetry;
+
+    public static DiffySwerveKinematics diffySwerve;
 
     public final MecanumKinematics kinematics = new MecanumKinematics(
             PARAMS.inPerTick * PARAMS.trackWidthTicks, PARAMS.inPerTick / PARAMS.lateralInPerTick);
@@ -146,10 +151,10 @@ public final class MecanumDrive extends SubsystemBase {
         private boolean initialized;
 
         public DriveLocalizer() {
-            leftFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.leftFront));
-            leftBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.leftBack));
-            rightBack = new OverflowEncoder(new RawEncoder(MecanumDrive.this.rightBack));
-            rightFront = new OverflowEncoder(new RawEncoder(MecanumDrive.this.rightFront));
+            leftFront = new OverflowEncoder(new RawEncoder(DifferentialSwerveDrive.this.leftFront));
+            leftBack = new OverflowEncoder(new RawEncoder(DifferentialSwerveDrive.this.leftBack));
+            rightBack = new OverflowEncoder(new RawEncoder(DifferentialSwerveDrive.this.rightBack));
+            rightFront = new OverflowEncoder(new RawEncoder(DifferentialSwerveDrive.this.rightFront));
 
             imu = lazyImu.get();
 
@@ -221,8 +226,10 @@ public final class MecanumDrive extends SubsystemBase {
         }
     }
 
-    public MecanumDrive(HardwareMap hardwareMap, Pose2d pose) {
+    public DifferentialSwerveDrive(HardwareMap hardwareMap, Pose2d pose, Telemetry newTelemetry) {
         this.pose = pose;
+
+        telemetry = newTelemetry;
 
         LynxFirmware.throwIfModulesAreOutdated(hardwareMap);
 
@@ -258,13 +265,22 @@ public final class MecanumDrive extends SubsystemBase {
         rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
 
+        // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
+        SubsystemData.HeadingTargetPID = new PIDController(0.009, 0.006, 0.0012, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID.minPower = 0.0; // helps get the drivetrain turning when at low values
+        SubsystemData.HeadingTargetPID.initialPower = 0.03;
+
+        SubsystemData.AxialPID = new PIDController(SubsystemData.AutonKP, SubsystemData.AutonKI, SubsystemData.AutonKD, () -> Math.toDegrees(this.pose.position.y));
+        SubsystemData.LateralPID = new PIDController(SubsystemData.AutonKP, SubsystemData.AutonKI, SubsystemData.AutonKD, () -> Math.toDegrees(this.pose.position.x));
+
+
         SubsystemData.IMUWorking = true;
 
         SubsystemData.brokenDiffyEncoder = rightFront;
 
         // secretly initializing diffy alongside mecanum...
 
-        diffySwerve = new DiffySwerve(leftFront, leftBack, rightBack, rightFront, 0.8);
+        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Constants.maxDrivetrainMotorPower, telemetry);
 
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -288,8 +304,24 @@ public final class MecanumDrive extends SubsystemBase {
     public void setDrivePowers(PoseVelocity2d powers) {
         PoseVelocity2dDual<Time> TheCommand = PoseVelocity2dDual.constant(powers, 1);
 
+        /*
+        PoseVelocity2dDual<Time> TheCommandFull = new PoseVelocity2dDual<Time>(
+                new Vector2dDual<Time>(
+                        new DualNum<Time>(new double[] {TheCommand.linearVel.x.get(0), 0}),
+                        new DualNum<Time>(new double[] {TheCommand.linearVel.y.get(0), 0})),
+                new DualNum<Time>(new double[] {TheCommand.angVel.get(0), 0}));
+
+
+
         //MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(TheCommand);
 
+        double voltage = voltageSensor.getVoltage();
+        final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
+                PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
+
+         */
+
+        // diffySwerve.setDifferentialSwerve(TheCommandFull, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
         diffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
@@ -330,7 +362,7 @@ public final class MecanumDrive extends SubsystemBase {
             }
 
             if (t >= timeTrajectory.duration) {
-                diffySwerve.driveDifferentialSwerve(0, 0, 0);
+                diffySwerve.stopDifferentialSwerve();
                 return false;
             }
 
@@ -339,27 +371,39 @@ public final class MecanumDrive extends SubsystemBase {
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
+            /*
             PoseVelocity2dDual<Time> command = new HolonomicController(
                     PARAMS.axialGain, PARAMS.lateralGain, PARAMS.headingGain,
                     PARAMS.axialVelGain, PARAMS.lateralVelGain, PARAMS.headingVelGain
             )
                     .compute(txWorldTarget, pose, robotVelRobot);
+             */
 
+            SubsystemData.AxialPID.kP = SubsystemData.AutonKP; // make sure PID values are up to date
+            SubsystemData.AxialPID.kI = SubsystemData.AutonKI;
+            SubsystemData.AxialPID.kD = SubsystemData.AutonKD;
+            SubsystemData.LateralPID.kP = SubsystemData.AutonKP;
+            SubsystemData.LateralPID.kI = SubsystemData.AutonKI;
+            SubsystemData.LateralPID.kD = SubsystemData.AutonKD;
+
+            SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
+            SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<>(new Vector2dDual<>( // create my own command with proper pid values
+                    new DualNum<>(new double[] {SubsystemData.LateralPID.getPower(), 0}),
+                    new DualNum<>(new double[] {SubsystemData.AxialPID.getPower(), 0})),
+                    new DualNum<>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 0}));
+
+            // for telemetry and roadrunner's dashboard
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
             driveCommandWriter.write(new DriveCommandMessage(command));
 
-            // MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
-
-
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-            /*
 
-            mecanumCommandWriter.write(new MecanumCommandMessage(
-                    voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
-            ));
-
-             */
+            // telemetry.addLine("X:" + functions.round(command.linearVel.x.get(0), 3) + " Y:" + functions.round(command.linearVel.y.get(0), 3) + " A:" + functions.round(command.angVel.get(0), 3));
+            // telemetry.addLine(functions.round(t, 3) + " X:" + functions.round(command.linearVel.x.value(), 3) + " Y:" + functions.round(command.linearVel.y.value(), 3) + " A:" + functions.round(rotation, 3));
 
             diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
@@ -417,7 +461,7 @@ public final class MecanumDrive extends SubsystemBase {
             }
 
             if (t >= turn.duration) {
-                diffySwerve.driveDifferentialSwerve(0, 0, 0);
+                diffySwerve.stopDifferentialSwerve();
                 return false;
             }
 
@@ -426,29 +470,39 @@ public final class MecanumDrive extends SubsystemBase {
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
+            /*
             PoseVelocity2dDual<Time> command = new HolonomicController(
                     PARAMS.axialGain, PARAMS.lateralGain, PARAMS.headingGain,
                     PARAMS.axialVelGain, PARAMS.lateralVelGain, PARAMS.headingVelGain
             )
                     .compute(txWorldTarget, pose, robotVelRobot);
+             */
+
+            SubsystemData.AxialPID.kP = SubsystemData.AutonKP; // make sure PID values are up to date
+            SubsystemData.AxialPID.kI = SubsystemData.AutonKI;
+            SubsystemData.AxialPID.kD = SubsystemData.AutonKD;
+            SubsystemData.LateralPID.kP = SubsystemData.AutonKP;
+            SubsystemData.LateralPID.kI = SubsystemData.AutonKI;
+            SubsystemData.LateralPID.kD = SubsystemData.AutonKD;
+
+            SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
+            SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<>(new Vector2dDual<>(
+                    new DualNum<>(new double[] {SubsystemData.LateralPID.getPower(), 0}),
+                    new DualNum<>(new double[] {SubsystemData.AxialPID.getPower(), 0})),
+                    new DualNum<>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 0}));
+
+            // for telemetry and roadrunner's dashboard
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
             driveCommandWriter.write(new DriveCommandMessage(command));
 
-            // MecanumKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
-
-
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
             diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
-            /*
-
-            mecanumCommandWriter.write(new MecanumCommandMessage(
-                    voltage, leftFrontPower, leftBackPower, rightBackPower, rightFrontPower
-            ));
-
-             */
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);
@@ -524,6 +578,11 @@ public final class MecanumDrive extends SubsystemBase {
 
 
     public void updateDifferentialSwerve() {
+        diffySwerve.updateKinematicDifferentialSwerve();
+    }
+
+    public void stopDifferentialSwerve() {
+        diffySwerve.stopDifferentialSwerve();
         diffySwerve.updateKinematicDifferentialSwerve();
     }
 

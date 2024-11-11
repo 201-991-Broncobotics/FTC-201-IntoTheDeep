@@ -6,19 +6,18 @@ import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-import org.firstinspires.ftc.teamcode.Roadrunner.MecanumDrive;
+import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.Roadrunner.ThreeDeadWheelLocalizer;
 import org.firstinspires.ftc.teamcode.Roadrunner.TwoDeadWheelLocalizer;
-import org.firstinspires.ftc.teamcode.SubsystemData;
 
 public final class ManualFeedbackTuner extends LinearOpMode {
     public static double DISTANCE = 20;
 
     @Override
     public void runOpMode() throws InterruptedException {
-        if (TuningOpModes.DRIVE_CLASS.equals(MecanumDrive.class)) {
-            MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, Math.toRadians(90)));
+        if (TuningOpModes.DRIVE_CLASS.equals(DifferentialSwerveDrive.class)) {
+            DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, new Pose2d(0, 0, Math.toRadians(90)), telemetry);
             
             if (drive.localizer instanceof TwoDeadWheelLocalizer) {
                 if (TwoDeadWheelLocalizer.PARAMS.perpXTicks == 0 && TwoDeadWheelLocalizer.PARAMS.parYTicks == 0) {
