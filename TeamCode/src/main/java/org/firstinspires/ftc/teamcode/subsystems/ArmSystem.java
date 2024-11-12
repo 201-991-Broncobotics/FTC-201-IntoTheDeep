@@ -48,18 +48,19 @@ public class ArmSystem extends SubsystemBase {
 
     // PID tuning stuff
     boolean PIDButtonPressed = false, PIDIncrementButtonPressed = false;
-    double PIDVar = 0, PIDChangeIncrement = 0.01;
+    int PIDVar = 0;
+    double PIDChangeIncrement = 0.01;
 
 
     double CurrentPivotAngleInst = 0, CurrentExtensionLengthInst = 0; // this speeds up the code a lot by only checking sensors one per update
 
     double ClawAdjustment = 0;
-    private boolean LoosenClaw = false, RealignExtension = false, cameraToggle, activeExtensionReset = false;
+    private boolean LoosenClaw = false, cameraToggle, activeExtensionReset = false;
 
     private int CurrentlyReadyPreset = 0; // allows pressing a preset button twice to complete the second part of its action
 
-    Vector2d FieldCoordHoldPos;
-    double FieldCoordHoldHeight;
+    // Vector2d FieldCoordHoldPos;
+    // double FieldCoordHoldHeight;
 
     HuskyLensCamera camera;
 
@@ -187,7 +188,6 @@ public class ArmSystem extends SubsystemBase {
                 SubsystemData.OverrideDrivetrainRotation = true;
                 telemetry.addData("Auto Aim Heading:", SubsystemData.AutoAimHeading);
                 telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
-                telemetry.addData("Heading Hold:", SubsystemData.HeadingHold);
 
             } else SubsystemData.OverrideDrivetrainRotation = false;
 
@@ -201,8 +201,6 @@ public class ArmSystem extends SubsystemBase {
         }
 
         SubsystemData.OperatorTurningPower = -0.2 * Math.pow(gamepad.getLeftX(), 3);
-
-
 
         tunePIDsWithController(SubsystemData.driver);
 
@@ -346,8 +344,6 @@ public class ArmSystem extends SubsystemBase {
                 functions.round(SubsystemData.CurrentRobotPose.position.x, 2) + " Y: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.y, 2));
 
-        telemetry.addData("RR voltage:", SubsystemData.RRVoltage);
-
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
             Pose2d CurrentClawPosition = getCurrentClawPose(); // avoiding calling this method twice
@@ -364,7 +360,6 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("Extension Current Length:", CurrentExtensionLengthInst);
             telemetry.addData("Pivot Target Angle:", PivotTargetAngle);
             telemetry.addData("Pivot Current Angle:", CurrentPivotAngleInst);
-            // telemetry.addData("Is backpedaling Arm:", backPedalExtension);
             // telemetry.addData("Wrist Target Angle:", WristTargetAngle);
             // telemetry.addData("Claw Position:", ClawTargetPosition);
             //telemetry.addLine(" ");
@@ -423,25 +418,25 @@ public class ArmSystem extends SubsystemBase {
         if ((inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) || inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) && !(PIDIncrementButtonPressed && PIDButtonPressTime.time() < 1000)) {
             if (inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
 
-            if (PIDVar == 1) ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4);
-            else if (PIDVar == 2) ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4);
-            else if (PIDVar == 3) ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4);
-            else if (PIDVar == 4) Constants.extensionGravityPower = functions.round(Constants.extensionGravityPower + PIDChangeIncrement * 10, 3);
-            else if (PIDVar == 5) PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4);
-            else if (PIDVar == 6) PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4);
-            else if (PIDVar == 7) PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4);
-            else if (PIDVar == 8) Constants.pivotRetractedGravityPower = functions.round(Constants.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3);
-            else if (PIDVar == 9) Constants.pivotExtendedGravityPower = functions.round(Constants.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3);
-            else if (PIDVar == 10) SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5);
-            else if (PIDVar == 11) SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5);
-            else if (PIDVar == 12) SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5);
-            else if (PIDVar == 13) SubsystemData.HeadingTargetPID.initialPower = functions.round(SubsystemData.HeadingTargetPID.initialPower + PIDChangeIncrement, 4);
-            else if (PIDVar == 14) SubsystemData.HeadingTargetPID.minPower = functions.round(SubsystemData.HeadingTargetPID.minPower + PIDChangeIncrement, 4);
-            else if (PIDVar == 15) SubsystemData.AutonKP = functions.round(SubsystemData.AutonKP + PIDChangeIncrement, 4);
-            else if (PIDVar == 16) SubsystemData.AutonKI = functions.round(SubsystemData.AutonKI + PIDChangeIncrement, 4);
-            else if (PIDVar == 17) SubsystemData.AutonKD = functions.round(SubsystemData.AutonKD + PIDChangeIncrement, 4);
-            //else if (PIDVar == 15) SubsystemData.SwerveModuleKd = functions.round(SubsystemData.SwerveModuleKd + PIDChangeIncrement / 10, 5);
-            // else if (PIDVar == 13) Constants.ClawOpenPosition = functions.round(Constants.ClawOpenPosition + PIDChangeIncrement * 10, 3);
+            switch (PIDVar) {
+                case 1: ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4); break;
+                case 2: ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4); break;
+                case 3: ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4); break;
+                case 4: Constants.extensionGravityPower = functions.round(Constants.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 5: PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4); break;
+                case 6: PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4); break;
+                case 7: PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4); break;
+                case 8: Constants.pivotRetractedGravityPower = functions.round(Constants.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 9: Constants.pivotExtendedGravityPower = functions.round(Constants.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 10: SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5); break;
+                case 11: SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5); break;
+                case 12: SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5); break;
+                case 13: SubsystemData.HeadingTargetPID.initialPower = functions.round(SubsystemData.HeadingTargetPID.initialPower + PIDChangeIncrement, 4); break;
+                case 14: SubsystemData.HeadingTargetPID.minPower = functions.round(SubsystemData.HeadingTargetPID.minPower + PIDChangeIncrement, 4); break;
+                case 15: SubsystemData.AutonGain = functions.round(SubsystemData.AutonGain + PIDChangeIncrement, 4); break;
+                case 16: SubsystemData.AutonMinPower = functions.round(SubsystemData.AutonMinPower + PIDChangeIncrement, 4); break;
+                case 17: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+            }
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
                 PIDIncrementButtonPressed = true;
@@ -449,26 +444,26 @@ public class ArmSystem extends SubsystemBase {
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) {
             PIDIncrementButtonPressed = false;
         }
-        if (PIDVar == 0) telemetry.addLine("Not Editing PIDs");
-        else if (PIDVar == 1) telemetry.addData("Editing: Extension Kp - ", ExtensionPID.kP);
-        else if (PIDVar == 2) telemetry.addData("Editing: Extension Ki - ", ExtensionPID.kI);
-        else if (PIDVar == 3) telemetry.addData("Editing: Extension Kd - ", ExtensionPID.kD);
-        else if (PIDVar == 4) telemetry.addData("Editing: Extension Gravity - ", Constants.extensionGravityPower);
-        else if (PIDVar == 5) telemetry.addData("Editing: Pivot Kp - ", PivotPID.kP);
-        else if (PIDVar == 6) telemetry.addData("Editing: Pivot Ki - ", PivotPID.kI);
-        else if (PIDVar == 7) telemetry.addData("Editing: Pivot Kd - ", PivotPID.kD);
-        else if (PIDVar == 8) telemetry.addData("Editing: Pivot Retracted Gravity - ", Constants.pivotRetractedGravityPower);
-        else if (PIDVar == 9) telemetry.addData("Editing: Pivot Extended Gravity - ", Constants.pivotExtendedGravityPower);
-        else if (PIDVar == 10) telemetry.addData("Editing: Heading Kp - ", SubsystemData.HeadingTargetPID.kP);
-        else if (PIDVar == 11) telemetry.addData("Editing: Heading Ki - ", SubsystemData.HeadingTargetPID.kI);
-        else if (PIDVar == 12) telemetry.addData("Editing: Heading Kd - ", SubsystemData.HeadingTargetPID.kD);
-        else if (PIDVar == 13) telemetry.addData("Editing: Heading initialPower - ", SubsystemData.HeadingTargetPID.initialPower);
-        else if (PIDVar == 14) telemetry.addData("Editing: Heading minPower - ", SubsystemData.HeadingTargetPID.minPower);
-        else if (PIDVar == 15) telemetry.addData("Editing: Auton Kp - ", SubsystemData.AutonKP);
-        else if (PIDVar == 16) telemetry.addData("Editing: Auton Ki - ", SubsystemData.AutonKI);
-        else if (PIDVar == 17) telemetry.addData("Editing: Auton Kd - ", SubsystemData.AutonKD);
-        //else if (PIDVar == 15) telemetry.addData("Editing: Swerve Kd - ", SubsystemData.SwerveModuleKd);
-        // else if (PIDVar == 13) telemetry.addData("Editing: Claw Offset - ", Constants.ClawOpenPosition);
+        switch (PIDVar) {
+            case 0: telemetry.addLine("Not Editing PIDs"); break;
+            case 1: telemetry.addData("Editing: Extension Kp -", ExtensionPID.kP); break;
+            case 2: telemetry.addData("Editing: Extension Ki -", ExtensionPID.kI); break;
+            case 3: telemetry.addData("Editing: Extension Kd -", ExtensionPID.kD); break;
+            case 4: telemetry.addData("Editing: Extension Gravity -", Constants.extensionGravityPower); break;
+            case 5: telemetry.addData("Editing: Pivot Kp -", PivotPID.kP); break;
+            case 6: telemetry.addData("Editing: Pivot Ki -", PivotPID.kI); break;
+            case 7: telemetry.addData("Editing: Pivot Kd -", PivotPID.kD); break;
+            case 8: telemetry.addData("Editing: Pivot Retracted Gravity -", Constants.pivotRetractedGravityPower); break;
+            case 9: telemetry.addData("Editing: Pivot Extended Gravity -", Constants.pivotExtendedGravityPower); break;
+            case 10: telemetry.addLine("Editing: Heading Kp - " + SubsystemData.HeadingTargetPID.kP); break; // addData only prints doubles up to 4 decimal places
+            case 11: telemetry.addLine("Editing: Heading Ki - " + SubsystemData.HeadingTargetPID.kI); break;
+            case 12: telemetry.addLine("Editing: Heading Kd - " + SubsystemData.HeadingTargetPID.kD); break;
+            case 13: telemetry.addData("Editing: Heading initialPower - ", SubsystemData.HeadingTargetPID.initialPower); break;
+            case 14: telemetry.addData("Editing: Heading minPower - ", SubsystemData.HeadingTargetPID.minPower); break;
+            case 15: telemetry.addData("Editing: Auton Gain - ", SubsystemData.AutonGain); break;
+            case 16: telemetry.addData("Editing: Auton MinPower - ", SubsystemData.AutonMinPower); break;
+            case 17: telemetry.addData("Editing: Swerve Module Sharpness - ", SubsystemData.SwerveModuleDriveSharpness); break;
+        }
     }
 
 

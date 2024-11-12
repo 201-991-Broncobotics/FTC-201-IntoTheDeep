@@ -69,8 +69,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
     }
 
     public void updateKinematicDifferentialSwerve() {
-        DualNum<Time> forward = driveCommand.linearVel.x; // roadrunner is stupid and has these flipped
-        DualNum<Time> strafe = driveCommand.linearVel.y;
+        DualNum<Time> forward = driveCommand.linearVel.y; // roadrunner is stupid and has these flipped
+        DualNum<Time> strafe = driveCommand.linearVel.x;
         DualNum<Time> turn = driveCommand.angVel;
 
         // set forward values to be no greater than 1 so that the turn part can be at the correct ratio
@@ -93,6 +93,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         DualNum<Time> LeftSpeed = LeftPower.div(max_power);
         double RightAngle = Math.toDegrees(Math.atan2(strafe.get(0), A.get(0))); // Target wheel angles
         double LeftAngle = Math.toDegrees(Math.atan2(strafe.get(0), B.get(0)));
+
+        telemetry.addLine("KIN: RA: " + functions.round(RightAngle, 3) + " LA: " + functions.round(LeftAngle, 3) + " RP: " + functions.round(RightSpeed.value(), 3) + " LP: " + functions.round(LeftSpeed.value(), 3));
 
         // tell the pod to go to the angle at the power
         if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {

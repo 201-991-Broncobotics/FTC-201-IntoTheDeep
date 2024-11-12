@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 public class Constants {
 
-    public static double maxDrivetrainMotorPower = 0.5;
+    public static double maxDrivetrainMotorPower = 0.8; // TODO: Make sure this is what it needs to be before competition
 
     public static double ModuleGearRatio = (21 / 58.0) * (43 / 11.0) * (63.5 * Math.PI / 25.4); // units are in inches (move along the ground) per 1 motor revolution
 

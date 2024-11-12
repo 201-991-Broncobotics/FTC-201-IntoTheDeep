@@ -1,21 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.PoseVelocity2dDual;
-import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.Vector2dDual;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-
-import java.util.ArrayList;
 
 public class SubsystemData {
 
@@ -29,7 +22,7 @@ public class SubsystemData {
 
     public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PID
 
-    public static double AutonKP = 0.01, AutonKI = 0.0, AutonKD = 0.0;
+    public static double AutonGain = 0.0, AutonMinPower = 0.15;
 
     public static Pose2d AutonError = new Pose2d(new Vector2d(0, 0), 0);
 
@@ -64,7 +57,7 @@ public class SubsystemData {
 
     public static double SwerveModuleKp, SwerveModuleKi, SwerveModuleKd;
 
-    public static double RRVoltage = 0;
+    public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module much less power when not at the correct angle
 
     public static boolean HoldClawFieldPos;
 
@@ -72,7 +65,7 @@ public class SubsystemData {
     public static double OperatorTurningPower = 0;
     public static double AutoAimHeading = 0;
 
-    public static double HeadingHold = 0;
+    public static boolean NeedToRealignHeadingHold = false;
 
 
 }

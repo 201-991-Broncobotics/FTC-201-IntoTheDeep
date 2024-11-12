@@ -35,17 +35,15 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         SubsystemData.driver = new GamepadEx(gamepad1);
         SubsystemData.operator = new GamepadEx(gamepad2);
 
-        SubsystemData.driver = new GamepadEx(gamepad1);
-
         Pose2d startPose = new Pose2d(new Vector2d(0, 0), Math.toRadians(90));
         DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
 
         // This keeps the stuff updating in the background of auton instead of just when it needs to be used
-        armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
         drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));
+        armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
 
-        schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
+        // schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
         // setup roadrunner trajectories
 
@@ -56,10 +54,10 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         // schedule auton commands
         DriveAutonCommand.runningActions.add(new SequentialAction(
                 drive.actionBuilder(startPose)
-                        .strafeToConstantHeading(new Vector2d(0, 5))
-                        .waitSeconds(1)
+                        .strafeToConstantHeading(new Vector2d(0, 10))
+                        .waitSeconds(0.5)
                         .strafeToConstantHeading(new Vector2d(0, 0))
-                        .waitSeconds(1)
+                        .waitSeconds(0.5)
                         //.turnTo(Math.toRadians(270))
                         //.waitSeconds(1)
                         .build()

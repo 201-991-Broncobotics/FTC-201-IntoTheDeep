@@ -40,13 +40,15 @@ public class SwerveModule {
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
+        if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
 
         if (Math.abs(speed) > 1) speed = Math.signum(speed); // module shouldn't try to calculate speeds well beyond 1 as it messes stuff up
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
-        speed = speed * (Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
+        double DriveSharpnessCurve = Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2);
+        speed = speed * (Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, SubsystemData.SwerveModuleDriveSharpness)));
 
         // maintain the correct motor speed balance
         double R1Power = speed + rotation;
@@ -61,11 +63,13 @@ public class SwerveModule {
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
+        if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
-        speed = speed.times(Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2));
+        double DriveSharpnessCurve = Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2);
+        speed = speed.times(Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, SubsystemData.SwerveModuleDriveSharpness)));
 
         // maintain the correct motor speed balance
         DualNum<Time> R1Power = speed.plus(rotation);

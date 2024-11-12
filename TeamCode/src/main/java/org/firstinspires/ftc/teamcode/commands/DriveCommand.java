@@ -17,7 +17,7 @@ public class DriveCommand extends CommandBase {
 
     public boolean absoluteDriving;
 
-    private double headingHold;
+    public double headingHold;
 
     DifferentialSwerveDrive drive;
 
@@ -46,6 +46,11 @@ public class DriveCommand extends CommandBase {
         DifferentialSwerveTimer.reset();
         // double lastDiffySwerveTime = 0;
 
+        if (SubsystemData.NeedToRealignHeadingHold) { // reset heading hold when imu is reset
+            headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+            SubsystemData.NeedToRealignHeadingHold = false;
+        }
+
         //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
         //lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
@@ -56,9 +61,7 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 2500) {
-                SubsystemData.IMUWorking = false;
-            }
+            if (imuNotWorkingTimer.time() > 2500) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
@@ -72,7 +75,6 @@ public class DriveCommand extends CommandBase {
         if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't turning
-            // if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
             if (functions.inUse(SubsystemData.OperatorTurningPower)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
@@ -81,10 +83,10 @@ public class DriveCommand extends CommandBase {
 
             } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 300) {
                 // otherwise hold current heading if no driver input for some time and imu is working
-                if (SubsystemData.OverrideDrivetrainRotation) { // auto aim
-                    headingHold = headingHold - SubsystemData.AutoAimHeading;
-                }
+                // auto aim
+                if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
                 turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
+
             } else headingHold = Math.toDegrees(drive.pose.heading.toDouble());
 
         } else {
@@ -95,8 +97,6 @@ public class DriveCommand extends CommandBase {
             SubsystemData.HoldClawFieldPos = false;
         }
 
-        SubsystemData.HeadingHold = headingHold; // for telemetry
-
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
@@ -104,11 +104,11 @@ public class DriveCommand extends CommandBase {
 
         driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
 
-        double forwardNorm = Math.sin(Math.toRadians(driveDirection)) * drivePower; // convert vector to x and y
-        double strafeNorm = Math.cos(Math.toRadians(driveDirection)) * drivePower;
-
-        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(forwardNorm * throttleControl,
-                strafeNorm * throttleControl), turn));
+        // convert vector to x and y and multiple by throttle
+        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(
+                Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
+                Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl),
+                turn));
 
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }
