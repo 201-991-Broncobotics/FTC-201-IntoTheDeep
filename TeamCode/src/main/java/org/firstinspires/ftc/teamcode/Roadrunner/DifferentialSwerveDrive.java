@@ -274,6 +274,8 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         SubsystemData.AxialPID = new PIDController(0.3, 0.0, 0.0, () -> this.pose.position.y);
         SubsystemData.LateralPID = new PIDController(SubsystemData.AxialPID.kP, SubsystemData.AxialPID.kI, SubsystemData.AxialPID.kD, () -> this.pose.position.x);
+        SubsystemData.AxialPID.minDifference = 0.5;
+        SubsystemData.LateralPID.minDifference = 0.5;
 
 
         SubsystemData.IMUWorking = true;

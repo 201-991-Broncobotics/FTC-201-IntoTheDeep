@@ -90,7 +90,7 @@ public class ArmSystem extends SubsystemBase {
     double CurrentPivotAngleInst = 0, CurrentExtensionLengthInst = 0; // this speeds up the code a lot by only checking sensors one per update
 
     double ClawAdjustment = 0;
-    private boolean LoosenClaw = false, cameraToggle, activeExtensionReset = false;
+    private boolean LoosenClaw = false, cameraToggle, activeExtensionReset = false, ClawWasLastOpen = true;
 
     private int CurrentlyReadyPreset = 0; // allows pressing a preset button twice to complete the second part of its action
 
@@ -163,8 +163,10 @@ public class ArmSystem extends SubsystemBase {
     public void controlArmTeleOp() {
         GamepadEx gamepad = SubsystemData.operator;
         // Manual arm control when controllers active
-        if (functions.inUse(gamepad.getRightY()) || functions.inUse(gamepad.getLeftY())) {
-            if (functions.inUse(gamepad.getLeftY())) PushForMaxExtension = false;
+        double joystickLeftY = Math.abs(gamepad.getLeftY()) * gamepad.getLeftY();
+        double joystickRightY = Math.abs(gamepad.getRightY()) * gamepad.getRightY();
+        if (functions.inUse(joystickRightY) || functions.inUse(joystickLeftY)) {
+            if (functions.inUse(joystickLeftY)) PushForMaxExtension = false;
             backPedalExtension = false;
             if (FrameRate > 2) {
                 double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
@@ -172,8 +174,8 @@ public class ArmSystem extends SubsystemBase {
                 if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) { // coords control (one joystick controls height, the other controls forward and strafe)
                     Vector2d targetClawPos = getTargetClawPoint();
                     moveArmToPoint(new Vector2d(
-                            targetClawPos.x + Constants.maxManualClawSpeedHorizontal * gamepad.getLeftY() * ArmThrottle / FrameRate,
-                            targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * gamepad.getRightY() * ArmThrottle / FrameRate));
+                            targetClawPos.x + Constants.maxManualClawSpeedHorizontal * joystickLeftY * ArmThrottle / FrameRate,
+                            targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate));
 
                     //Pose2d targetClawFieldCoord = getTargetClawPose();
                     //FieldCoordHoldPos = new Vector2d((targetClawFieldCoord.position.x * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftY() * ArmThrottle / FrameRate) / 25.4, (targetClawFieldCoord.position.y * 25.4 + Constants.maxManualClawSpeedHorizontal * -1 * gamepad.getLeftX() * ArmThrottle / FrameRate) / 25.4);
@@ -182,8 +184,8 @@ public class ArmSystem extends SubsystemBase {
                 } else { // direct control (one joystick controls pivot, the other controls extension)
                     double pivotThrottle = 1 - (1 - Constants.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
                     moveArmDirectly(
-                            PivotTargetAngle + Constants.maxManualPivotSpeed * -1 * gamepad.getRightY() * ArmThrottle * pivotThrottle / FrameRate,
-                            ExtensionTargetLength + Constants.maxManualExtensionSpeed * gamepad.getLeftY() * ArmThrottle / FrameRate);
+                            PivotTargetAngle + Constants.maxManualPivotSpeed * -1 * joystickRightY * ArmThrottle * pivotThrottle / FrameRate,
+                            ExtensionTargetLength + Constants.maxManualExtensionSpeed * joystickLeftY * ArmThrottle / FrameRate);
                     //SubsystemData.HoldClawFieldPos = false;
                 }
             }
@@ -208,6 +210,7 @@ public class ArmSystem extends SubsystemBase {
             camera.ScanForSample();
 
             if (SubsystemData.CameraSeesValidObject) {
+                pointClaw(); // have claw be closer to the position needed to pickup a sample to help the operator judge when to close the claw
 
                 // needs to move differently based on the wrist's current angle
                 Vector2d targetClawPosition = getTargetClawPoint();
@@ -227,9 +230,11 @@ public class ArmSystem extends SubsystemBase {
                 double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
                 //SubsystemData.OperatorTurningPower = -0.15 * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
 
-                double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
-                SubsystemData.AutoAimHeading = AutoAimHeadingChange / FrameRate;
-                SubsystemData.OverrideDrivetrainRotation = true;
+                // double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+                double AutoAimHeadingChange = AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+                // SubsystemData.AutoAimHeading = AutoAimHeadingChange / FrameRate;
+                // SubsystemData.OverrideDrivetrainRotation = true;
+                SubsystemData.OperatorTurningPower = 0.35 * AutoAimHeadingChange;
                 telemetry.addData("Auto Aim Heading:", SubsystemData.AutoAimHeading);
                 telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
 
@@ -453,11 +458,11 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 14) PIDVar = 0;
+            if (PIDVar > 13) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 14;
+            if (PIDVar < 0) PIDVar = 13;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -478,17 +483,16 @@ public class ArmSystem extends SubsystemBase {
                 case 1: SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5); break;
                 case 2: SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5); break;
                 case 3: SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5); break;
-                case 4: SubsystemData.HeadingTargetPID.initialPower = functions.round(SubsystemData.HeadingTargetPID.initialPower + PIDChangeIncrement, 4); break;
-                case 5: SubsystemData.HeadingTargetPID.minDifference = functions.round(SubsystemData.HeadingTargetPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                case 6: SubsystemData.AxialPID.kP = functions.round(SubsystemData.AxialPID.kP + PIDChangeIncrement, 4); break;
-                case 7: SubsystemData.AxialPID.kI = functions.round(SubsystemData.AxialPID.kI + PIDChangeIncrement, 4); break;
-                case 8: SubsystemData.AxialPID.kD = functions.round(SubsystemData.AxialPID.kD + PIDChangeIncrement, 4); break;
-                case 9: SubsystemData.AxialPID.minDifference = functions.round(SubsystemData.AxialPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                case 10: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
-                case 11: SubsystemData.SwitchTimeMS = Math.round(SubsystemData.SwitchTimeMS + PIDChangeIncrement * 10000); break;
-                case 12: SubsystemData.SwitchTimeTimeout = Math.round(SubsystemData.SwitchTimeTimeout + PIDChangeIncrement * 10000); break;
-                case 13: SubsystemData.SwerveModuleTolerance = functions.round(SubsystemData.SwerveModuleTolerance + PIDChangeIncrement * 1000, 1); break;
-                case 14: SubsystemData.maxBrakeWaddleAngle = functions.round(SubsystemData.maxBrakeWaddleAngle + PIDChangeIncrement * 1000, 1); break;
+                case 4: SubsystemData.HeadingTargetPID.minDifference = functions.round(SubsystemData.HeadingTargetPID.minDifference + PIDChangeIncrement * 100, 2); break;
+                case 5: SubsystemData.AxialPID.kP = functions.round(SubsystemData.AxialPID.kP + PIDChangeIncrement, 4); break;
+                case 6: SubsystemData.AxialPID.kI = functions.round(SubsystemData.AxialPID.kI + PIDChangeIncrement, 4); break;
+                case 7: SubsystemData.AxialPID.kD = functions.round(SubsystemData.AxialPID.kD + PIDChangeIncrement, 4); break;
+                case 8: SubsystemData.AxialPID.minDifference = functions.round(SubsystemData.AxialPID.minDifference + PIDChangeIncrement * 100, 2); break;
+                case 9: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                case 10: SubsystemData.SwitchTimeMS = Math.round(SubsystemData.SwitchTimeMS + PIDChangeIncrement * 10000); break;
+                case 11: SubsystemData.SwitchTimeTimeout = Math.round(SubsystemData.SwitchTimeTimeout + PIDChangeIncrement * 10000); break;
+                case 12: SubsystemData.SwerveModuleTolerance = functions.round(SubsystemData.SwerveModuleTolerance + PIDChangeIncrement * 1000, 1); break;
+                case 13: SubsystemData.maxBrakeWaddleAngle = functions.round(SubsystemData.maxBrakeWaddleAngle + PIDChangeIncrement * 1000, 1); break;
             }
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
@@ -511,17 +515,16 @@ public class ArmSystem extends SubsystemBase {
             case 1: telemetry.addLine("Editing: Heading Kp -" + SubsystemData.HeadingTargetPID.kP); break; // addData only prints doubles up to 4 decimal places
             case 2: telemetry.addLine("Editing: Heading Ki -" + SubsystemData.HeadingTargetPID.kI); break;
             case 3: telemetry.addLine("Editing: Heading Kd -" + SubsystemData.HeadingTargetPID.kD); break;
-            case 4: telemetry.addData("Editing: Heading initialPower -", SubsystemData.HeadingTargetPID.initialPower); break;
-            case 5: telemetry.addData("Editing: Heading minDifference -", SubsystemData.HeadingTargetPID.minDifference); break;
-            case 6: telemetry.addData("Editing: Auton Kp -", SubsystemData.AxialPID.kP); break;
-            case 7: telemetry.addData("Editing: Auton Ki -", SubsystemData.AxialPID.kI); break;
-            case 8: telemetry.addData("Editing: Auton Kd -", SubsystemData.AxialPID.kD); break;
-            case 9: telemetry.addData("Editing: Auton minDifference -", SubsystemData.AxialPID.minDifference); break;
-            case 10: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
-            case 11: telemetry.addData("Editing: Switch Time (ms) -", SubsystemData.SwitchTimeMS); break;
-            case 12: telemetry.addData("Editing: Switch Timeout (ms) -", SubsystemData.SwitchTimeTimeout); break;
-            case 13: telemetry.addData("Editing: Swerve Module Tol -", SubsystemData.SwerveModuleTolerance); break;
-            case 14: telemetry.addData("Editing: max Waddle Angle -", SubsystemData.maxBrakeWaddleAngle); break;
+            case 4: telemetry.addData("Editing: Heading minDifference -", SubsystemData.HeadingTargetPID.minDifference); break;
+            case 5: telemetry.addData("Editing: Auton Kp -", SubsystemData.AxialPID.kP); break;
+            case 6: telemetry.addData("Editing: Auton Ki -", SubsystemData.AxialPID.kI); break;
+            case 7: telemetry.addData("Editing: Auton Kd -", SubsystemData.AxialPID.kD); break;
+            case 8: telemetry.addData("Editing: Auton minDifference -", SubsystemData.AxialPID.minDifference); break;
+            case 9: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
+            case 10: telemetry.addData("Editing: Switch Time (ms) -", SubsystemData.SwitchTimeMS); break;
+            case 11: telemetry.addData("Editing: Switch Timeout (ms) -", SubsystemData.SwitchTimeTimeout); break;
+            case 12: telemetry.addData("Editing: Swerve Module Tol -", SubsystemData.SwerveModuleTolerance); break;
+            case 13: telemetry.addData("Editing: max Waddle Angle -", SubsystemData.maxBrakeWaddleAngle); break;
         }
     }
 
@@ -705,12 +708,19 @@ public class ArmSystem extends SubsystemBase {
     // WRIST AND CLAW METHODS
 
     public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.29); } // make wrist go to that specific angle
-    public void openClaw() { ClawTargetPosition = Constants.ClawOpenPosition; }
-    public void pointClaw() { ClawTargetPosition = Constants.ClawMiddlePosition; } // partially closes claw so the operator can see where the pinchers are
-    public void closeClaw() { ClawTargetPosition = Constants.ClawClosedPosition; }
+    public void setClaw(double Angle) { Claw.setPosition(Angle / 90 * (Constants.ClawClosedPosition - Constants.ClawOpenPosition) + Constants.ClawOpenPosition); }
+    public void openClaw() {
+        ClawTargetPosition = Constants.ClawOpenPosition;
+        ClawWasLastOpen = true;
+    }
+    public void pointClaw() { setClaw(40); } // partially closes claw so the operator can see where the pinchers are
+    public void closeClaw() {
+        ClawTargetPosition = Constants.ClawClosedPosition;
+        ClawWasLastOpen = false;
+    }
     public void toggleClaw() {
-        if (ClawTargetPosition > (Constants.ClawClosedPosition + Constants.ClawOpenPosition) / 2) openClaw();
-        else closeClaw();
+        if (ClawWasLastOpen) closeClaw();
+        else openClaw();
     }
     public void enableLoosenClaw() { LoosenClaw = true; }
     public void disableLoosenClaw() { LoosenClaw = false; }

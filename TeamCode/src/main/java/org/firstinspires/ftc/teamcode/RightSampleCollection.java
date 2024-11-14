@@ -6,7 +6,6 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.ftc.Actions;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
@@ -22,8 +21,8 @@ import com.arcrobotics.ftclib.command.RunCommand;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 
-@Autonomous(name="RedRightSampleCollection", group="Red Side")
-public class RedRightSampleCollection extends CommandOpMode {
+@Autonomous(name="RightSampleCollection", group="Red Side")
+public class RightSampleCollection extends CommandOpMode {
 
     @Override
     public void initialize() {
@@ -87,7 +86,7 @@ public class RedRightSampleCollection extends CommandOpMode {
                         armClaw.RunMethod("closeClaw"),
                         armClaw.Wait(1),
                         armClaw.RunMethod("resetArm"),
-                        armClaw.RunMethod("moveArmToPoint", 1.5, new Vector2d(696, 10)),
+                        armClaw.RunMethod("moveArmToPoint", 1.5, new Vector2d(696, 40)),
                         PointTowardObservation.build(),
                         armClaw.waitUntilFinishedAwaiting(),
                         armClaw.waitUntilFinishedMoving(5),

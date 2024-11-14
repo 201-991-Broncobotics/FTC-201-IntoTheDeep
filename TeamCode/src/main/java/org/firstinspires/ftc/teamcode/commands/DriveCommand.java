@@ -72,7 +72,7 @@ public class DriveCommand extends CommandBase {
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
-        if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't turning
+        if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
             if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
