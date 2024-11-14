@@ -19,15 +19,18 @@ public class SwerveModule {
 
     private final DcMotorEx topMotor, bottomMotor;
 
+    private final double ModuleZeroAngle;
 
-    public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor) { // initialize the module
+    private double targetAngle;
+
+
+    public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle) { // initialize the module
+        ModuleZeroAngle = startingAngle;
+        targetAngle = startingAngle;
         topMotor = newTopMotor;
         bottomMotor = newBottomMotor;
-        topMotorEncoder = () -> functions.angleDifference(topMotor.getCurrentPosition() / Constants.encoderResolution * 360, 0, 360);
-        SubsystemData.SwerveModuleKp = 0.005;
-        SubsystemData.SwerveModuleKi = 0;
-        SubsystemData.SwerveModuleKd = 0;
-        modulePID = new PIDController(0.005, 0, 0, topMotorEncoder);
+        topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
+        modulePID = new PIDController(SubsystemData.SwerveModuleKp, SubsystemData.SwerveModuleKi, SubsystemData.SwerveModuleKd, topMotorEncoder);
     }
 
 
@@ -37,6 +40,7 @@ public class SwerveModule {
 
 
     public void setModule(double angle, double speed, double maxPowerLimit) {
+        targetAngle = angle;
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
@@ -60,6 +64,7 @@ public class SwerveModule {
     }
 
     public void setModuleDual(double angle, DualNum<Time> speed, double maxPowerLimit, MotorFeedforward feedForward, double voltage) {
+        targetAngle = angle;
         modulePID.kP = SubsystemData.SwerveModuleKp;
         modulePID.kI = SubsystemData.SwerveModuleKi;
         modulePID.kD = SubsystemData.SwerveModuleKd;
@@ -78,11 +83,17 @@ public class SwerveModule {
 
         topMotor.setPower(feedForward.compute(R1Power.times(-1).div(divider)) / voltage);
         bottomMotor.setPower(feedForward.compute(R2Power.times(-1).div(divider)) / voltage);
+        //topMotor.setPower(R1Power.value() * -1 / divider);
+        //bottomMotor.setPower(R2Power.value() * -1 / divider);
     }
 
     public void fullStopModule() {
         topMotor.setPower(0);
         bottomMotor.setPower(0);
+    }
+
+    public boolean isCloseEnough() {
+        return (Math.abs(functions.angleDifference(topMotorEncoder.getAsDouble(), targetAngle, 180)) < SubsystemData.SwerveModuleTolerance);
     }
 
 }

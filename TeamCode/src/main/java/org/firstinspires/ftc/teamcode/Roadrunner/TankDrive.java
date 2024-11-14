@@ -27,33 +27,34 @@ import com.acmerobotics.roadrunner.TimeTurn;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TrajectoryBuilderParams;
 import com.acmerobotics.roadrunner.TurnConstraints;
+import com.acmerobotics.roadrunner.Twist2d;
 import com.acmerobotics.roadrunner.Twist2dDual;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.Vector2dDual;
 import com.acmerobotics.roadrunner.VelConstraint;
 import com.acmerobotics.roadrunner.ftc.DownsampledWriter;
-import com.acmerobotics.roadrunner.ftc.Encoder;
 import com.acmerobotics.roadrunner.ftc.FlightRecorder;
 import com.acmerobotics.roadrunner.ftc.LazyImu;
 import com.acmerobotics.roadrunner.ftc.LynxFirmware;
-import com.acmerobotics.roadrunner.ftc.OverflowEncoder;
-import com.acmerobotics.roadrunner.ftc.PositionVelocityPair;
-import com.acmerobotics.roadrunner.ftc.RawEncoder;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.TankCommandMessage;
-import org.firstinspires.ftc.teamcode.Roadrunner.messages.TankLocalizerInputsMessage;
+import org.firstinspires.ftc.teamcode.SubsystemData;
+import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -66,21 +67,21 @@ public final class TankDrive {
         public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection =
                 RevHubOrientationOnRobot.LogoFacingDirection.UP;
         public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
+                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD;
 
         // drive model parameters
-        public double inPerTick = 0;
-        public double trackWidthTicks = 0;
+        public double inPerTick = (32 / 25.4 / 2000) * (140.5 / 40.3852); // should be the first term but isn't for some reason
+        public double trackWidthTicks = 341.4816515824069;
 
         // feedforward parameters (in tick units)
-        public double kS = 0;
-        public double kV = 0;
-        public double kA = 0;
+        public double kS = 3.7576427826935133;
+        public double kV = 0.0019895240817372076;
+        public double kA = 2.0; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
-        public double minProfileAccel = -30;
-        public double maxProfileAccel = 50;
+        public double minProfileAccel = -40;
+        public double maxProfileAccel = 40;
 
         // turn profile parameters (in radians)
         public double maxAngVel = Math.PI; // shared with path
@@ -97,6 +98,10 @@ public final class TankDrive {
 
     public static Params PARAMS = new Params();
 
+    Telemetry telemetry;
+
+    public static DiffySwerveKinematics diffySwerve;
+
     public final TankKinematics kinematics = new TankKinematics(PARAMS.inPerTick * PARAMS.trackWidthTicks);
 
     public final TurnConstraints defaultTurnConstraints = new TurnConstraints(
@@ -109,7 +114,7 @@ public final class TankDrive {
     public final AccelConstraint defaultAccelConstraint =
             new ProfileAccelConstraint(PARAMS.minProfileAccel, PARAMS.maxProfileAccel);
 
-    public final List<DcMotorEx> leftMotors, rightMotors;
+    public final DcMotorEx leftFront, leftBack, rightBack, rightFront;
 
     public final LazyImu lazyImu;
 
@@ -126,90 +131,6 @@ public final class TankDrive {
 
     private final DownsampledWriter tankCommandWriter = new DownsampledWriter("TANK_COMMAND", 50_000_000);
 
-    public class DriveLocalizer implements Localizer {
-        public final List<Encoder> leftEncs, rightEncs;
-
-        private double lastLeftPos, lastRightPos;
-        private boolean initialized;
-
-        public DriveLocalizer() {
-            {
-                List<Encoder> leftEncs = new ArrayList<>();
-                for (DcMotorEx m : leftMotors) {
-                    Encoder e = new OverflowEncoder(new RawEncoder(m));
-                    leftEncs.add(e);
-                }
-                this.leftEncs = Collections.unmodifiableList(leftEncs);
-            }
-
-            {
-                List<Encoder> rightEncs = new ArrayList<>();
-                for (DcMotorEx m : rightMotors) {
-                    Encoder e = new OverflowEncoder(new RawEncoder(m));
-                    rightEncs.add(e);
-                }
-                this.rightEncs = Collections.unmodifiableList(rightEncs);
-            }
-
-            // TODO: reverse encoder directions if needed
-            //   leftEncs.get(0).setDirection(DcMotorSimple.Direction.REVERSE);
-        }
-
-        @Override
-        public Twist2dDual<Time> update() {
-            List<PositionVelocityPair> leftReadings = new ArrayList<>(), rightReadings = new ArrayList<>();
-            double meanLeftPos = 0.0, meanLeftVel = 0.0;
-            for (Encoder e : leftEncs) {
-                PositionVelocityPair p = e.getPositionAndVelocity();
-                meanLeftPos += p.position;
-                meanLeftVel += p.velocity;
-                leftReadings.add(p);
-            }
-            meanLeftPos /= leftEncs.size();
-            meanLeftVel /= leftEncs.size();
-
-            double meanRightPos = 0.0, meanRightVel = 0.0;
-            for (Encoder e : rightEncs) {
-                PositionVelocityPair p = e.getPositionAndVelocity();
-                meanRightPos += p.position;
-                meanRightVel += p.velocity;
-                rightReadings.add(p);
-            }
-            meanRightPos /= rightEncs.size();
-            meanRightVel /= rightEncs.size();
-
-            FlightRecorder.write("TANK_LOCALIZER_INPUTS",
-                     new TankLocalizerInputsMessage(leftReadings, rightReadings));
-
-            if (!initialized) {
-                initialized = true;
-
-                lastLeftPos = meanLeftPos;
-                lastRightPos = meanRightPos;
-
-                return new Twist2dDual<>(
-                        Vector2dDual.constant(new Vector2d(0.0, 0.0), 2),
-                        DualNum.constant(0.0, 2)
-                );
-            }
-
-            TankKinematics.WheelIncrements<Time> twist = new TankKinematics.WheelIncrements<>(
-                    new DualNum<Time>(new double[] {
-                            meanLeftPos - lastLeftPos,
-                            meanLeftVel
-                    }).times(PARAMS.inPerTick),
-                    new DualNum<Time>(new double[] {
-                            meanRightPos - lastRightPos,
-                            meanRightVel,
-                    }).times(PARAMS.inPerTick)
-            );
-
-            lastLeftPos = meanLeftPos;
-            lastRightPos = meanRightPos;
-
-            return kinematics.forward(twist);
-        }
-    }
 
     public TankDrive(HardwareMap hardwareMap, Pose2d pose) {
         this.pose = pose;
@@ -223,15 +144,38 @@ public final class TankDrive {
         // TODO: make sure your config has motors with these names (or change them)
         //   add additional motors on each side if you have them
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
-        leftMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, "left"));
-        rightMotors = Arrays.asList(hardwareMap.get(DcMotorEx.class, "right"));
+        leftFront = hardwareMap.get(DcMotorEx.class, "R3");
+        leftBack = hardwareMap.get(DcMotorEx.class, "R4");
+        rightBack = hardwareMap.get(DcMotorEx.class, "R1");
+        rightFront = hardwareMap.get(DcMotorEx.class, "R2");
 
-        for (DcMotorEx m : leftMotors) {
-            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        }
-        for (DcMotorEx m : rightMotors) {
-            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        }
+        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        leftFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
+        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
+
+
+        leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        leftBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+
+        SubsystemData.IMUWorking = true;
+
+        SubsystemData.brokenDiffyEncoder = rightFront;
+
+        // secretly initializing diffy alongside mecanum...
+
+        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Constants.maxDrivetrainMotorPower, telemetry);
 
         // TODO: reverse motor directions if needed
         //   leftMotors.get(0).setDirection(DcMotorSimple.Direction.REVERSE);
@@ -243,7 +187,10 @@ public final class TankDrive {
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        localizer = new DriveLocalizer();
+        IMU newImu = lazyImu.get();
+        SubsystemData.imuInstance = newImu;
+
+        localizer = new TwoDeadWheelLocalizer(hardwareMap, newImu, PARAMS.inPerTick);
 
         FlightRecorder.write("TANK_PARAMS", PARAMS);
     }
@@ -257,12 +204,8 @@ public final class TankDrive {
             maxPowerMag = Math.max(maxPowerMag, power.value());
         }
 
-        for (DcMotorEx m : leftMotors) {
-            m.setPower(wheelVels.left.get(0) / maxPowerMag);
-        }
-        for (DcMotorEx m : rightMotors) {
-            m.setPower(wheelVels.right.get(0) / maxPowerMag);
-        }
+        diffySwerve.driveTankDiffySwerve(wheelVels.left.get(0) / maxPowerMag, wheelVels.right.get(0) / maxPowerMag);
+
     }
 
     public final class FollowTrajectoryAction implements Action {
@@ -297,12 +240,8 @@ public final class TankDrive {
             }
 
             if (t >= timeTrajectory.duration) {
-                for (DcMotorEx m : leftMotors) {
-                    m.setPower(0);
-                }
-                for (DcMotorEx m : rightMotors) {
-                    m.setPower(0);
-                }
+
+                diffySwerve.driveTankDiffySwerve(0, 0);
 
                 return false;
             }
@@ -326,12 +265,7 @@ public final class TankDrive {
             double rightPower = feedforward.compute(wheelVels.right) / voltage;
             tankCommandWriter.write(new TankCommandMessage(voltage, leftPower, rightPower));
 
-            for (DcMotorEx m : leftMotors) {
-                m.setPower(leftPower);
-            }
-            for (DcMotorEx m : rightMotors) {
-                m.setPower(rightPower);
-            }
+            diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -387,12 +321,8 @@ public final class TankDrive {
             }
 
             if (t >= turn.duration) {
-                for (DcMotorEx m : leftMotors) {
-                    m.setPower(0);
-                }
-                for (DcMotorEx m : rightMotors) {
-                    m.setPower(0);
-                }
+
+                diffySwerve.driveTankDiffySwerve(0, 0);
 
                 return false;
             }
@@ -419,12 +349,7 @@ public final class TankDrive {
             double rightPower = feedforward.compute(wheelVels.right) / voltage;
             tankCommandWriter.write(new TankCommandMessage(voltage, leftPower, rightPower));
 
-            for (DcMotorEx m : leftMotors) {
-                m.setPower(leftPower);
-            }
-            for (DcMotorEx m : rightMotors) {
-                m.setPower(rightPower);
-            }
+            diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);
@@ -450,7 +375,10 @@ public final class TankDrive {
 
     public PoseVelocity2d updatePoseEstimate() {
         Twist2dDual<Time> twist = localizer.update();
-        pose = pose.plus(twist.value());
+
+        // Roadrunner switched the x and y and made them both negative on me for some reason but heading was fine
+        Twist2d RoadrunnerIsStupid = new Twist2d(new Vector2d(twist.value().line.y, twist.value().line.x), twist.value().angle);
+        pose = pose.plus(RoadrunnerIsStupid);
 
         poseHistory.add(pose);
         while (poseHistory.size() > 100) {
@@ -458,6 +386,8 @@ public final class TankDrive {
         }
 
         estimatedPoseWriter.write(new PoseMessage(pose));
+        SubsystemData.CurrentRobotPose = pose;
+        PersistentDataStorage.lastRobotPose = pose;
 
         return twist.velocity().value();
     }

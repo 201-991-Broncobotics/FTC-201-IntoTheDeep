@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
+import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.HuskyLensCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
@@ -36,8 +37,10 @@ public class RedRightSampleCollection extends CommandOpMode {
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
         // always running
+        drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));
         HuskyLensSystem.setDefaultCommand(new HuskyLensCommand(HuskyLensSystem));
         armClaw.setDefaultCommand(new ArmClawAutonCommand(armClaw));
+
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
@@ -55,9 +58,6 @@ public class RedRightSampleCollection extends CommandOpMode {
                 .turnTo(Math.toRadians(-45));
 
 
-        waitForStart();
-
-        if (isStopRequested()) return;
 
         // ArmClaw method names:
         // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
@@ -70,7 +70,7 @@ public class RedRightSampleCollection extends CommandOpMode {
         // Actions:
         // Wait, RunMethod ^, waitUntilFinishedAwaiting, waitUntilFinishedMoving
 
-        Actions.runBlocking(
+        DriveAutonCommand.queueAction(
                 new SequentialAction(
                         armClaw.RunMethod("closeClaw"),
                         armClaw.RunMethod("moveClawToTopRung"),
@@ -94,8 +94,9 @@ public class RedRightSampleCollection extends CommandOpMode {
                         armClaw.RunMethod("openClaw")
                 )
         );
-        telemetry.addLine("Finished Auton");
 
+        telemetry.addLine("Auton Ready");
+        telemetry.update();
     }
 
 }

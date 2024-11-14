@@ -4,13 +4,35 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.util.function.DoubleSupplier;
 
+/*
+This is a PID that I created with a bunch a comments if you want to understand how it works
+Part of the reason why I am sharing this specific version is because I added things like speed
+control, position limits, power limits, and ways of stabilizing the integral component that you
+can now edit if you need to.
+
+This is a good description of how a PID works as well as stuff about Feedback controllers:
+https://gm0.org/en/latest/docs/software/concepts/control-loops.html
+
+Sometimes PID controllers are also called PIDF controllers where F is a function for the power needed
+to counteract a known force such as gravity for example.
+
+How to tune a PID:
+1. Set the I and D gains to zero
+2. Increase the P gain until there are oscillations around the target
+3. Increase the D gain until no overshoot occurs
+4. If there is steady state error (or if it is consistently slightly off), increase the I gain until it is corrected
+
+I made a simple example of one way of using this PID in the robot hardware
+
+ */
+
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
 
     public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false;
 
-    public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble()
+    public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble() or changing it
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
     private double maxIntegral = 1, percentMaxSpeed = 1, PIDFrameRate = 0;
@@ -22,7 +44,7 @@ public class PIDController {
 
     // full PID with all of the possible settings
     public PIDController(double kP, double kI, double kD, double minPosition, double maxPosition,
-                         double minPower, double maxPower, double initialPower, double maxSpeed, double tolerance,
+                         double minPower, double maxPower, double initialPower, double minDifference, double maxSpeed, double tolerance,
                          boolean positionLimitingEnabled, boolean speedLimitingEnabled, DoubleSupplier encoderPosition) { // units are the same as the units of the encoderPosition
         this.kP = kP;
         this.kI = kI;
@@ -32,6 +54,7 @@ public class PIDController {
         this.minPower = minPower; // can be used as the initial power needed to start moving
         this.maxPower = maxPower;
         this.initialPower = initialPower; // power needed to start turning the motor / SET A MINIMUM POWER WHEN THIS IS GREATER THAN 0 or the PID will oscillate
+        this.minDifference = minDifference; // stops PID when the error is less than this, same units as the doubleSupplier
         this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false, in units per second
         this.tolerance = tolerance; // the range where closeEnough() will return true
         this.positionLimitingEnabled = positionLimitingEnabled;
@@ -51,7 +74,7 @@ public class PIDController {
 
     // simple version of this PID controller
     public PIDController(double kP, double kI, double kD, DoubleSupplier encoderPosition) { // simplest version
-        this(kP, kI, kD, 0, 0, 0, 1, 0, 0, 0, false, false, encoderPosition);
+        this(kP, kI, kD, 0, 0, 0, 1, 0, 0, 0, 0, false, false, encoderPosition);
     }
     // there probably is a way to make each value have a default value and only overwrite if you define it without copying this line 11^11 different times but idk what it is
 
@@ -136,6 +159,12 @@ public class PIDController {
             else if (overrideCurrentPosition > maxPosition && power > 0) power = 0;
         }
 
+        // Don't power if the difference between the target position and the current position is less than the minimum
+        if (Math.abs(Error) < minDifference) {
+            power = 0.0;
+            integral = 0;
+        }
+
         return power;
     }
 
@@ -150,6 +179,7 @@ public class PIDController {
         if (minPower > maxPower) minPower = maxPower;
         if (initialPower < 0) initialPower = 0;
         if (minPower < initialPower) minPower = initialPower; // make sure minPower is at least initialPower
+        if (minDifference < 0) minDifference = 0;
         if (maxSpeed < 0) maxSpeed = 0;
         if (tolerance < 0) tolerance = 0;
         if (kI > 0) maxIntegral = maxPower / kI;
@@ -183,6 +213,25 @@ public class PIDController {
         double result2 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), -wrapAngle * 100L) * 0.01;
         if (Math.abs(result1) <= Math.abs(result2)) return result1;
         else return result2;
+    }
+
+
+    // This sets all of the variables of the current PID to the same as the PID inputted. Though this keeps
+    // any the PID's current instance variables like the encoder DoubleSupplier, integral, current target, etc.
+    public void setVariablesTheSameAs(PIDController referencePID) {
+        kP = referencePID.kP;
+        kI = referencePID.kI;
+        kD = referencePID.kD;
+        minPosition = referencePID.minPosition;
+        maxPosition = referencePID.maxPosition;
+        minPower = referencePID.minPower;
+        maxPower = referencePID.maxPower;
+        initialPower = referencePID.initialPower;
+        minDifference = referencePID.minDifference;
+        maxSpeed = referencePID.maxSpeed;
+        tolerance = referencePID.tolerance;
+        positionLimitingEnabled = referencePID.positionLimitingEnabled;
+        speedLimitingEnabled = referencePID.speedLimitingEnabled;
     }
 
 

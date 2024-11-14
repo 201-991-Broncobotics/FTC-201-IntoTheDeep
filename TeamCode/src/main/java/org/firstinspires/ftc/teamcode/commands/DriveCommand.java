@@ -15,8 +15,6 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
 
-    public boolean absoluteDriving;
-
     public double headingHold;
 
     DifferentialSwerveDrive drive;
@@ -30,7 +28,7 @@ public class DriveCommand extends CommandBase {
         // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = roadrunnerDrive;
         drive.updatePoseEstimate(); // update localization
-        absoluteDriving = absoluteDrivingEnabled;
+        SubsystemData.absoluteDriving = absoluteDrivingEnabled;
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
@@ -61,27 +59,27 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 2500) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 2000) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
         }
 
-        double throttleControl = 0.5 + 0.5 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+        double throttleControl = 0.6 + 0.4 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY());
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -0.6 * functions.deadZone(SubsystemData.driver.getLeftX());
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
-        if (!absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
+        if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't turning
-            if (functions.inUse(SubsystemData.OperatorTurningPower)) {
+            if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
                 headingHold = Math.toDegrees(drive.pose.heading.toDouble());
                 SubsystemData.HoldClawFieldPos = false;
 
-            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 300) {
+            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 300 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
                 // otherwise hold current heading if no driver input for some time and imu is working
                 // auto aim
                 if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;

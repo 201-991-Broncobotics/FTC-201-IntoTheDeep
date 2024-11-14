@@ -27,7 +27,7 @@ public class DriveAutonCommand extends CommandBase {
 
     Pose2d startPose = new Pose2d(new Vector2d(0, 0), Math.toRadians(90));
 
-    ElapsedTime AutonUpdateSpeed;
+    ElapsedTime AutonUpdateSpeedTimer;
 
     Telemetry telemetry;
 
@@ -35,30 +35,31 @@ public class DriveAutonCommand extends CommandBase {
         addRequirements(drivetrain);
         drive = drivetrain;
         this.telemetry = telemetry;
-        AutonUpdateSpeed = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        AutonUpdateSpeedTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     }
 
 
     @Override
     public void execute() {
-        telemetry.addData("Auton frameRate:", 1 / AutonUpdateSpeed.time() / 1000);
-        AutonUpdateSpeed.reset();
+        telemetry.addLine("Auton frameRate:" + (1 / (AutonUpdateSpeedTimer.time() / 1000)));
+        AutonUpdateSpeedTimer.reset();
         TelemetryPacket packet = new TelemetryPacket();
 
         // update running actions
         List<Action> newActions = new ArrayList<>();
         for (Action action : runningActions) {
             action.preview(packet.fieldOverlay());
-            if (action.run(packet) && !SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // also makes the auton cancellable
+            if (action.run(packet) && !SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // TODO: temporarily makes the auton cancellable
                 newActions.add(action);
             }
         }
         runningActions = newActions;
 
-        if (runningActions.isEmpty()) {
+
+        if (runningActions.isEmpty()) { // TODO: Temporary forward backward auton while testing
             runningActions.add(new SequentialAction(
                     drive.actionBuilder(startPose)
-                            .strafeToConstantHeading(new Vector2d(0, 10))
+                            .strafeToConstantHeading(new Vector2d(0, 30))
                             .waitSeconds(0.5)
                             .strafeToConstantHeading(new Vector2d(0, 0))
                             .waitSeconds(0.5)
@@ -74,13 +75,18 @@ public class DriveAutonCommand extends CommandBase {
 
         telemetry.update();
 
-        if (SubsystemData.driver.getButton(GamepadKeys.Button.A)) {
+        if (SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // locks the entire code so I can read it
             while (Thread.currentThread().isAlive()) {
                 drive.stopDifferentialSwerve();
             }
         }
 
         dash.sendTelemetryPacket(packet);
+    }
+
+
+    public static void queueAction(Action action) {
+        runningActions.add(action);
     }
 
 }

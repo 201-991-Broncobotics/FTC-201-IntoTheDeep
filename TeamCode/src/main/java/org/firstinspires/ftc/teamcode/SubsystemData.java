@@ -16,13 +16,13 @@ public class SubsystemData {
 
     public static Pose2d CurrentRobotPose;
 
+    public static boolean absoluteDriving;
+
     public static boolean OverrideDrivetrainRotation = false;
     public static double OverrideDrivetrainTargetHeading = 0;
 
 
     public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PID
-
-    public static double AutonGain = 0.0, AutonMinPower = 0.15;
 
     public static Pose2d AutonError = new Pose2d(new Vector2d(0, 0), 0);
 
@@ -55,9 +55,9 @@ public class SubsystemData {
 
     public static YawPitchRollAngles IMUAngles;
 
-    public static double SwerveModuleKp, SwerveModuleKi, SwerveModuleKd;
+    public static double SwerveModuleKp = 0.005, SwerveModuleKi = 0.0, SwerveModuleKd = 0.0;
 
-    public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module much less power when not at the correct angle
+    public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
 
     public static boolean HoldClawFieldPos;
 
@@ -66,6 +66,16 @@ public class SubsystemData {
     public static double AutoAimHeading = 0;
 
     public static boolean NeedToRealignHeadingHold = false;
+
+
+    public static int CommandBlendingAmount = 1;
+
+
+    // Swerve brake waddle
+    public static double SwitchTimeMS = 400, SwitchTimeTimeout = 750; // not including time to rotate module
+    public static double SwerveModuleTolerance = 8; // degrees
+    public static double lowerTriggerThreshold = 0.25, upperTriggerThreshold = 0.8; // lower is when waddle starts, upper is when just full brake
+    public static double maxBrakeWaddleAngle = 40;
 
 
 }

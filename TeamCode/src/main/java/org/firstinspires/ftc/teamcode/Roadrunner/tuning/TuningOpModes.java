@@ -113,11 +113,7 @@ public final class TuningOpModes {
 
                 List<Encoder> leftEncs = new ArrayList<>(), rightEncs = new ArrayList<>();
                 List<Encoder> parEncs = new ArrayList<>(), perpEncs = new ArrayList<>();
-                if (td.localizer instanceof TankDrive.DriveLocalizer) {
-                    TankDrive.DriveLocalizer dl = (TankDrive.DriveLocalizer) td.localizer;
-                    leftEncs.addAll(dl.leftEncs);
-                    rightEncs.addAll(dl.rightEncs);
-                } else if (td.localizer instanceof ThreeDeadWheelLocalizer) {
+                if (td.localizer instanceof ThreeDeadWheelLocalizer) {
                     ThreeDeadWheelLocalizer dl = (ThreeDeadWheelLocalizer) td.localizer;
                     parEncs.add(dl.par0);
                     parEncs.add(dl.par1);
@@ -137,8 +133,8 @@ public final class TuningOpModes {
                         TankDrive.PARAMS.minProfileAccel,
                         TankDrive.PARAMS.maxProfileAccel,
                         hardwareMap.getAll(LynxModule.class),
-                        td.leftMotors,
-                        td.rightMotors,
+                        new ArrayList<>(), // empty lists because I don't reference the motors this way
+                        new ArrayList<>(),
                         leftEncs,
                         rightEncs,
                         parEncs,

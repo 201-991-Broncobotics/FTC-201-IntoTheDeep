@@ -34,6 +34,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         // Driver controls
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleTelemetry));
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(drive::realignHeading));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(drive::toggleAbsoluteDriving));
 
         // Operator controls
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(new InstantCommand(armSystem::toggleClaw));

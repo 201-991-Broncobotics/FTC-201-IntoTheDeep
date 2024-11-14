@@ -40,6 +40,7 @@ import com.acmerobotics.roadrunner.ftc.OverflowEncoder;
 import com.acmerobotics.roadrunner.ftc.PositionVelocityPair;
 import com.acmerobotics.roadrunner.ftc.RawEncoder;
 import com.arcrobotics.ftclib.command.SubsystemBase;
+import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -57,9 +58,9 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
@@ -86,16 +87,16 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         // feedforward parameters (in tick units)
         public double kS = 3.7576427826935133;
         public double kV = 0.0019895240817372076;
-        public double kA = 0.00001; // 2.0 is what this needs to be to match the peaks of v0 and vf
+        public double kA = 2.0; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 10;
-        public double minProfileAccel = -5;
-        public double maxProfileAccel = 5;
+        public double maxWheelVel = 50;
+        public double minProfileAccel = -30;
+        public double maxProfileAccel = 30;
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI / 4; // shared with path
-        public double maxAngAccel = Math.PI / 4;
+        public double maxAngVel = Math.PI / 2; // shared with path
+        public double maxAngAccel = Math.PI / 2;
 
         // path controller gains
         public double axialGain = 0.0; // im using my own pids cause these suck
@@ -267,12 +268,12 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
 
         // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
-        SubsystemData.HeadingTargetPID = new PIDController(0.009, 0.006, 0.0012, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID = new PIDController(0.0012, 0.0, 0.0025, () -> Math.toDegrees(this.pose.heading.toDouble()));
         SubsystemData.HeadingTargetPID.minPower = 0.0; // helps get the drivetrain turning when at low values
         SubsystemData.HeadingTargetPID.initialPower = 0.03;
 
-        // SubsystemData.AxialPID = new PIDController(SubsystemData.AutonGain, SubsystemData.AutonKI, SubsystemData.AutonKD, () -> Math.toDegrees(this.pose.position.y));
-        // SubsystemData.LateralPID = new PIDController(SubsystemData.AutonGain, SubsystemData.AutonKI, SubsystemData.AutonKD, () -> Math.toDegrees(this.pose.position.x));
+        SubsystemData.AxialPID = new PIDController(0.3, 0.0, 0.0, () -> this.pose.position.y);
+        SubsystemData.LateralPID = new PIDController(SubsystemData.AxialPID.kP, SubsystemData.AxialPID.kI, SubsystemData.AxialPID.kD, () -> this.pose.position.x);
 
 
         SubsystemData.IMUWorking = true;
@@ -305,25 +306,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     public void setDrivePowers(PoseVelocity2d powers) {
         PoseVelocity2dDual<Time> TheCommand = PoseVelocity2dDual.constant(powers, 1);
 
-        /*
-        PoseVelocity2dDual<Time> TheCommandFull = new PoseVelocity2dDual<Time>(
-                new Vector2dDual<Time>(
-                        new DualNum<Time>(new double[] {TheCommand.linearVel.x.get(0), 0}),
-                        new DualNum<Time>(new double[] {TheCommand.linearVel.y.get(0), 0})),
-                new DualNum<Time>(new double[] {TheCommand.angVel.get(0), 0}));
-
-
-
-        //MecanumKinematics.WheelVelocities<Time> wheelVels = new MecanumKinematics(1).inverse(TheCommand);
-
-        double voltage = voltageSensor.getVoltage();
-        final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
-                PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
-
-         */
-
-        // diffySwerve.setDifferentialSwerve(TheCommandFull, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
-        diffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0));
+        diffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0), SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER));
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
@@ -372,33 +355,20 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
-            /*
-            PoseVelocity2dDual<Time> command = new HolonomicController(
-                    PARAMS.axialGain, PARAMS.lateralGain, PARAMS.headingGain,
-                    PARAMS.axialVelGain, PARAMS.lateralVelGain, PARAMS.headingVelGain
-            )
-                    .compute(txWorldTarget, pose, robotVelRobot);
-             */
 
-            /*
-            SubsystemData.AxialPID.kP = SubsystemData.AutonGain; // make sure PID values are up to date
-            SubsystemData.AxialPID.kI = SubsystemData.AutonKI;
-            SubsystemData.AxialPID.kD = SubsystemData.AutonKD;
-            SubsystemData.LateralPID.kP = SubsystemData.AutonGain;
-            SubsystemData.LateralPID.kI = SubsystemData.AutonKI;
-            SubsystemData.LateralPID.kD = SubsystemData.AutonKD;
-             */
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
 
+            SubsystemData.LateralPID.setVariablesTheSameAs(SubsystemData.AxialPID); // makes sure both PIDs have the same settings
             SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
             SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
-            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
-                    new DualNum<Time>(new double[] {SubsystemData.AutonGain * SubsystemData.AutonError.position.x, 0}), // SubsystemData.LateralPID.getPower()
-                    new DualNum<Time>(new double[] {SubsystemData.AutonGain * SubsystemData.AutonError.position.y, 0})), // SubsystemData.AxialPID.getPower()
-                    new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 0}));
+                    new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(SubsystemData.AutonError.position.x), 1}),
+                    new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(SubsystemData.AutonError.position.y), 1})),
+                    new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
 
             // for telemetry and roadrunner's dashboard
-            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             double voltage = voltageSensor.getVoltage();
@@ -473,21 +443,29 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
+
+
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
+
+            SubsystemData.LateralPID.setVariablesTheSameAs(SubsystemData.AxialPID); // makes sure both PIDs have the same settings
             SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
             SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
-            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
-                    new DualNum<Time>(new double[] {SubsystemData.AutonGain * SubsystemData.AutonError.position.x, 0}), // SubsystemData.LateralPID.getPower()
-                    new DualNum<Time>(new double[] {SubsystemData.AutonGain * SubsystemData.AutonError.position.y, 0})), // SubsystemData.AxialPID.getPower()
-                    new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 0}));
+                    new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(SubsystemData.AutonError.position.x), 1}),
+                    new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(SubsystemData.AutonError.position.y), 1})),
+                    new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
 
             // for telemetry and roadrunner's dashboard
-            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             double voltage = voltageSensor.getVoltage();
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
+
+            telemetry.addLine("#Target Pose X:" + functions.round(txWorldTarget.position.x.get(0), 3) + " Y:" + functions.round(txWorldTarget.position.y.get(0), 3) + " A:" + functions.round(txHeadingDouble, 3));
+            telemetry.addLine("#command:" + functions.round(t, 3) + " X:" + functions.round(command.linearVel.x.value(), 3) + " Y:" + functions.round(command.linearVel.y.value(), 3) + " A:" + functions.round(command.angVel.value(), 3));
 
             diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
@@ -528,6 +506,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         estimatedPoseWriter.write(new PoseMessage(pose));
         SubsystemData.CurrentRobotPose = pose;
+        PersistentDataStorage.lastRobotPose = pose;
 
         return twist.velocity().value();
     }
@@ -578,6 +557,10 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     public void stopDifferentialSwerve() {
         diffySwerve.stopDifferentialSwerve();
         diffySwerve.updateKinematicDifferentialSwerve();
+    }
+
+    public void toggleAbsoluteDriving() {
+        SubsystemData.absoluteDriving = !SubsystemData.absoluteDriving;
     }
 
 }

@@ -25,10 +25,14 @@ public class Constants {
     public static double ClawOpenPosition = 0.5;
     public static double ClawClosedPosition = ClawOpenPosition + 0.35;
 
+    public static double ClawMiddlePosition = ClawOpenPosition + 0.1;
+
     public static double controllerDeadZone = 0.05;
     public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.497, extensionGravityPower = 0.080; // 0.097
 
     public static double horizontalExpansionLimit = 1066.8; // in millimeters
     // 420 mm from end of claw to pivot axle, 457.2 is the length of the robot, 15 is extra distance to be sure
     public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15; // distance that is left within the horizontal expansion limit
+
+
 }

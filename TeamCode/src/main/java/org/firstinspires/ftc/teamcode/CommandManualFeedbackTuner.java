@@ -25,8 +25,6 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 @TeleOp(name="CommandManualFeedbackTuner")
 public class CommandManualFeedbackTuner extends CommandOpMode {
 
-    public static double DISTANCE = 20;
-
     @Override
     public void initialize() {
 
@@ -45,23 +43,8 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
 
         // schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
-        // setup roadrunner trajectories
 
         drive.updatePoseEstimate();
-
-        waitForStart();
-
-        // schedule auton commands
-        DriveAutonCommand.runningActions.add(new SequentialAction(
-                drive.actionBuilder(startPose)
-                        .strafeToConstantHeading(new Vector2d(0, 10))
-                        .waitSeconds(0.5)
-                        .strafeToConstantHeading(new Vector2d(0, 0))
-                        .waitSeconds(0.5)
-                        //.turnTo(Math.toRadians(270))
-                        //.waitSeconds(1)
-                        .build()
-        ));
 
     }
 

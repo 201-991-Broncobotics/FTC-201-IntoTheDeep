@@ -30,13 +30,15 @@ public class HuskyLensCamera extends SubsystemBase {
 
             // find the closest object information
             HuskyLens.Block closestObject = VisionData[0];
-            for (HuskyLens.Block value : VisionData) {
-                if (functions.intListContains(SubsystemData.AcceptableIds, value.id) && Math.hypot(value.x - SubsystemData.HuskyLensTargetX, value.y - SubsystemData.HuskyLensTargetY) < Math.hypot(closestObject.x - SubsystemData.HuskyLensTargetX, closestObject.y - SubsystemData.HuskyLensTargetY)) {
-                    closestObject = value;
+            for (HuskyLens.Block value : VisionData) { // if it has the correct color and has the closest distance to the claw
+                if (functions.intListContains(SubsystemData.AcceptableIds, value.id) &&
+                        Math.hypot(value.x - SubsystemData.HuskyLensTargetX, value.y - SubsystemData.HuskyLensTargetY)
+                                < Math.hypot(closestObject.x - SubsystemData.HuskyLensTargetX, closestObject.y - SubsystemData.HuskyLensTargetY)) {
+                    closestObject = value; // set that object as the target
                 }
             }
 
-            //  return information
+            //  return information to arm
             if (functions.intListContains(SubsystemData.AcceptableIds, closestObject.id)) {
                 SubsystemData.CameraTargetPixelsX = closestObject.x - SubsystemData.HuskyLensTargetX;
                 SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - SubsystemData.HuskyLensTargetY);
