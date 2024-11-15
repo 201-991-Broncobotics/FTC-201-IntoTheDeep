@@ -16,6 +16,9 @@ public class SubsystemData {
 
     public static Pose2d CurrentRobotPose;
 
+
+    public static boolean inTeleOp;
+
     public static boolean absoluteDriving;
 
     public static boolean OverrideDrivetrainRotation = false;
@@ -55,7 +58,9 @@ public class SubsystemData {
 
     public static YawPitchRollAngles IMUAngles;
 
-    public static double SwerveModuleKp = 0.005, SwerveModuleKi = 0.0, SwerveModuleKd = 0.0;
+
+    // This doesn't doing anything but lets me change this ones variables in PID Tuner and both swerve modules will copy the same settings from this one
+    public static PIDController SwerveModuleReferencePID = new PIDController(0.01, 0.0, 0.0003, () -> 0);
 
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
 
@@ -65,10 +70,15 @@ public class SubsystemData {
     public static double OperatorTurningPower = 0;
     public static double AutoAimHeading = 0;
 
+    public static double HeadHoldTarget = 0;
+
     public static boolean NeedToRealignHeadingHold = false;
 
 
     public static int CommandBlendingAmount = 1;
+
+
+    public static double TankTurnGain = 0, RRkAFeedForward = 0, RamseteZeta = 0.7, RamseteBBar = 2.0;
 
 
     // Swerve brake waddle
@@ -76,6 +86,36 @@ public class SubsystemData {
     public static double SwerveModuleTolerance = 8; // degrees
     public static double lowerTriggerThreshold = 0.25, upperTriggerThreshold = 0.8; // lower is when waddle starts, upper is when just full brake
     public static double maxBrakeWaddleAngle = 40;
+
+
+
+
+    // Custom Tank Drive Settings
+    public static PIDController TankLandingPID = new PIDController(0.0, 0.0, 0.0,
+            0, 0, 0, 1, 0, 2.0, // I need to do all of this in order to add one additional setting
+            0, 0,false, false, () -> 0); // distance away from robot center is always 0
+
+    public static double turnPercentage = 0.5;
+
+    public static int TankDriveAngleSharpness = 1;
+
+    public static double stopHeadingChangeDistanceTolerance = 1; // in inches
+
+
+
+
+
+
+
+    public static double AutonStoppingDistance = 4, AutonAngleStoppingDifference = 1;
+
+    public static double AutonMovementGain = 0.1;
+
+
+    public static Pose2d LastAutonPose = new Pose2d(0, 0, Math.toRadians(90));
+
+
+    public static double targetPosePerpOffset = 0; // confusing to explain but it prevents the robot driving in circles around the target position
 
 
 }

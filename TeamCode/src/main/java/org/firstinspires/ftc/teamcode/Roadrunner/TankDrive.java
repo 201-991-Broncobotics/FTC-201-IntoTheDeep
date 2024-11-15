@@ -36,6 +36,7 @@ import com.acmerobotics.roadrunner.ftc.DownsampledWriter;
 import com.acmerobotics.roadrunner.ftc.FlightRecorder;
 import com.acmerobotics.roadrunner.ftc.LazyImu;
 import com.acmerobotics.roadrunner.ftc.LynxFirmware;
+import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -52,6 +53,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.TankCommandMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 
 import java.util.Arrays;
@@ -59,7 +61,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 @Config
-public final class TankDrive {
+public final class TankDrive extends SubsystemBase {
     public static class Params {
         // IMU orientation
         // TODO: fill in these values based on
@@ -76,16 +78,16 @@ public final class TankDrive {
         // feedforward parameters (in tick units)
         public double kS = 3.7576427826935133;
         public double kV = 0.0019895240817372076;
-        public double kA = 2.0; // 2.0 is what this needs to be to match the peaks of v0 and vf
+        public double kA = 0.0; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 50;
-        public double minProfileAccel = -40;
-        public double maxProfileAccel = 40;
+        public double maxWheelVel = 40;
+        public double minProfileAccel = -30;
+        public double maxProfileAccel = 30;
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI; // shared with path
-        public double maxAngAccel = Math.PI;
+        public double maxAngVel = Math.PI / 2; // shared with path
+        public double maxAngAccel = Math.PI / 2;
 
         // path controller gains
         public double ramseteZeta = 0.7; // in the range (0, 1)
@@ -132,8 +134,9 @@ public final class TankDrive {
     private final DownsampledWriter tankCommandWriter = new DownsampledWriter("TANK_COMMAND", 50_000_000);
 
 
-    public TankDrive(HardwareMap hardwareMap, Pose2d pose) {
+    public TankDrive(HardwareMap hardwareMap, Pose2d pose, Telemetry telemetry) {
         this.pose = pose;
+        this.telemetry = telemetry;
 
         LynxFirmware.throwIfModulesAreOutdated(hardwareMap);
 
@@ -191,6 +194,13 @@ public final class TankDrive {
         SubsystemData.imuInstance = newImu;
 
         localizer = new TwoDeadWheelLocalizer(hardwareMap, newImu, PARAMS.inPerTick);
+
+
+        // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
+        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.0, 0.0005, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID.minDifference = 0.5; // helps get the drivetrain turning when at low values
+
+        // Tank Landing PID is initialized in SubsystemData
 
         FlightRecorder.write("TANK_PARAMS", PARAMS);
     }
@@ -253,19 +263,37 @@ public final class TankDrive {
 
             updatePoseEstimate();
 
+            PARAMS.ramseteZeta = SubsystemData.RamseteZeta;
+            PARAMS.ramseteBBar = SubsystemData.RamseteBBar;
             PoseVelocity2dDual<Time> command = new RamseteController(kinematics.trackWidth, PARAMS.ramseteZeta, PARAMS.ramseteBBar)
                     .compute(x, txWorldTarget, pose);
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             TankKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
+            PARAMS.kA = SubsystemData.RRkAFeedForward;
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
             double leftPower = feedforward.compute(wheelVels.left) / voltage;
             double rightPower = feedforward.compute(wheelVels.right) / voltage;
             tankCommandWriter.write(new TankCommandMessage(voltage, leftPower, rightPower));
 
-            diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
+
+            double removedTurn = (rightPower - leftPower) / 2;
+
+            rightPower = rightPower - removedTurn;
+            leftPower = leftPower + removedTurn;
+            rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
+            leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
+
+            //  t.angVel * 0.5 * trackWidth + t.angVel * 0.5 * trackWidth
+            // t.linearVel.x + t.angVel * 0.5 * trackWidth,
+            // t.linearVel.x - t.angVel * 0.5 * trackWidth
+
+            // diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
+            diffySwerve.driveTankDiffyTowardsPoint(pose, txWorldTarget, feedforward, voltage);
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -332,6 +360,8 @@ public final class TankDrive {
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
+            PARAMS.turnGain = SubsystemData.TankTurnGain;
+
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<>(
                     Vector2dDual.constant(new Vector2d(0, 0), 3),
                     txWorldTarget.heading.velocity().plus(
@@ -343,13 +373,27 @@ public final class TankDrive {
 
             TankKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
+            PARAMS.kA = SubsystemData.RRkAFeedForward;
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
             double leftPower = feedforward.compute(wheelVels.left) / voltage;
             double rightPower = feedforward.compute(wheelVels.right) / voltage;
             tankCommandWriter.write(new TankCommandMessage(voltage, leftPower, rightPower));
 
-            diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
+            double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
+            SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
+
+            telemetry.addLine("Using Tank Turn");
+
+            double removedTurn = (rightPower - leftPower) / 2;
+
+            rightPower = rightPower - removedTurn;
+            leftPower = leftPower + removedTurn;
+            rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
+            leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
+
+            //diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
+            diffySwerve.pointTankDiffyAtAngle(pose, txHeadingDouble, feedforward, voltage);
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);
@@ -423,5 +467,9 @@ public final class TankDrive {
                 defaultTurnConstraints,
                 defaultVelConstraint, defaultAccelConstraint
         );
+    }
+
+    public void stopDrivetrain() {
+        diffySwerve.driveTankDiffySwerve(0, 0);
     }
 }

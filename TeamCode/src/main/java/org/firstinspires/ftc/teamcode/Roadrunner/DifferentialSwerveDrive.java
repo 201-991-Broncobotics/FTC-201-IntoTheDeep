@@ -20,6 +20,7 @@ import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.ProfileAccelConstraint;
 import com.acmerobotics.roadrunner.ProfileParams;
 import com.acmerobotics.roadrunner.Rotation2d;
+import com.acmerobotics.roadrunner.Rotation2dDual;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.TimeTrajectory;
 import com.acmerobotics.roadrunner.TimeTurn;
@@ -58,6 +59,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
+import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
@@ -85,18 +87,18 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         public double trackWidthTicks = 341.4816515824069;
 
         // feedforward parameters (in tick units)
-        public double kS = 3.7576427826935133;
+        public double kS = 0.5; // 3.7576427826935133
         public double kV = 0.0019895240817372076;
         public double kA = 2.0; // 2.0 is what this needs to be to match the peaks of v0 and vf
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 50;
-        public double minProfileAccel = -30;
-        public double maxProfileAccel = 30;
+        public double maxWheelVel = 20;
+        public double minProfileAccel = -15;
+        public double maxProfileAccel = 15;
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI / 2; // shared with path
-        public double maxAngAccel = Math.PI / 2;
+        public double maxAngVel = Math.PI / 3; // shared with path
+        public double maxAngAccel = Math.PI / 3;
 
         // path controller gains
         public double axialGain = 0.0; // im using my own pids cause these suck
@@ -112,6 +114,8 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
 
     Telemetry telemetry;
+
+    IMU newImu;
 
     public static DiffySwerveKinematics diffySwerve;
 
@@ -257,20 +261,26 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
 
 
-        leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        // telemetry.addData("Left Module Angle Before Reset:", functions.angleDifference((leftFront.getCurrentPosition() / Constants.encoderResolution * 360), 0, 360));
+        // telemetry.addData("Right Module Angle Before Reset:", functions.angleDifference((rightFront.getCurrentPosition() / Constants.encoderResolution * 360), 0, 360));
+
+
+        //leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         rightBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        rightFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        leftFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        //rightFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        //leftFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         leftBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        //rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
+        // 0.012, 0.0, 0.0005
+
+        // 0.05, 0.0, 0.0015
 
         // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
-        SubsystemData.HeadingTargetPID = new PIDController(0.0012, 0.0, 0.0025, () -> Math.toDegrees(this.pose.heading.toDouble()));
-        SubsystemData.HeadingTargetPID.minPower = 0.0; // helps get the drivetrain turning when at low values
-        SubsystemData.HeadingTargetPID.initialPower = 0.03;
+        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.0, 0.0005, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID.minDifference = 0.5; // helps get the drivetrain turning when at low values
 
         SubsystemData.AxialPID = new PIDController(0.3, 0.0, 0.0, () -> this.pose.position.y);
         SubsystemData.LateralPID = new PIDController(SubsystemData.AxialPID.kP, SubsystemData.AxialPID.kI, SubsystemData.AxialPID.kD, () -> this.pose.position.x);
@@ -297,7 +307,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        IMU newImu = lazyImu.get();
+        newImu = lazyImu.get();
         SubsystemData.imuInstance = newImu;
 
         localizer = new TwoDeadWheelLocalizer(hardwareMap, newImu, PARAMS.inPerTick);
@@ -358,6 +368,9 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
 
+            txWorldTarget = OffsetTargetPositionWithVel(txWorldTarget, robotVelRobot, SubsystemData.targetPosePerpOffset);
+
+
             double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
             SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
 
@@ -365,9 +378,14 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
             SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
 
+            //PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
+                    //new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(pose.position.x), 1}),
+                    //new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(pose.position.y), 1})),
+                    //new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
+
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
-                    new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(SubsystemData.AutonError.position.x), 1}),
-                    new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(SubsystemData.AutonError.position.y), 1})),
+                    new DualNum<Time>(new double[] {SubsystemData.AutonError.position.x * SubsystemData.AutonMovementGain, 1}),
+                    new DualNum<Time>(new double[] {SubsystemData.AutonError.position.y * SubsystemData.AutonMovementGain, 1})),
                     new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
 
             // for telemetry and roadrunner's dashboard
@@ -378,9 +396,30 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
             telemetry.addLine("Target Pose X:" + functions.round(txWorldTarget.position.x.get(0), 3) + " Y:" + functions.round(txWorldTarget.position.y.get(0), 3) + " A:" + functions.round(txHeadingDouble, 3));
+
+            // telemetry.addData("Error Distance:", Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y));
+
+            if (Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y) < SubsystemData.AutonStoppingDistance) {
+                command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>(
+                        new DualNum<Time>(new double[] {0, command.linearVel.x.get(1)}),
+                        new DualNum<Time>(new double[] {0, command.linearVel.y.get(1)})),
+                        command.angVel);
+            }
+            if (Math.abs(SubsystemData.AutonError.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>(
+                        command.linearVel.x,
+                        command.linearVel.y),
+                        new DualNum<Time>(new double[] {0, command.angVel.get(1)}));
+            }
+
             telemetry.addLine("command:" + functions.round(t, 3) + " X:" + functions.round(command.linearVel.x.value(), 3) + " Y:" + functions.round(command.linearVel.y.value(), 3) + " A:" + functions.round(command.angVel.value(), 3));
 
-            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            if (Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y) < SubsystemData.AutonStoppingDistance && Math.abs(SubsystemData.AutonError.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                diffySwerve.stopDifferentialSwerve();
+            } else {
+                diffySwerve.setDifferentialSwerve(command, robotVelRobot, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            }
+
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -446,6 +485,8 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
 
+            txWorldTarget = OffsetTargetPositionWithVel(txWorldTarget, robotVelRobot, SubsystemData.targetPosePerpOffset);
+
 
             double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
             SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
@@ -454,9 +495,14 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             SubsystemData.AxialPID.setTarget(txWorldTarget.position.y.value());
             SubsystemData.LateralPID.setTarget(txWorldTarget.position.x.value());
 
+            //PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
+            //new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(pose.position.x), 1}),
+            //new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(pose.position.y), 1})),
+            //new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
+
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>( // create my own command with proper pid values
-                    new DualNum<Time>(new double[] {SubsystemData.LateralPID.getPower(SubsystemData.AutonError.position.x), 1}),
-                    new DualNum<Time>(new double[] {SubsystemData.AxialPID.getPower(SubsystemData.AutonError.position.y), 1})),
+                    new DualNum<Time>(new double[] {SubsystemData.AutonError.position.x * SubsystemData.AutonMovementGain, 1}),
+                    new DualNum<Time>(new double[] {SubsystemData.AutonError.position.y * SubsystemData.AutonMovementGain, 1})),
                     new DualNum<Time>(new double[] {-1 * SubsystemData.HeadingTargetPID.getPowerWrapped(Math.toDegrees(txHeadingDouble), 360), 1}));
 
             // for telemetry and roadrunner's dashboard
@@ -466,10 +512,30 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
-            telemetry.addLine("#Target Pose X:" + functions.round(txWorldTarget.position.x.get(0), 3) + " Y:" + functions.round(txWorldTarget.position.y.get(0), 3) + " A:" + functions.round(txHeadingDouble, 3));
-            telemetry.addLine("#command:" + functions.round(t, 3) + " X:" + functions.round(command.linearVel.x.value(), 3) + " Y:" + functions.round(command.linearVel.y.value(), 3) + " A:" + functions.round(command.angVel.value(), 3));
+            telemetry.addLine("Target Pose X:" + functions.round(txWorldTarget.position.x.get(0), 3) + " Y:" + functions.round(txWorldTarget.position.y.get(0), 3) + " A:" + functions.round(txHeadingDouble, 3));
 
-            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            // telemetry.addData("Error Distance:", Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y));
+
+            if (Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y) < SubsystemData.AutonStoppingDistance) {
+                command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>(
+                        new DualNum<Time>(new double[] {0, command.linearVel.x.get(1)}),
+                        new DualNum<Time>(new double[] {0, command.linearVel.y.get(1)})),
+                        command.angVel);
+            }
+            if (Math.abs(SubsystemData.AutonError.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                command = new PoseVelocity2dDual<Time>(new Vector2dDual<Time>(
+                        command.linearVel.x,
+                        command.linearVel.y),
+                        new DualNum<Time>(new double[] {0, command.angVel.get(1)}));
+            }
+
+            telemetry.addLine("command:" + functions.round(t, 3) + " X:" + functions.round(command.linearVel.x.value(), 3) + " Y:" + functions.round(command.linearVel.y.value(), 3) + " A:" + functions.round(command.angVel.value(), 3));
+
+            if (Math.hypot(SubsystemData.AutonError.position.x, SubsystemData.AutonError.position.y) < SubsystemData.AutonStoppingDistance && Math.abs(SubsystemData.AutonError.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                diffySwerve.stopDifferentialSwerve();
+            } else {
+                diffySwerve.setDifferentialSwerve(command, robotVelRobot, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            }
 
 
             Canvas c = p.fieldOverlay();
@@ -547,7 +613,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     }
 
     public void realignHeading() {
-        SubsystemData.imuInstance.resetYaw();
+        newImu.resetYaw();
         SubsystemData.NeedToRealignHeadingHold = true;
     }
 
@@ -564,5 +630,81 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     public void toggleAbsoluteDriving() {
         SubsystemData.absoluteDriving = !SubsystemData.absoluteDriving;
     }
+
+
+    public void resetSwerveWheelAngles() {
+        leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+    }
+
+
+    public Pose2dDual<Time> OffsetTargetPositionWithVel(Pose2dDual<Time> TargetPose, PoseVelocity2d VelocityPose, double Percent) {
+        if (TargetPose.position.x.value() - pose.position.x == 0) {
+            telemetry.addLine("Offset X: " + Percent * VelocityPose.linearVel.x + " Y: " + 0);
+            return new Pose2dDual<>(
+                    new Vector2dDual<>(
+                            new DualNum<>(new double[] {pose.position.x + Percent * VelocityPose.linearVel.x, TargetPose.position.x.get(1)}),
+                            TargetPose.position.y),
+                    TargetPose.heading);
+        } else {
+            double slope = (TargetPose.position.y.value() - pose.position.y) / (TargetPose.position.x.value() - pose.position.x);
+            double TargetOffsetX = (VelocityPose.linearVel.x * slope * slope + pose.position.x * slope * slope - VelocityPose.linearVel.y * slope + pose.position.x) / (1 + slope * slope);
+            double TargetOffsetY = (-1 * (1 / slope)) * (TargetOffsetX - pose.position.x) + pose.position.y;
+            telemetry.addLine("Offset X: " +  -1 * Percent * (TargetOffsetX - pose.position.x) + " Y: " +  -1 * Percent * (TargetOffsetY - pose.position.y));
+            return new Pose2dDual<>(
+                    new Vector2dDual<>(
+                            new DualNum<>(new double[] {TargetPose.position.x.value() - Percent * (TargetOffsetX - pose.position.x), TargetPose.position.x.get(1)}),
+                            new DualNum<>(new double[] {TargetPose.position.y.value() - Percent * (TargetOffsetY - pose.position.y), TargetPose.position.y.get(1)})),
+                    TargetPose.heading);
+        }
+    }
+
+
+    public static class RRFinishCommand implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        return false;
+    }}
+
+    public static class RRPointTowardsPose implements Action {
+        double targetAngle;
+        public RRPointTowardsPose(Vector2d targetPose) { targetAngle = Math.toDegrees(Math.atan2(targetPose.y, targetPose.x)); }
+        @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (Math.abs(SubsystemData.CurrentRobotPose.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                diffySwerve.stopDifferentialSwerve();
+                return false;
+            } else {
+                double turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(targetAngle, 360);
+                diffySwerve.driveDifferentialSwerve(0, 0, turn, 0);
+                return true;
+            }
+        }
+    }
+
+    public Action PointTowardsPose(Vector2d targetPose) {
+        return new RRPointTowardsPose(targetPose);
+    }
+
+
+    public static class RRPointTowardsAngle implements Action {
+        double targetAngle;
+        public RRPointTowardsAngle(double targetAngle) { this.targetAngle = targetAngle; }
+        @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (Math.abs(SubsystemData.CurrentRobotPose.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+                diffySwerve.stopDifferentialSwerve();
+                return false;
+            } else {
+                double turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(targetAngle, 360);
+                diffySwerve.driveDifferentialSwerve(0, 0, turn, 0);
+                return true;
+            }
+        }
+    }
+
+
+    public Action PointTowardsAngle(double targetAngleDegrees) {
+        return new RRPointTowardsAngle(targetAngleDegrees);
+    }
+
 
 }

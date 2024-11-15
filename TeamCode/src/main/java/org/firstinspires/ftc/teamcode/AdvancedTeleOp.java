@@ -15,16 +15,20 @@ import com.arcrobotics.ftclib.command.RunCommand;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 
 
-@TeleOp(name="TeleOp", group="Iterative Opmode")
+@TeleOp(name="TeleOp")
 public class AdvancedTeleOp extends CommandOpMode {
 
     @Override
     public void initialize() {
 
+        SubsystemData.inTeleOp = true;
+
         SubsystemData.driver = new GamepadEx(gamepad1);
         SubsystemData.operator = new GamepadEx(gamepad2);
 
-        Pose2d startPose = new Pose2d(0, 0, Math.toRadians(90));
+        // Pose2d startPose = new Pose2d(0, 0, Math.toRadians(90));
+
+        Pose2d startPose = SubsystemData.LastAutonPose;
 
         DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);

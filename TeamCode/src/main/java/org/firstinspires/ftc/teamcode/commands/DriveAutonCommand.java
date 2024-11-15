@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
+import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
@@ -49,37 +50,48 @@ public class DriveAutonCommand extends CommandBase {
         List<Action> newActions = new ArrayList<>();
         for (Action action : runningActions) {
             action.preview(packet.fieldOverlay());
-            if (action.run(packet) && !SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // TODO: temporarily makes the auton cancellable
+            if (action.run(packet) && !SubsystemData.inTeleOp) { // && !SubsystemData.driver.getButton(GamepadKeys.Button.A)
                 newActions.add(action);
             }
         }
         runningActions = newActions;
 
 
-        if (runningActions.isEmpty()) { // TODO: Temporary forward backward auton while testing
+        /*
+        if (runningActions.isEmpty() && !SubsystemData.inTeleOp) {
             runningActions.add(new SequentialAction(
                     drive.actionBuilder(startPose)
-                            .strafeToConstantHeading(new Vector2d(0, 30))
-                            .waitSeconds(0.5)
-                            .strafeToConstantHeading(new Vector2d(0, 0))
-                            .waitSeconds(0.5)
-                            //.turnTo(Math.toRadians(270))
-                            //.waitSeconds(1)
+                            //.strafeTo(new Vector2d(0, 30))
+                            //.waitSeconds(1.5)
+                            //.strafeTo(new Vector2d(0, 0))
+                            .waitSeconds(1.5)
+                            .turnTo(Math.toRadians(270))
+                            .waitSeconds(1)
+                            .turnTo(Math.toRadians(90))
                             .build()
             ));
         }
 
+         */
+
+
+
         telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
 
-        drive.updateDifferentialSwerve(); // keep drivetrain running
+        // drive.updateDifferentialSwerve(); // keep drivetrain running
 
-        telemetry.update();
+        // telemetry.update();
 
-        if (SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // locks the entire code so I can read it
+        /*
+        if (SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // locks the entire code so I can read the telemetry
             while (Thread.currentThread().isAlive()) {
                 drive.stopDifferentialSwerve();
             }
         }
+
+         */
+
+        SubsystemData.LastAutonPose = drive.pose; // keeps track of the pose during auton and saves it for teleOp
 
         dash.sendTelemetryPacket(packet);
     }
@@ -87,6 +99,12 @@ public class DriveAutonCommand extends CommandBase {
 
     public static void queueAction(Action action) {
         runningActions.add(action);
+    }
+
+
+    @Override
+    public boolean isFinished() {
+        return SubsystemData.inTeleOp;
     }
 
 }

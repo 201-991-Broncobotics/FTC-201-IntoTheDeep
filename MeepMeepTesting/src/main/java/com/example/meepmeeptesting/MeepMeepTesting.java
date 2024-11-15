@@ -38,10 +38,9 @@ public class MeepMeepTesting {
                 .waitSeconds(1.5)
                 // next trajectory
                 .waitSeconds(1.5)
-                .setTangent(Math.toRadians(-60))
-                .splineToLinearHeading(new Pose2d(tileCoords(1.4, -1.6), Math.toRadians(45)), Math.toRadians(0))
+                .strafeToLinearHeading(tileCoords(1.4, -1.6), Math.toRadians(45))
                 // end
-                .waitSeconds(2)
+                .waitSeconds(1.5)
                 .turnTo(Math.toRadians(-45))
                 .waitSeconds(2)
                 .build());

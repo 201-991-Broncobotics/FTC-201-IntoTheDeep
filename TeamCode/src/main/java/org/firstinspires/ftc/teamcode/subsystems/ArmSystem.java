@@ -19,6 +19,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
@@ -141,7 +142,7 @@ public class ArmSystem extends SubsystemBase {
         PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
                 1, 0, 0, 135, 3, true, true,
                 CurrentPivotAngle);
-        ExtensionPID = new PIDController(0.008, 0, 0, 0, Constants.extensionMaxLength, 0,
+        ExtensionPID = new PIDController(0.008, 0, 0, 1, Constants.extensionMaxLength, 0,
                 1, 0, 0, 0, 5, true, false,
                 CurrentExtensionLength);
     }
@@ -367,15 +368,15 @@ public class ArmSystem extends SubsystemBase {
             ExtensionB.setPower(-0.4);
             CurrentExtensionLengthZero = CurrentExtensionLengthInst;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
-            ExtensionF.setPower(0.5);
-            ExtensionB.setPower(0.5);
+            ExtensionF.setPower(0.3);
+            ExtensionB.setPower(0.3);
         } else {
             ExtensionF.setPower(ExtensionPower);
             ExtensionB.setPower(ExtensionPower);
         }
 
         // If the current extension length is ever outside the limits, move the zero so it is again
-        if (CurrentExtensionLengthInst < -1) CurrentExtensionLengthZero = CurrentExtensionLengthInst - (-1);
+        if (CurrentExtensionLengthInst < 0) CurrentExtensionLengthZero = CurrentExtensionLengthInst - (0);
         if (CurrentExtensionLengthInst > 697) CurrentExtensionLengthZero = CurrentExtensionLengthInst - 697;
 
 
@@ -397,6 +398,7 @@ public class ArmSystem extends SubsystemBase {
 
 
         telemetry.addData("Heading:", Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
+        telemetry.addData("Heading target:", SubsystemData.HeadHoldTarget);
         telemetry.addLine("Robot Pose (in) X: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.x, 2) + " Y: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.y, 2));
@@ -458,11 +460,11 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 13) PIDVar = 0;
+            if (PIDVar > 10) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 13;
+            if (PIDVar < 0) PIDVar = 10;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
@@ -471,6 +473,7 @@ public class ArmSystem extends SubsystemBase {
             if (inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
 
             switch (PIDVar) {
+                case 0: break; // don't go through this list if not editing PIDs
                 //case 1: ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4); break;
                 //case 2: ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4); break;
                 //case 3: ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4); break;
@@ -484,16 +487,37 @@ public class ArmSystem extends SubsystemBase {
                 case 2: SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5); break;
                 case 3: SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5); break;
                 case 4: SubsystemData.HeadingTargetPID.minDifference = functions.round(SubsystemData.HeadingTargetPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                case 5: SubsystemData.AxialPID.kP = functions.round(SubsystemData.AxialPID.kP + PIDChangeIncrement, 4); break;
-                case 6: SubsystemData.AxialPID.kI = functions.round(SubsystemData.AxialPID.kI + PIDChangeIncrement, 4); break;
-                case 7: SubsystemData.AxialPID.kD = functions.round(SubsystemData.AxialPID.kD + PIDChangeIncrement, 4); break;
-                case 8: SubsystemData.AxialPID.minDifference = functions.round(SubsystemData.AxialPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                case 9: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
-                case 10: SubsystemData.SwitchTimeMS = Math.round(SubsystemData.SwitchTimeMS + PIDChangeIncrement * 10000); break;
-                case 11: SubsystemData.SwitchTimeTimeout = Math.round(SubsystemData.SwitchTimeTimeout + PIDChangeIncrement * 10000); break;
-                case 12: SubsystemData.SwerveModuleTolerance = functions.round(SubsystemData.SwerveModuleTolerance + PIDChangeIncrement * 1000, 1); break;
-                case 13: SubsystemData.maxBrakeWaddleAngle = functions.round(SubsystemData.maxBrakeWaddleAngle + PIDChangeIncrement * 1000, 1); break;
+                //case 14: SubsystemData.TankLandingPID.kP = functions.round(SubsystemData.TankLandingPID.kP + PIDChangeIncrement, 4); break;
+                //case 15: SubsystemData.TankLandingPID.kI = functions.round(SubsystemData.TankLandingPID.kI + PIDChangeIncrement, 4); break;
+                //case 16: SubsystemData.TankLandingPID.kD = functions.round(SubsystemData.TankLandingPID.kD + PIDChangeIncrement, 4); break;
+                //case 17: SubsystemData.TankLandingPID.minDifference = functions.round(SubsystemData.TankLandingPID.minDifference + PIDChangeIncrement * 100, 2); break;
+                case 5: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                case 6: SubsystemData.CommandBlendingAmount = SubsystemData.CommandBlendingAmount + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                case 7: SubsystemData.AutonStoppingDistance = functions.round(SubsystemData.AutonStoppingDistance + PIDChangeIncrement * 100, 2); break;
+                case 8: SubsystemData.AutonAngleStoppingDifference = functions.round(SubsystemData.AutonAngleStoppingDifference + PIDChangeIncrement * 100, 2); break;
+                case 9: SubsystemData.AutonMovementGain = functions.round(SubsystemData.AutonMovementGain + PIDChangeIncrement, 4); break;
+                case 10: SubsystemData.targetPosePerpOffset = functions.round(SubsystemData.targetPosePerpOffset + PIDChangeIncrement, 4); break;
+                // case 15: SubsystemData.RRkAFeedForward = functions.round(SubsystemData.RRkAFeedForward + PIDChangeIncrement * 10, 3); break;
+                // case 16: SubsystemData.RRkAFeedForward = functions.round(SubsystemData.RRkAFeedForward + PIDChangeIncrement * 10, 3); break;
+                //case 20: SubsystemData.SwerveModuleReferencePID.kP = functions.round(SubsystemData.SwerveModuleReferencePID.kP + PIDChangeIncrement / 10, 5); break;
+                //case 21: SubsystemData.SwerveModuleReferencePID.kI = functions.round(SubsystemData.SwerveModuleReferencePID.kI + PIDChangeIncrement / 10, 5); break;
+                //case 22: SubsystemData.SwerveModuleReferencePID.kD = functions.round(SubsystemData.SwerveModuleReferencePID.kD + PIDChangeIncrement / 10, 5); break;
+                //case 23: SubsystemData.SwerveModuleReferencePID.minDifference = functions.round(SubsystemData.SwerveModuleReferencePID.minDifference + PIDChangeIncrement * 100, 2); break;
+                //case 24: SubsystemData.turnPercentage = functions.round(SubsystemData.turnPercentage + PIDChangeIncrement * 10, 3); break;
+                //case 25: SubsystemData.TankDriveAngleSharpness = SubsystemData.TankDriveAngleSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                //case 26: SubsystemData.stopHeadingChangeDistanceTolerance = functions.round(SubsystemData.stopHeadingChangeDistanceTolerance + PIDChangeIncrement * 10, 3); break;
+                //case 10: SubsystemData.SwitchTimeMS = Math.round(SubsystemData.SwitchTimeMS + PIDChangeIncrement * 10000); break;
+                //case 11: SubsystemData.SwitchTimeTimeout = Math.round(SubsystemData.SwitchTimeTimeout + PIDChangeIncrement * 10000); break;
+                //case 12: SubsystemData.SwerveModuleTolerance = functions.round(SubsystemData.SwerveModuleTolerance + PIDChangeIncrement * 1000, 1); break;
+                //case 13: SubsystemData.maxBrakeWaddleAngle = functions.round(SubsystemData.maxBrakeWaddleAngle + PIDChangeIncrement * 1000, 1); break;
+                //case 27: SubsystemData.TankTurnGain = functions.round(SubsystemData.TankTurnGain + PIDChangeIncrement * 10, 3); break;
+                //case 28: SubsystemData.RamseteZeta = functions.round(SubsystemData.RamseteZeta + PIDChangeIncrement * 10, 3); break;
+                //case 29: SubsystemData.RamseteBBar = functions.round(SubsystemData.RamseteBBar + PIDChangeIncrement * 10, 3); break;
+
+
             }
+
+
             if (!PIDIncrementButtonPressed) { // only happens once when the button is first pressed
                 PIDButtonPressTime.reset(); // set the time that the button started being pressed to 0
                 PIDIncrementButtonPressed = true;
@@ -512,19 +536,36 @@ public class ArmSystem extends SubsystemBase {
             //case 7: telemetry.addData("Editing: Pivot Kd -", PivotPID.kD); break;
             //case 8: telemetry.addData("Editing: Pivot Retracted Gravity -", Constants.pivotRetractedGravityPower); break;
             //case 9: telemetry.addData("Editing: Pivot Extended Gravity -", Constants.pivotExtendedGravityPower); break;
-            case 1: telemetry.addLine("Editing: Heading Kp -" + SubsystemData.HeadingTargetPID.kP); break; // addData only prints doubles up to 4 decimal places
-            case 2: telemetry.addLine("Editing: Heading Ki -" + SubsystemData.HeadingTargetPID.kI); break;
-            case 3: telemetry.addLine("Editing: Heading Kd -" + SubsystemData.HeadingTargetPID.kD); break;
+            case 1: telemetry.addData("Editing: Heading Kp (*10) -", SubsystemData.HeadingTargetPID.kP * 10); break; // addData only prints doubles up to 4 decimal places
+            case 2: telemetry.addData("Editing: Heading Ki (*10) -", SubsystemData.HeadingTargetPID.kI * 10); break;
+            case 3: telemetry.addData("Editing: Heading Kd (*10) -", SubsystemData.HeadingTargetPID.kD * 10); break;
             case 4: telemetry.addData("Editing: Heading minDifference -", SubsystemData.HeadingTargetPID.minDifference); break;
-            case 5: telemetry.addData("Editing: Auton Kp -", SubsystemData.AxialPID.kP); break;
-            case 6: telemetry.addData("Editing: Auton Ki -", SubsystemData.AxialPID.kI); break;
-            case 7: telemetry.addData("Editing: Auton Kd -", SubsystemData.AxialPID.kD); break;
-            case 8: telemetry.addData("Editing: Auton minDifference -", SubsystemData.AxialPID.minDifference); break;
-            case 9: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
-            case 10: telemetry.addData("Editing: Switch Time (ms) -", SubsystemData.SwitchTimeMS); break;
-            case 11: telemetry.addData("Editing: Switch Timeout (ms) -", SubsystemData.SwitchTimeTimeout); break;
-            case 12: telemetry.addData("Editing: Swerve Module Tol -", SubsystemData.SwerveModuleTolerance); break;
-            case 13: telemetry.addData("Editing: max Waddle Angle -", SubsystemData.maxBrakeWaddleAngle); break;
+            //case 14: telemetry.addData("Editing: Auton Kp -", SubsystemData.TankLandingPID.kP); break;
+            //case 15: telemetry.addData("Editing: Auton Ki -", SubsystemData.TankLandingPID.kI); break;
+            //case 16: telemetry.addData("Editing: Auton Kd -", SubsystemData.TankLandingPID.kD); break;
+            //case 17: telemetry.addData("Editing: Auton minDifference -", SubsystemData.TankLandingPID.minDifference); break;
+            case 5: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
+            case 6: telemetry.addData("Editing: Command Blending Amount -", SubsystemData.CommandBlendingAmount); break;
+            case 7: telemetry.addData("Editing: Auton Stopping Distance -", SubsystemData.AutonStoppingDistance); break;
+            case 8: telemetry.addData("Editing: Auton Stopping Angle -", SubsystemData.AutonAngleStoppingDifference); break;
+            case 9: telemetry.addData("Editing: Auton Gain -", SubsystemData.AutonMovementGain); break;
+            case 10: telemetry.addData("Editing: Target pose offset -", SubsystemData.targetPosePerpOffset); break;
+            //case 19: telemetry.addData("Editing: Feed Forward kA -", SubsystemData.RRkAFeedForward); break;
+            //case 20: telemetry.addData("Editing: Swerve Module Kp -", SubsystemData.SwerveModuleReferencePID.kP); break;
+            //case 21: telemetry.addData("Editing: Swerve Module Ki -", SubsystemData.SwerveModuleReferencePID.kI); break;
+            //case 22: telemetry.addData("Editing: Swerve Module Kd -", SubsystemData.SwerveModuleReferencePID.kD); break;
+            //case 23: telemetry.addData("Editing: Swerve Module minDifference -", SubsystemData.SwerveModuleReferencePID.minDifference); break;
+            //case 24: telemetry.addData("Editing: Auton turn Percentage -", SubsystemData.turnPercentage); break;
+            //case 25: telemetry.addData("Editing: TankDriveAngleSharpness -", SubsystemData.TankDriveAngleSharpness); break;
+            //case 26: telemetry.addData("Editing: Heading Distance Tolerance -", SubsystemData.stopHeadingChangeDistanceTolerance); break;
+            //case 10: telemetry.addData("Editing: Switch Time (ms) -", SubsystemData.SwitchTimeMS); break;
+            //case 11: telemetry.addData("Editing: Switch Timeout (ms) -", SubsystemData.SwitchTimeTimeout); break;
+            //case 12: telemetry.addData("Editing: Swerve Module Tol -", SubsystemData.SwerveModuleTolerance); break;
+            //case 13: telemetry.addData("Editing: max Waddle Angle -", SubsystemData.maxBrakeWaddleAngle); break;
+            //case 27: telemetry.addData("Editing: Tank Turn Gain -", SubsystemData.TankTurnGain); break;
+            //case 28: telemetry.addData("Editing: Ramsete Zeta -", SubsystemData.RamseteZeta); break;
+            //case 29: telemetry.addData("Editing: Ramsete BBar -", SubsystemData.RamseteBBar); break;
+
         }
     }
 
@@ -662,16 +703,17 @@ public class ArmSystem extends SubsystemBase {
     }
 
 
-    public void depositSpecimen() { // onto a rung
-        ExtensionTargetLength = CurrentExtensionLengthInst - 150;
-        // runMethodAfterSec("openClaw", 1.25); // TODO: might not want to open claw here
-    }
-
-
-    public void driveClampSpecimenPosition() { // goes to the position needed to just drive into the rungs and instantly clamp the specimen
+    public void moveClawToRamRung() { // goes to the position needed to just drive into the rungs and instantly clamp the specimen
+        PushForMaxExtension = false;
         backPedalExtension = true;
         moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 700 - Constants.pivotAxleHeight));
         WristTargetAngle = 180;
+    }
+
+
+    public void depositSpecimen() { // onto a rung
+        ExtensionTargetLength = CurrentExtensionLengthInst - 150;
+        // runMethodAfterSec("openClaw", 1.25); // TODO: might not want to open claw here
     }
 
 
@@ -680,7 +722,7 @@ public class ArmSystem extends SubsystemBase {
         if (CurrentlyReadyPreset == 3) { // second action
             Vector2d currentArmPoint = getTargetClawPoint();
             closeClaw();
-            runMethodAfterSec("moveArmToPoint", 1.5, new Vector2d(currentArmPoint.x, currentArmPoint.y + 120));
+            runMethodAfterSec("moveArmToPoint", 0.7, new Vector2d(currentArmPoint.x, currentArmPoint.y + 120));
             CurrentlyReadyPreset = 0;
         } else {
             backPedalExtension = true;
@@ -707,7 +749,9 @@ public class ArmSystem extends SubsystemBase {
 
     // WRIST AND CLAW METHODS
 
-    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.29); } // make wrist go to that specific angle
+    // Gobilda torque servo: Wrist.setPosition(1.35 * (Angle / 360) + 0.29);
+
+    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.31); } // make wrist go to that specific angle
     public void setClaw(double Angle) { Claw.setPosition(Angle / 90 * (Constants.ClawClosedPosition - Constants.ClawOpenPosition) + Constants.ClawOpenPosition); }
     public void openClaw() {
         ClawTargetPosition = Constants.ClawOpenPosition;
@@ -744,6 +788,7 @@ public class ArmSystem extends SubsystemBase {
         AwaitingMethodCallingTimes.add(runTime.time() + delaySeconds * 1000);
         AwaitingMethodCallingNames.add(methodName);
         AwaitingMethodCallingParams.add(parameters);
+        runAnyPreparedMethods(); // auton better stop being so dumb
     }
 
     private void runMethodAfterSec(String methodName, double delaySeconds) {
@@ -778,7 +823,7 @@ public class ArmSystem extends SubsystemBase {
                     // ArmClaw method names:
                     // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
                     // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
-                    // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
+                    // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
 
                     // Parameter methods:
                     // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
@@ -798,6 +843,7 @@ public class ArmSystem extends SubsystemBase {
                         case "toggleLoosenClaw": toggleLoosenClaw(); break;
                         case "moveClawToTopBasket": moveClawToTopBasket(); break;
                         case "moveClawToTopRung": moveClawToTopRung(); break;
+                        case "moveClawToRamRung": moveClawToRamRung(); break;
                         case "moveClawToHumanPickup": moveClawToHumanPickup(); break;
                         case "resetArm": resetArm(); break;
 
@@ -832,33 +878,100 @@ public class ArmSystem extends SubsystemBase {
     }}
 
 
+    public class RRRunMethodCommand4 implements Action {
+        String methodName;
+        double delaySeconds;
+        Object Param1;
+        Object Param2;
+        public RRRunMethodCommand4(String methodName, double delaySeconds, Object Param1, Object Param2) {
+            this.methodName = methodName;
+            this.delaySeconds = delaySeconds;
+            this.Param1 = Param1;
+            this.Param2 = Param2;
+        }
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            runMethodAfterSec(methodName, delaySeconds, Param1, Param2);
+            return false;
+        }
+    }
+
+    public class RRRunMethodCommand3 implements Action {
+        String methodName;
+        double delaySeconds;
+        Object Param1;
+        public RRRunMethodCommand3(String methodName, double delaySeconds, Object Param1) {
+            this.methodName = methodName;
+            this.delaySeconds = delaySeconds;
+            this.Param1 = Param1;
+        }
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            runMethodAfterSec(methodName, delaySeconds, Param1);
+            return false;
+        }
+    }
+
+    public class RRRunMethodCommand2 implements Action {
+        String methodName;
+        double delaySeconds;
+        public RRRunMethodCommand2(String methodName, double delaySeconds) {
+            this.methodName = methodName;
+            this.delaySeconds = delaySeconds;
+        }
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            runMethodAfterSec(methodName, delaySeconds);
+            return false;
+        }
+    }
+
+    public class RRRunMethodCommand1 implements Action {
+        String methodName;
+        public RRRunMethodCommand1(String methodName) {
+            this.methodName = methodName;
+        }
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            runMethodAfterSec(methodName, 0);
+            return false;
+        }
+    }
+
+
     public Action RunMethod(String methodName, double delaySeconds, Object Param1, Object Param2) {
-        runMethodAfterSec(methodName, delaySeconds, Param1, Param2);
-        return new RRFinishCommand();
+        return new RRRunMethodCommand4(methodName, delaySeconds, Param1, Param2);
     }
 
     public Action RunMethod(String methodName, double delaySeconds, Object Param1) {
-        runMethodAfterSec(methodName, delaySeconds, Param1);
-        return new RRFinishCommand();
+        return new RRRunMethodCommand3(methodName, delaySeconds, Param1);
     }
 
     public Action RunMethod(String methodName, double delaySeconds) {
-        runMethodAfterSec(methodName, delaySeconds);
-        return new RRFinishCommand();
+        return new RRRunMethodCommand2(methodName, delaySeconds);
     }
 
     public Action RunMethod(String methodName) {
-        return RunMethod(methodName, 0);
+        return new RRRunMethodCommand1(methodName);
     }
 
-    double StartWaitTime, WaitTime;
-    public class RRWaitCommand implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
-        return runTime.time() - StartWaitTime < WaitTime;
+    public class RRWaitCommand implements Action {
+        boolean firstStart = true;
+        double Delay;
+        ElapsedTime waitTimer;
+        public RRWaitCommand(double Delay) {
+            this.Delay = Delay;
+            this.waitTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        }
+        @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (firstStart) {
+                firstStart = false;
+                waitTimer.reset();
+            }
+            return waitTimer.time() < Delay;
     }}
     public Action Wait(double delaySeconds) {
-        StartWaitTime = runTime.time();
-        WaitTime = delaySeconds * 1000;
-        return new RRWaitCommand();
+        return new RRWaitCommand(delaySeconds * 1000);
     }
 
 

@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 public class Constants {
 
-    public static double maxDrivetrainMotorPower = 0.8; // TODO: Make sure this is what it needs to be before competition
+    public static double maxDrivetrainMotorPower = 0.5; // TODO: Make sure this is what it needs to be before competition
 
     public static double ModuleGearRatio = (21 / 58.0) * (35 / 9.0) * (63.5 * Math.PI / 25.4); // units are in inches (move along the ground) per 1 motor revolution
 
@@ -34,6 +34,8 @@ public class Constants {
 
     // 420 mm from end of claw to pivot axle, 457.2 is the length of the robot, 15 is extra distance to be sure
     public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15; // distance that is left within the horizontal expansion limit
+
+    public static double TrackWidthInInches = 11.188976; // inches
 
 
 }

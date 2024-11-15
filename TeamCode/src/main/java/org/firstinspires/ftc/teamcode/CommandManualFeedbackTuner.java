@@ -16,17 +16,20 @@ import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
+import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 
-@TeleOp(name="CommandManualFeedbackTuner")
+@TeleOp(name="CommandManualFeedbackTuner", group="Utility")
 public class CommandManualFeedbackTuner extends CommandOpMode {
 
     @Override
     public void initialize() {
+
+        SubsystemData.inTeleOp = false;
 
         // assume a position of 0, 0, 0 is in the exact center of the field pointing away from audience
 
@@ -38,8 +41,10 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
 
         // This keeps the stuff updating in the background of auton instead of just when it needs to be used
-        drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));
+        // drive.setDefaultCommand();
+        schedule(new DriveAutonCommand(drive, telemetry));
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
+
 
         // schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 

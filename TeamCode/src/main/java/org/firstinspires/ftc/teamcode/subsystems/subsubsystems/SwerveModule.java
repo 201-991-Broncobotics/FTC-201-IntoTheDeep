@@ -19,7 +19,7 @@ public class SwerveModule {
 
     private final DcMotorEx topMotor, bottomMotor;
 
-    private final double ModuleZeroAngle;
+    private double ModuleZeroAngle;
 
     private double targetAngle;
 
@@ -30,7 +30,8 @@ public class SwerveModule {
         topMotor = newTopMotor;
         bottomMotor = newBottomMotor;
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
-        modulePID = new PIDController(SubsystemData.SwerveModuleKp, SubsystemData.SwerveModuleKi, SubsystemData.SwerveModuleKd, topMotorEncoder);
+        modulePID = new PIDController(0, 0, 0, topMotorEncoder);
+        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
     }
 
 
@@ -39,11 +40,12 @@ public class SwerveModule {
     }
 
 
+    public void setCurrentDiffyAngleTo(double newAngleZero) { ModuleZeroAngle = newAngleZero; }
+
+
     public void setModule(double angle, double speed, double maxPowerLimit) {
         targetAngle = angle;
-        modulePID.kP = SubsystemData.SwerveModuleKp;
-        modulePID.kI = SubsystemData.SwerveModuleKi;
-        modulePID.kD = SubsystemData.SwerveModuleKd;
+        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
         if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
@@ -65,9 +67,7 @@ public class SwerveModule {
 
     public void setModuleDual(double angle, DualNum<Time> speed, double maxPowerLimit, MotorFeedforward feedForward, double voltage) {
         targetAngle = angle;
-        modulePID.kP = SubsystemData.SwerveModuleKp;
-        modulePID.kI = SubsystemData.SwerveModuleKi;
-        modulePID.kD = SubsystemData.SwerveModuleKd;
+        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
         if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);

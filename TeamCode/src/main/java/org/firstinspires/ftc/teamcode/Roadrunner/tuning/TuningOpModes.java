@@ -39,7 +39,7 @@ public final class TuningOpModes {
     public static final Class<?> DRIVE_CLASS = DifferentialSwerveDrive.class;
 
     public static final String GROUP = "quickstart";
-    public static final boolean DISABLED = false;
+    public static final boolean DISABLED = true;
 
     private TuningOpModes() {}
 
@@ -109,7 +109,7 @@ public final class TuningOpModes {
             };
         } else if (DRIVE_CLASS.equals(TankDrive.class)) {
             dvf = hardwareMap -> {
-                TankDrive td = new TankDrive(hardwareMap, new Pose2d(0, 0, 0));
+                TankDrive td = new TankDrive(hardwareMap, new Pose2d(0, 0, 0), telemetry);
 
                 List<Encoder> leftEncs = new ArrayList<>(), rightEncs = new ArrayList<>();
                 List<Encoder> parEncs = new ArrayList<>(), perpEncs = new ArrayList<>();

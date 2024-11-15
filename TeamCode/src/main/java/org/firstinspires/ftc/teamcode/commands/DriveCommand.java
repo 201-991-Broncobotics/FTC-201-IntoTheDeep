@@ -66,11 +66,14 @@ public class DriveCommand extends CommandBase {
         }
 
         double throttleControl = 0.6 + 0.4 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
-        double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY());
+        double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
-        double turn = -0.6 * functions.deadZone(SubsystemData.driver.getLeftX());
+        double turn = -0.6 * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
+
+        if (!SubsystemData.absoluteDriving) telemetry.addLine("Absolute Driving is off");
+
 
         if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
             if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
@@ -84,6 +87,7 @@ public class DriveCommand extends CommandBase {
                 // auto aim
                 if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
                 turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
+                telemetry.addLine("Heading Correction is Active");
 
             } else headingHold = Math.toDegrees(drive.pose.heading.toDouble());
 
@@ -94,6 +98,8 @@ public class DriveCommand extends CommandBase {
             headingHold = Math.toDegrees(drive.pose.heading.toDouble());
             SubsystemData.HoldClawFieldPos = false;
         }
+
+        SubsystemData.HeadHoldTarget = headingHold;
 
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
