@@ -117,16 +117,6 @@ public class ArmSystem extends SubsystemBase {
 
         CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
 
-        setWrist(WristTargetAngle); // reset Extension and claw at start because wrist servo gets stuck for some reason
-        functions.Sleep(250);
-        ExtensionF.setPower(-0.3);
-        ExtensionB.setPower(-0.3);
-        functions.Sleep(250);
-        ExtensionF.setPower(0);
-        ExtensionB.setPower(0);
-        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
-        openClaw();
-
         camera = new HuskyLensCamera(map);
 
         // Timers
@@ -145,6 +135,19 @@ public class ArmSystem extends SubsystemBase {
         ExtensionPID = new PIDController(0.008, 0, 0, 1, Constants.extensionMaxLength, 0,
                 1, 0, 0, 0, 5, true, false,
                 CurrentExtensionLength);
+    }
+
+
+    public void resetAndPrepareArm() {
+        setWrist(WristTargetAngle); // reset Extension and claw at start because wrist servo gets stuck for some reason
+        functions.Sleep(250);
+        ExtensionF.setPower(-0.3);
+        ExtensionB.setPower(-0.3);
+        functions.Sleep(250);
+        ExtensionF.setPower(0);
+        ExtensionB.setPower(0);
+        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble();
+        closeClaw();
     }
 
 
@@ -170,7 +173,7 @@ public class ArmSystem extends SubsystemBase {
             if (functions.inUse(joystickLeftY)) PushForMaxExtension = false;
             backPedalExtension = false;
             if (FrameRate > 2) {
-                double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
+                double ArmThrottle = 0.55 + 0.45 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
 
                 if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) { // coords control (one joystick controls height, the other controls forward and strafe)
                     Vector2d targetClawPos = getTargetClawPoint();
@@ -407,13 +410,10 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addLine(" ");
             telemetry.addData("Right persistent:", PersistentDataStorage.lastRightDiffyAngle);
             telemetry.addData("Left persistent:", PersistentDataStorage.lastLeftDiffyAngle);
-            Pose2d CurrentClawPosition = getCurrentClawPose(); // avoiding calling this method twice
-            telemetry.addLine("Claw Field Pose X: " +
-                    functions.round(CurrentClawPosition.position.x, 2) + " Y: " +
-                    functions.round(CurrentClawPosition.position.y, 2) + " H: " +
-                    functions.round(getCurrentClawHeight(), 2));
-            //Pose2d TargetClawPosition = getTargetClawPose(); // avoiding calling this method twice
-            //telemetry.addLine("Target Claw Pose X: " + functions.round(TargetClawPosition.position.x, 2) + " Y: " + functions.round(TargetClawPosition.position.y, 2) + " H: " + functions.round(getTargetClawHeight(), 2));
+            Vector2d CurrentClawPosition = getCurrentClawPoint(); // avoiding calling this method twice
+            telemetry.addLine("Claw Point X: " + functions.round(CurrentClawPosition.x, 2) + " Y: " + functions.round(CurrentClawPosition.y, 2));
+            Vector2d TargetClawPosition = getTargetClawPoint(); // avoiding calling this method twice
+            telemetry.addLine("Target Claw Point X: " + functions.round(TargetClawPosition.x, 2) + " Y: " + functions.round(TargetClawPosition.y, 2));
             telemetry.addData("Pivot Motor Power:", PivotPower);
             telemetry.addData("Extension Motor Power:", ExtensionPower);
             telemetry.addData("Extension Motor Current:", ExtensionF.getCurrent(CurrentUnit.AMPS));
@@ -492,7 +492,7 @@ public class ArmSystem extends SubsystemBase {
                 //case 16: SubsystemData.TankLandingPID.kD = functions.round(SubsystemData.TankLandingPID.kD + PIDChangeIncrement, 4); break;
                 //case 17: SubsystemData.TankLandingPID.minDifference = functions.round(SubsystemData.TankLandingPID.minDifference + PIDChangeIncrement * 100, 2); break;
                 case 5: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
-                case 6: SubsystemData.CommandBlendingAmount = SubsystemData.CommandBlendingAmount + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                case 6: SubsystemData.AutonTurnGain = functions.round(SubsystemData.AutonTurnGain + PIDChangeIncrement * 10, 3); break;
                 case 7: SubsystemData.AutonStoppingDistance = functions.round(SubsystemData.AutonStoppingDistance + PIDChangeIncrement * 100, 2); break;
                 case 8: SubsystemData.AutonAngleStoppingDifference = functions.round(SubsystemData.AutonAngleStoppingDifference + PIDChangeIncrement * 100, 2); break;
                 case 9: SubsystemData.AutonMovementGain = functions.round(SubsystemData.AutonMovementGain + PIDChangeIncrement, 4); break;
@@ -545,7 +545,7 @@ public class ArmSystem extends SubsystemBase {
             //case 16: telemetry.addData("Editing: Auton Kd -", SubsystemData.TankLandingPID.kD); break;
             //case 17: telemetry.addData("Editing: Auton minDifference -", SubsystemData.TankLandingPID.minDifference); break;
             case 5: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
-            case 6: telemetry.addData("Editing: Command Blending Amount -", SubsystemData.CommandBlendingAmount); break;
+            case 6: telemetry.addData("Editing: Auton Turn Gain -", SubsystemData.AutonTurnGain); break;
             case 7: telemetry.addData("Editing: Auton Stopping Distance -", SubsystemData.AutonStoppingDistance); break;
             case 8: telemetry.addData("Editing: Auton Stopping Angle -", SubsystemData.AutonAngleStoppingDifference); break;
             case 9: telemetry.addData("Editing: Auton Gain -", SubsystemData.AutonMovementGain); break;
@@ -696,7 +696,7 @@ public class ArmSystem extends SubsystemBase {
             CurrentlyReadyPreset = 0;
         } else { // normal action
             backPedalExtension = true;
-            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 810 - Constants.pivotAxleHeight));
+            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 830 - Constants.pivotAxleHeight));
             WristTargetAngle = 50;
             CurrentlyReadyPreset = 2;
         }
@@ -706,13 +706,13 @@ public class ArmSystem extends SubsystemBase {
     public void moveClawToRamRung() { // goes to the position needed to just drive into the rungs and instantly clamp the specimen
         PushForMaxExtension = false;
         backPedalExtension = true;
-        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 75, 700 - Constants.pivotAxleHeight));
+        moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 125, 515 - Constants.pivotAxleHeight));
         WristTargetAngle = 180;
     }
 
 
     public void depositSpecimen() { // onto a rung
-        ExtensionTargetLength = CurrentExtensionLengthInst - 150;
+        ExtensionTargetLength = CurrentExtensionLengthInst - 130;
         // runMethodAfterSec("openClaw", 1.25); // TODO: might not want to open claw here
     }
 
@@ -726,7 +726,7 @@ public class ArmSystem extends SubsystemBase {
             CurrentlyReadyPreset = 0;
         } else {
             backPedalExtension = true;
-            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 290 - Constants.pivotAxleHeight));
+            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 100, 270 - Constants.pivotAxleHeight));
             WristTargetAngle = 90;
             openClaw();
             CurrentlyReadyPreset = 3;
@@ -757,7 +757,7 @@ public class ArmSystem extends SubsystemBase {
         ClawTargetPosition = Constants.ClawOpenPosition;
         ClawWasLastOpen = true;
     }
-    public void pointClaw() { setClaw(40); } // partially closes claw so the operator can see where the pinchers are
+    public void pointClaw() { ClawTargetPosition = 40; } // partially closes claw so the operator can see where the pinchers are
     public void closeClaw() {
         ClawTargetPosition = Constants.ClawClosedPosition;
         ClawWasLastOpen = false;

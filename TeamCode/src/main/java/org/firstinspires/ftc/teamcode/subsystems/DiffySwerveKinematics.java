@@ -151,7 +151,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
          */
 
-        // telemetry.addLine("Average command X:" + functions.round(blendedCommand.linearVel.x.value(), 3) + " Y:" + functions.round(blendedCommand.linearVel.y.value(), 3) + " A:" + functions.round(blendedCommand.angVel.value(), 3));
+        telemetry.addLine("Average command X:" + functions.round(driveCommand.linearVel.x.value(), 3) + " Y:" + functions.round(driveCommand.linearVel.y.value(), 3) + " A:" + functions.round(driveCommand.angVel.value(), 3));
 
 
         DualNum<Time> forward = driveCommand.linearVel.y;

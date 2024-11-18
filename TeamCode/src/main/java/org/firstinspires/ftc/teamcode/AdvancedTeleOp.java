@@ -59,5 +59,8 @@ public class AdvancedTeleOp extends CommandOpMode {
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
+
+        waitForStart();
+        armSystem.resetAndPrepareArm();
     }
 }

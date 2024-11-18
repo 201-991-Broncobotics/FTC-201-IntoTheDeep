@@ -104,7 +104,7 @@ public class DriveCommand extends CommandBase {
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
-        double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude;
+        double drivePower = Math.pow(joystickMagnitude, 3); // Math.abs(joystickMagnitude) * joystickMagnitude
 
         driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
 

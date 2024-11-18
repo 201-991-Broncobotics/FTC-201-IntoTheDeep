@@ -99,23 +99,23 @@ public class SubsystemData {
 
     public static int TankDriveAngleSharpness = 1;
 
-    public static double stopHeadingChangeDistanceTolerance = 1; // in inches
+    public static double stopHeadingChangeDistanceTolerance = 0; // in inches
+
+    public static boolean repeatForwardBack = false;
 
 
 
 
 
+    public static double AutonStoppingDistance = 1, AutonAngleStoppingDifference = 0.1; // angle difference is actually in radians by accident
 
-
-    public static double AutonStoppingDistance = 4, AutonAngleStoppingDifference = 1;
-
-    public static double AutonMovementGain = 0.1;
+    public static double AutonMovementGain = 0.1, AutonTurnGain = 0.012;
 
 
     public static Pose2d LastAutonPose = new Pose2d(0, 0, Math.toRadians(90));
 
 
-    public static double targetPosePerpOffset = 0; // confusing to explain but it prevents the robot driving in circles around the target position
+    public static double targetPosePerpOffset = 0; // confusing to explain but it supposed to prevent the robot driving in circles around the target position
 
 
 }

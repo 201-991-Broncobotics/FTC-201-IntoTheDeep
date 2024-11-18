@@ -45,8 +45,10 @@ public class CommandManualFeedbackTuner extends CommandOpMode {
         schedule(new DriveAutonCommand(drive, telemetry));
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
 
+        SubsystemData.repeatForwardBack = true;
 
-        // schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
+
+        schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
 
         drive.updatePoseEstimate();

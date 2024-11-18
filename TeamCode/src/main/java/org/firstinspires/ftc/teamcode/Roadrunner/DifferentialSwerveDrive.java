@@ -50,6 +50,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -668,9 +669,20 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
     public static class RRPointTowardsPose implements Action {
         double targetAngle;
-        public RRPointTowardsPose(Vector2d targetPose) { targetAngle = Math.toDegrees(Math.atan2(targetPose.y, targetPose.x)); }
+        ElapsedTime timeoutTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        boolean FirstStart = true;
+        double timeout;
+        public RRPointTowardsPose(Vector2d targetPose) {
+            targetAngle = Math.toDegrees(Math.atan2(targetPose.y, targetPose.x));
+            timeout = 2000 * functions.angleDifference(SubsystemData.CurrentRobotPose.heading.toDouble(), targetAngle, 360) / 360;
+        }
         @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
-            if (Math.abs(SubsystemData.CurrentRobotPose.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+            if (FirstStart) {
+                timeoutTimer.reset();
+                FirstStart = false;
+            }
+
+            if (Math.abs(functions.angleDifference(SubsystemData.CurrentRobotPose.heading.toDouble(), targetAngle, 360)) < SubsystemData.AutonAngleStoppingDifference || timeoutTimer.time() > timeout) {
                 diffySwerve.stopDifferentialSwerve();
                 return false;
             } else {
@@ -688,9 +700,20 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
     public static class RRPointTowardsAngle implements Action {
         double targetAngle;
-        public RRPointTowardsAngle(double targetAngle) { this.targetAngle = targetAngle; }
+        ElapsedTime timeoutTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        boolean FirstStart = true;
+        double timeout;
+        public RRPointTowardsAngle(double targetAngle) {
+            this.targetAngle = targetAngle;
+            timeout = 2000 * functions.angleDifference(SubsystemData.CurrentRobotPose.heading.toDouble(), targetAngle, 360) / 360;
+        }
         @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
-            if (Math.abs(SubsystemData.CurrentRobotPose.heading.toDouble()) < SubsystemData.AutonAngleStoppingDifference) {
+            if (FirstStart) {
+                timeoutTimer.reset();
+                FirstStart = false;
+            }
+
+            if (Math.abs(functions.angleDifference(SubsystemData.CurrentRobotPose.heading.toDouble(), targetAngle, 360)) < SubsystemData.AutonAngleStoppingDifference || timeoutTimer.time() > timeout) {
                 diffySwerve.stopDifferentialSwerve();
                 return false;
             } else {

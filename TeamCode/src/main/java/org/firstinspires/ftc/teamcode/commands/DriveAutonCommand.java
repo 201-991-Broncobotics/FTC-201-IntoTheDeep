@@ -37,6 +37,8 @@ public class DriveAutonCommand extends CommandBase {
         drive = drivetrain;
         this.telemetry = telemetry;
         AutonUpdateSpeedTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+
+        SubsystemData.repeatForwardBack = false; // make sure this is off if not specifically needed
     }
 
 
@@ -57,22 +59,22 @@ public class DriveAutonCommand extends CommandBase {
         runningActions = newActions;
 
 
-        /*
-        if (runningActions.isEmpty() && !SubsystemData.inTeleOp) {
+
+        if (runningActions.isEmpty() && !SubsystemData.inTeleOp && SubsystemData.repeatForwardBack) {
             runningActions.add(new SequentialAction(
                     drive.actionBuilder(startPose)
-                            //.strafeTo(new Vector2d(0, 30))
-                            //.waitSeconds(1.5)
-                            //.strafeTo(new Vector2d(0, 0))
-                            .waitSeconds(1.5)
-                            .turnTo(Math.toRadians(270))
+                            .strafeTo(new Vector2d(0, 30))
                             .waitSeconds(1)
-                            .turnTo(Math.toRadians(90))
+                            .strafeTo(new Vector2d(0, 0))
+                            .waitSeconds(1)
+                            //.turnTo(Math.toRadians(270))
+                            //.waitSeconds(1)
+                            //.turnTo(Math.toRadians(90))
                             .build()
             ));
         }
 
-         */
+
 
 
 

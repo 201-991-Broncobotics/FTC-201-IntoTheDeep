@@ -20,7 +20,7 @@ public class MeepMeepTesting {
     }
 
     public static void main(String[] args) {
-        MeepMeep meepMeep = new MeepMeep(800);
+        MeepMeep meepMeep = new MeepMeep(700);
 
         RoadRunnerBotEntity myBot = new DefaultBotBuilder(meepMeep)
                 // Set bot constraints: maxVel, maxAccel, maxAngVel, maxAngAccel, track width
@@ -34,15 +34,18 @@ public class MeepMeepTesting {
 
 
         myBot.runAction(myBot.getDrive().actionBuilder(startPose)
+                .strafeToConstantHeading(tileCoords(2.3, -2.4))
+                /*
                 .strafeToConstantHeading(tileCoords(0.2, -1.6))
                 .waitSeconds(1.5)
                 // next trajectory
-                .waitSeconds(1.5)
-                .strafeToLinearHeading(tileCoords(1.4, -1.6), Math.toRadians(45))
-                // end
-                .waitSeconds(1.5)
-                .turnTo(Math.toRadians(-45))
-                .waitSeconds(2)
+                .setTangent(Math.toRadians(0))
+                .lineToX(tiles(1.2))
+                .splineToLinearHeading(new Pose2d(tileCoords(1.5, -0.5), Math.toRadians(0)), Math.toRadians(90))
+                .strafeToConstantHeading(tileCoords(2.0, -0.5))
+                .strafeToConstantHeading(tileCoords(2.0, -2.5))
+
+                 */
                 .build());
 
         meepMeep.setBackground(MeepMeep.Background.FIELD_INTO_THE_DEEP_JUICE_DARK)
