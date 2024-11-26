@@ -14,18 +14,18 @@ public class SubsystemData {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
 
-    public static Pose2d CurrentRobotPose;
+    public static Pose2d CurrentRobotPose; // from roadrunner
 
 
-    public static boolean inTeleOp;
+    public static boolean inTeleOp; // to stop auton in command based
 
     public static boolean absoluteDriving;
 
-    public static boolean OverrideDrivetrainRotation = false;
+    public static boolean OverrideDrivetrainRotation = false; // for auto aiming
     public static double OverrideDrivetrainTargetHeading = 0;
 
 
-    public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PID
+    public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PIDs
 
     public static Pose2d AutonError = new Pose2d(new Vector2d(0, 0), 0);
 
@@ -75,34 +75,27 @@ public class SubsystemData {
     public static boolean NeedToRealignHeadingHold = false;
 
 
-    public static int CommandBlendingAmount = 1;
+
+    public static double TankTurnGain = 0, RamseteZeta = 0.7, RamseteBBar = 2.0;
+
+    public static double RRkSFeedForward, RRkVFeedForward, RRkAFeedForward;
 
 
-    public static double TankTurnGain = 0, RRkAFeedForward = 0, RamseteZeta = 0.7, RamseteBBar = 2.0;
-
-
-    // Swerve brake waddle
-    public static double SwitchTimeMS = 400, SwitchTimeTimeout = 750; // not including time to rotate module
-    public static double SwerveModuleTolerance = 8; // degrees
-    public static double lowerTriggerThreshold = 0.25, upperTriggerThreshold = 0.8; // lower is when waddle starts, upper is when just full brake
-    public static double maxBrakeWaddleAngle = 40;
+    // public static double SwerveModuleTolerance = 8; // degrees
 
 
 
 
     // Custom Tank Drive Settings
-    public static PIDController TankLandingPID = new PIDController(0.0, 0.0, 0.0,
-            0, 0, 0, 1, 0, 2.0, // I need to do all of this in order to add one additional setting
-            0, 0,false, false, () -> 0); // distance away from robot center is always 0
+    // public static PIDController TankLandingPID = new PIDController(0.0, 0.0, 0.0, 0, 0, 0, 1, 0, 2.0, 0, 0,false, false, () -> 0); // distance away from robot center is always 0
 
-    public static double turnPercentage = 0.5;
+    // public static double turnPercentage = 0.5;
 
-    public static int TankDriveAngleSharpness = 1;
+    // public static int TankDriveAngleSharpness = 1;
 
-    public static double stopHeadingChangeDistanceTolerance = 0; // in inches
+    // public static double stopHeadingChangeDistanceTolerance = 0; // in inches
 
     public static boolean repeatForwardBack = false;
-
 
 
 

@@ -83,33 +83,6 @@ public class DiffySwerveKinematics extends SubsystemBase {
         double LeftAngle = Math.toDegrees(Math.atan2(strafe, B));
 
 
-        // Braking / brake waddling
-        if (brake > SubsystemData.lowerTriggerThreshold) {
-            RightPower = 0;
-            LeftPower = 0;
-            RightAngle = RightAngle + 90;
-            LeftAngle = LeftAngle + 90;
-        } /* else if (brake > SubsystemData.lowerTriggerThreshold) {
-            double brakeAngle = (90 - SubsystemData.maxBrakeWaddleAngle) + SubsystemData.maxBrakeWaddleAngle * ((1 / (SubsystemData.upperTriggerThreshold - SubsystemData.lowerTriggerThreshold)) * (brake - SubsystemData.lowerTriggerThreshold));
-            if (goingToTheRight) {
-                RightAngle = RightAngle + brakeAngle;
-                LeftAngle = LeftAngle + brakeAngle;
-            } else {
-                RightAngle = RightAngle - brakeAngle;
-                LeftAngle = LeftAngle - brakeAngle;
-            }
-            // if modules aren't aligned and timer hasn't reached timeout
-            if (!(rightModule.isCloseEnough() && leftModule.isCloseEnough()) && brakeTimer.time() < SubsystemData.SwitchTimeTimeout) brakeStartTime = brakeTimer.time();
-            else if (brakeTimer.time() - brakeStartTime > SubsystemData.SwitchTimeMS) { // switch direction and reset timer
-                goingToTheRight = !goingToTheRight;
-                brakeStartTime = 0;
-                brakeTimer.reset();
-            }
-
-        } else brakeTimer.reset();
-        */
-
-
         // actually tell the pod to go to the angle at the power
         if (Math.abs(strafe) > 0 || Math.abs(forward) > 0 || Math.abs(turn) > 0) {
             rightModule.setModule(RightAngle, RightPower, maxPower);
@@ -177,10 +150,10 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
         // tell the pod to go to the angle at the power
         if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            //rightModule.setModuleDual(RightAngle, RightSpeed, maxPower, FeedForward, Voltage);
-            //leftModule.setModuleDual(LeftAngle, LeftSpeed, maxPower, FeedForward, Voltage);
-            rightModule.setModule(RightAngle, RightSpeed.value(), maxPower);
-            leftModule.setModule(LeftAngle, LeftSpeed.value(), maxPower);
+            rightModule.setModuleDual(RightAngle, RightSpeed, maxPower, FeedForward, Voltage);
+            leftModule.setModuleDual(LeftAngle, LeftSpeed, maxPower, FeedForward, Voltage);
+            //rightModule.setModule(RightAngle, RightSpeed.value(), maxPower);
+            //leftModule.setModule(LeftAngle, LeftSpeed.value(), maxPower);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
         } else { // when no controller input, stop moving wheels
@@ -189,6 +162,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
         }
     }
 
+    /*
 
     public void driveTankDiffySwerve(double left, double right) { // because the dumb auton keeps not working
 
@@ -266,6 +240,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         //driveTankDiffySwerve(FeedForward.compute(new DualNum<Time>(new double[] {LeftPower / driveDivider, 3})) / Voltage, FeedForward.compute(new DualNum<Time>(new double[] {RightPower / driveDivider, 3})) / Voltage);
         driveTankDiffySwerve(LeftPower / driveDivider, RightPower / driveDivider);
     }
+
+     */
 
 
     public void stopDifferentialSwerve() {

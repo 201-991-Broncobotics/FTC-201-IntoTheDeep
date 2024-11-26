@@ -214,7 +214,7 @@ public final class TankDrive extends SubsystemBase {
             maxPowerMag = Math.max(maxPowerMag, power.value());
         }
 
-        diffySwerve.driveTankDiffySwerve(wheelVels.left.get(0) / maxPowerMag, wheelVels.right.get(0) / maxPowerMag);
+        // diffySwerve.driveTankDiffySwerve(wheelVels.left.get(0) / maxPowerMag, wheelVels.right.get(0) / maxPowerMag);
 
     }
 
@@ -251,7 +251,7 @@ public final class TankDrive extends SubsystemBase {
 
             if (t >= timeTrajectory.duration) {
 
-                diffySwerve.driveTankDiffySwerve(0, 0);
+                // diffySwerve.driveTankDiffySwerve(0, 0);
 
                 return false;
             }
@@ -281,19 +281,19 @@ public final class TankDrive extends SubsystemBase {
             double txHeadingDouble = Math.atan2(txWorldTarget.heading.imag.value(), txWorldTarget.heading.real.value());
             SubsystemData.AutonError = new Pose2d(new Vector2d(txWorldTarget.position.x.value() - pose.position.x, txWorldTarget.position.y.value() - pose.position.y), txHeadingDouble - pose.heading.toDouble());
 
-            double removedTurn = (rightPower - leftPower) / 2;
+            //double removedTurn = (rightPower - leftPower) / 2;
 
-            rightPower = rightPower - removedTurn;
-            leftPower = leftPower + removedTurn;
-            rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
-            leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
+            //rightPower = rightPower - removedTurn;
+            //leftPower = leftPower + removedTurn;
+            //rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
+            //leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
 
             //  t.angVel * 0.5 * trackWidth + t.angVel * 0.5 * trackWidth
             // t.linearVel.x + t.angVel * 0.5 * trackWidth,
             // t.linearVel.x - t.angVel * 0.5 * trackWidth
 
             // diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
-            diffySwerve.driveTankDiffyTowardsPoint(pose, txWorldTarget, feedforward, voltage);
+            // diffySwerve.driveTankDiffyTowardsPoint(pose, txWorldTarget, feedforward, voltage);
 
             p.put("x", pose.position.x);
             p.put("y", pose.position.y);
@@ -350,7 +350,7 @@ public final class TankDrive extends SubsystemBase {
 
             if (t >= turn.duration) {
 
-                diffySwerve.driveTankDiffySwerve(0, 0);
+                // diffySwerve.driveTankDiffySwerve(0, 0);
 
                 return false;
             }
@@ -385,15 +385,15 @@ public final class TankDrive extends SubsystemBase {
 
             telemetry.addLine("Using Tank Turn");
 
-            double removedTurn = (rightPower - leftPower) / 2;
+            // double removedTurn = (rightPower - leftPower) / 2;
 
-            rightPower = rightPower - removedTurn;
-            leftPower = leftPower + removedTurn;
-            rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
-            leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
+            //rightPower = rightPower - removedTurn;
+            //leftPower = leftPower + removedTurn;
+            //rightPower = rightPower + removedTurn * SubsystemData.turnPercentage;
+            //leftPower = leftPower - removedTurn * SubsystemData.turnPercentage;
 
             //diffySwerve.driveTankDiffySwerve(leftPower, rightPower);
-            diffySwerve.pointTankDiffyAtAngle(pose, txHeadingDouble, feedforward, voltage);
+            // diffySwerve.pointTankDiffyAtAngle(pose, txHeadingDouble, feedforward, voltage);
 
             Canvas c = p.fieldOverlay();
             drawPoseHistory(c);
@@ -469,7 +469,7 @@ public final class TankDrive extends SubsystemBase {
         );
     }
 
-    public void stopDrivetrain() {
-        diffySwerve.driveTankDiffySwerve(0, 0);
-    }
+    // public void stopDrivetrain() {
+        // diffySwerve.driveTankDiffySwerve(0, 0);
+    //}
 }

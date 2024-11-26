@@ -74,7 +74,7 @@ public class ArmSystem extends SubsystemBase {
 
     private double CurrentPivotAngleZero = 0, CurrentExtensionLengthZero = 0;
     public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero;
-    public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / 2088 * 696 - CurrentExtensionLengthZero;
+    public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / Constants.SpoolDegreesToMaxExtension * 696 - CurrentExtensionLengthZero;
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
 
     ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime, runTime, resetArmAlignmentHoldTimer;
@@ -129,12 +129,14 @@ public class ArmSystem extends SubsystemBase {
 
         telemetry = inputTelemetry;
 
-        PivotPID = new PIDController(0.05, 0, 0, 0, Constants.pivotMaxAngle, 0,
+        PivotPID = new PIDController(0.06, 0, 0, 0, Constants.pivotMaxAngle, 0,
                 1, 0, 0, 135, 3, true, true,
                 CurrentPivotAngle);
-        ExtensionPID = new PIDController(0.008, 0, 0, 1, Constants.extensionMaxLength, 0,
+        ExtensionPID = new PIDController(0.01, 0.04, 0, 1, Constants.extensionMaxLength, 0,
                 1, 0, 0, 0, 5, true, false,
                 CurrentExtensionLength);
+        PivotPID.maxIntegral = 0.5;
+        ExtensionPID.maxIntegral = 0.3;
     }
 
 
@@ -173,7 +175,7 @@ public class ArmSystem extends SubsystemBase {
             if (functions.inUse(joystickLeftY)) PushForMaxExtension = false;
             backPedalExtension = false;
             if (FrameRate > 2) {
-                double ArmThrottle = 0.55 + 0.45 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
+                double ArmThrottle = 0.4 + 0.6 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
 
                 if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) { // coords control (one joystick controls height, the other controls forward and strafe)
                     Vector2d targetClawPos = getTargetClawPoint();
@@ -238,7 +240,7 @@ public class ArmSystem extends SubsystemBase {
                 double AutoAimHeadingChange = AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
                 // SubsystemData.AutoAimHeading = AutoAimHeadingChange / FrameRate;
                 // SubsystemData.OverrideDrivetrainRotation = true;
-                SubsystemData.OperatorTurningPower = 0.35 * AutoAimHeadingChange;
+                SubsystemData.OperatorTurningPower = 0.45 * AutoAimHeadingChange;
                 telemetry.addData("Auto Aim Heading:", SubsystemData.AutoAimHeading);
                 telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
 
@@ -325,10 +327,10 @@ public class ArmSystem extends SubsystemBase {
         if (backPedalExtension) {
             if (CurrentPivotAngleInst < 10) { // if claw could be hanging low to the ground
                 PivotPID.setTarget(15); // raise pivot a little first
-            } else if (CurrentExtensionLengthInst < 100) { // if extension is already retracted
+            } else if (CurrentExtensionLengthInst < 150) { // if extension is already retracted
                 PivotPID.setTarget(PivotTargetAngle); // move pivot
-                ExtensionPID.setTarget(0);
-            } else ExtensionPID.setTarget(0); // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
+                ExtensionPID.setTarget(25);
+            } else ExtensionPID.setTarget(25); // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
         } else {
             PivotPID.setTarget(PivotTargetAngle);
 
@@ -460,45 +462,46 @@ public class ArmSystem extends SubsystemBase {
 
         if (inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !PIDButtonPressed) { // cycle through which PID variable is going to be edited
             PIDVar = PIDVar + 1;
-            if (PIDVar > 10) PIDVar = 0;
+            if (PIDVar > 25) PIDVar = 0;
             PIDButtonPressed = true;
         } else if (inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT) && !PIDButtonPressed) {
             PIDVar = PIDVar - 1;
-            if (PIDVar < 0) PIDVar = 10;
+            if (PIDVar < 0) PIDVar = 25;
             PIDButtonPressed = true;
         } else if (!inputGamepad.getButton(GamepadKeys.Button.DPAD_RIGHT) && !inputGamepad.getButton(GamepadKeys.Button.DPAD_LEFT)) PIDButtonPressed = false;
 
         // if the button is held for more than a second, add or subtract constantly
-        if ((inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) || inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) && !(PIDIncrementButtonPressed && PIDButtonPressTime.time() < 1000)) {
+        if ((inputGamepad.getButton(GamepadKeys.Button.DPAD_UP) || inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) && !(PIDIncrementButtonPressed && PIDButtonPressTime.time() < 800)) {
             if (inputGamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) PIDChangeIncrement = -PIDChangeIncrement; // subtract if down
 
             switch (PIDVar) {
                 case 0: break; // don't go through this list if not editing PIDs
-                //case 1: ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4); break;
-                //case 2: ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4); break;
-                //case 3: ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4); break;
-                //case 4: Constants.extensionGravityPower = functions.round(Constants.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
-                //case 5: PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4); break;
-                //case 6: PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4); break;
-                //case 7: PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4); break;
-                //case 8: Constants.pivotRetractedGravityPower = functions.round(Constants.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
-                //case 9: Constants.pivotExtendedGravityPower = functions.round(Constants.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
-                case 1: SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5); break;
-                case 2: SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5); break;
-                case 3: SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5); break;
-                case 4: SubsystemData.HeadingTargetPID.minDifference = functions.round(SubsystemData.HeadingTargetPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                //case 14: SubsystemData.TankLandingPID.kP = functions.round(SubsystemData.TankLandingPID.kP + PIDChangeIncrement, 4); break;
-                //case 15: SubsystemData.TankLandingPID.kI = functions.round(SubsystemData.TankLandingPID.kI + PIDChangeIncrement, 4); break;
-                //case 16: SubsystemData.TankLandingPID.kD = functions.round(SubsystemData.TankLandingPID.kD + PIDChangeIncrement, 4); break;
-                //case 17: SubsystemData.TankLandingPID.minDifference = functions.round(SubsystemData.TankLandingPID.minDifference + PIDChangeIncrement * 100, 2); break;
-                case 5: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
-                case 6: SubsystemData.AutonTurnGain = functions.round(SubsystemData.AutonTurnGain + PIDChangeIncrement * 10, 3); break;
-                case 7: SubsystemData.AutonStoppingDistance = functions.round(SubsystemData.AutonStoppingDistance + PIDChangeIncrement * 100, 2); break;
-                case 8: SubsystemData.AutonAngleStoppingDifference = functions.round(SubsystemData.AutonAngleStoppingDifference + PIDChangeIncrement * 100, 2); break;
-                case 9: SubsystemData.AutonMovementGain = functions.round(SubsystemData.AutonMovementGain + PIDChangeIncrement, 4); break;
-                case 10: SubsystemData.targetPosePerpOffset = functions.round(SubsystemData.targetPosePerpOffset + PIDChangeIncrement, 4); break;
-                // case 15: SubsystemData.RRkAFeedForward = functions.round(SubsystemData.RRkAFeedForward + PIDChangeIncrement * 10, 3); break;
-                // case 16: SubsystemData.RRkAFeedForward = functions.round(SubsystemData.RRkAFeedForward + PIDChangeIncrement * 10, 3); break;
+                case 1: ExtensionPID.kP = functions.round(ExtensionPID.kP + PIDChangeIncrement, 4); break;
+                case 2: ExtensionPID.kI = functions.round(ExtensionPID.kI + PIDChangeIncrement, 4); break;
+                case 3: ExtensionPID.kD = functions.round(ExtensionPID.kD + PIDChangeIncrement, 4); break;
+                case 4: Constants.extensionGravityPower = functions.round(Constants.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 5: PivotPID.kP = functions.round(PivotPID.kP + PIDChangeIncrement, 4); break;
+                case 6: PivotPID.kI = functions.round(PivotPID.kI + PIDChangeIncrement, 4); break;
+                case 7: PivotPID.kD = functions.round(PivotPID.kD + PIDChangeIncrement, 4); break;
+                case 8: Constants.pivotRetractedGravityPower = functions.round(Constants.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 9: Constants.pivotExtendedGravityPower = functions.round(Constants.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 10: SubsystemData.HeadingTargetPID.kP = functions.round(SubsystemData.HeadingTargetPID.kP + PIDChangeIncrement / 10, 5); break;
+                case 11: SubsystemData.HeadingTargetPID.kI = functions.round(SubsystemData.HeadingTargetPID.kI + PIDChangeIncrement / 10, 5); break;
+                case 12: SubsystemData.HeadingTargetPID.kD = functions.round(SubsystemData.HeadingTargetPID.kD + PIDChangeIncrement / 10, 5); break;
+                case 13: SubsystemData.HeadingTargetPID.minDifference = functions.round(SubsystemData.HeadingTargetPID.minDifference + PIDChangeIncrement * 100, 2); break;
+                case 14: SubsystemData.AxialPID.kP = functions.round(SubsystemData.AxialPID.kP + PIDChangeIncrement, 4); break;
+                case 15: SubsystemData.AxialPID.kI = functions.round(SubsystemData.AxialPID.kI + PIDChangeIncrement, 4); break;
+                case 16: SubsystemData.AxialPID.kD = functions.round(SubsystemData.AxialPID.kD + PIDChangeIncrement, 4); break;
+                case 17: SubsystemData.AxialPID.minDifference = functions.round(SubsystemData.AxialPID.minDifference + PIDChangeIncrement * 100, 2); break;
+                case 18: SubsystemData.SwerveModuleDriveSharpness = SubsystemData.SwerveModuleDriveSharpness + (int) Math.round(Math.signum(PIDChangeIncrement)); break;
+                case 19: SubsystemData.AutonTurnGain = functions.round(SubsystemData.AutonTurnGain + PIDChangeIncrement * 10, 3); break;
+                case 20: SubsystemData.AutonStoppingDistance = functions.round(SubsystemData.AutonStoppingDistance + PIDChangeIncrement * 100, 2); break;
+                case 21: SubsystemData.AutonAngleStoppingDifference = functions.round(SubsystemData.AutonAngleStoppingDifference + PIDChangeIncrement * 100, 2); break;
+                case 22: SubsystemData.AutonMovementGain = functions.round(SubsystemData.AutonMovementGain + PIDChangeIncrement, 4); break;
+                case 23: SubsystemData.targetPosePerpOffset = functions.round(SubsystemData.targetPosePerpOffset + PIDChangeIncrement, 4); break;
+                case 24: SubsystemData.RRkSFeedForward = functions.round(SubsystemData.RRkSFeedForward + PIDChangeIncrement * 10, 3); break;
+                //case 25: SubsystemData.RRkVFeedForward = functions.round(SubsystemData.RRkVFeedForward + PIDChangeIncrement * 10, 3); break;
+                case 25: SubsystemData.RRkAFeedForward = functions.round(SubsystemData.RRkAFeedForward + PIDChangeIncrement * 10, 3); break;
                 //case 20: SubsystemData.SwerveModuleReferencePID.kP = functions.round(SubsystemData.SwerveModuleReferencePID.kP + PIDChangeIncrement / 10, 5); break;
                 //case 21: SubsystemData.SwerveModuleReferencePID.kI = functions.round(SubsystemData.SwerveModuleReferencePID.kI + PIDChangeIncrement / 10, 5); break;
                 //case 22: SubsystemData.SwerveModuleReferencePID.kD = functions.round(SubsystemData.SwerveModuleReferencePID.kD + PIDChangeIncrement / 10, 5); break;
@@ -527,30 +530,32 @@ public class ArmSystem extends SubsystemBase {
         }
         switch (PIDVar) {
             case 0: telemetry.addLine("Not Editing PIDs"); break;
-            //case 1: telemetry.addData("Editing: Extension Kp -", ExtensionPID.kP); break;
-            //case 2: telemetry.addData("Editing: Extension Ki -", ExtensionPID.kI); break;
-            //case 3: telemetry.addData("Editing: Extension Kd -", ExtensionPID.kD); break;
-            //case 4: telemetry.addData("Editing: Extension Gravity -", Constants.extensionGravityPower); break;
-            //case 5: telemetry.addData("Editing: Pivot Kp -", PivotPID.kP); break;
-            //case 6: telemetry.addData("Editing: Pivot Ki -", PivotPID.kI); break;
-            //case 7: telemetry.addData("Editing: Pivot Kd -", PivotPID.kD); break;
-            //case 8: telemetry.addData("Editing: Pivot Retracted Gravity -", Constants.pivotRetractedGravityPower); break;
-            //case 9: telemetry.addData("Editing: Pivot Extended Gravity -", Constants.pivotExtendedGravityPower); break;
-            case 1: telemetry.addData("Editing: Heading Kp (*10) -", SubsystemData.HeadingTargetPID.kP * 10); break; // addData only prints doubles up to 4 decimal places
-            case 2: telemetry.addData("Editing: Heading Ki (*10) -", SubsystemData.HeadingTargetPID.kI * 10); break;
-            case 3: telemetry.addData("Editing: Heading Kd (*10) -", SubsystemData.HeadingTargetPID.kD * 10); break;
-            case 4: telemetry.addData("Editing: Heading minDifference -", SubsystemData.HeadingTargetPID.minDifference); break;
-            //case 14: telemetry.addData("Editing: Auton Kp -", SubsystemData.TankLandingPID.kP); break;
-            //case 15: telemetry.addData("Editing: Auton Ki -", SubsystemData.TankLandingPID.kI); break;
-            //case 16: telemetry.addData("Editing: Auton Kd -", SubsystemData.TankLandingPID.kD); break;
-            //case 17: telemetry.addData("Editing: Auton minDifference -", SubsystemData.TankLandingPID.minDifference); break;
-            case 5: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
-            case 6: telemetry.addData("Editing: Auton Turn Gain -", SubsystemData.AutonTurnGain); break;
-            case 7: telemetry.addData("Editing: Auton Stopping Distance -", SubsystemData.AutonStoppingDistance); break;
-            case 8: telemetry.addData("Editing: Auton Stopping Angle -", SubsystemData.AutonAngleStoppingDifference); break;
-            case 9: telemetry.addData("Editing: Auton Gain -", SubsystemData.AutonMovementGain); break;
-            case 10: telemetry.addData("Editing: Target pose offset -", SubsystemData.targetPosePerpOffset); break;
-            //case 19: telemetry.addData("Editing: Feed Forward kA -", SubsystemData.RRkAFeedForward); break;
+            case 1: telemetry.addData("Editing: Extension Kp -", ExtensionPID.kP); break;
+            case 2: telemetry.addData("Editing: Extension Ki -", ExtensionPID.kI); break;
+            case 3: telemetry.addData("Editing: Extension Kd -", ExtensionPID.kD); break;
+            case 4: telemetry.addData("Editing: Extension Gravity -", Constants.extensionGravityPower); break;
+            case 5: telemetry.addData("Editing: Pivot Kp -", PivotPID.kP); break;
+            case 6: telemetry.addData("Editing: Pivot Ki -", PivotPID.kI); break;
+            case 7: telemetry.addData("Editing: Pivot Kd -", PivotPID.kD); break;
+            case 8: telemetry.addData("Editing: Pivot Retracted Gravity -", Constants.pivotRetractedGravityPower); break;
+            case 9: telemetry.addData("Editing: Pivot Extended Gravity -", Constants.pivotExtendedGravityPower); break;
+            case 10: telemetry.addData("Editing: Heading Kp (*10) -", SubsystemData.HeadingTargetPID.kP * 10); break; // addData only prints doubles up to 4 decimal places
+            case 11: telemetry.addData("Editing: Heading Ki (*10) -", SubsystemData.HeadingTargetPID.kI * 10); break;
+            case 12: telemetry.addData("Editing: Heading Kd (*10) -", SubsystemData.HeadingTargetPID.kD * 10); break;
+            case 13: telemetry.addData("Editing: Heading minDifference -", SubsystemData.HeadingTargetPID.minDifference); break;
+            case 14: telemetry.addData("Editing: Auton Kp -", SubsystemData.AxialPID.kP); break;
+            case 15: telemetry.addData("Editing: Auton Ki -", SubsystemData.AxialPID.kI); break;
+            case 16: telemetry.addData("Editing: Auton Kd -", SubsystemData.AxialPID.kD); break;
+            case 17: telemetry.addData("Editing: Auton minDifference -", SubsystemData.AxialPID.minDifference); break;
+            case 18: telemetry.addData("Editing: Swerve Module Sharpness -", SubsystemData.SwerveModuleDriveSharpness); break;
+            case 19: telemetry.addData("Editing: Auton Turn Gain -", SubsystemData.AutonTurnGain); break;
+            case 20: telemetry.addData("Editing: Auton Stopping Distance -", SubsystemData.AutonStoppingDistance); break;
+            case 21: telemetry.addData("Editing: Auton Stopping Angle -", SubsystemData.AutonAngleStoppingDifference); break;
+            case 22: telemetry.addData("Editing: Auton Gain -", SubsystemData.AutonMovementGain); break;
+            case 23: telemetry.addData("Editing: Target pose offset -", SubsystemData.targetPosePerpOffset); break;
+            case 24: telemetry.addData("Editing: Feed Forward kS -", SubsystemData.RRkSFeedForward); break;
+            //case 25: telemetry.addData("Editing: Feed Forward kV -", SubsystemData.RRkVFeedForward); break;
+            case 25: telemetry.addData("Editing: Feed Forward kA -", SubsystemData.RRkAFeedForward); break;
             //case 20: telemetry.addData("Editing: Swerve Module Kp -", SubsystemData.SwerveModuleReferencePID.kP); break;
             //case 21: telemetry.addData("Editing: Swerve Module Ki -", SubsystemData.SwerveModuleReferencePID.kI); break;
             //case 22: telemetry.addData("Editing: Swerve Module Kd -", SubsystemData.SwerveModuleReferencePID.kD); break;
@@ -751,7 +756,7 @@ public class ArmSystem extends SubsystemBase {
 
     // Gobilda torque servo: Wrist.setPosition(1.35 * (Angle / 360) + 0.29);
 
-    public void setWrist(double Angle) { Wrist.setPosition(1.35 * (Angle / 360) + 0.31); } // make wrist go to that specific angle
+    public void setWrist(double Angle) { Wrist.setPosition((48/40.0) * 1.35 * (Angle / 360.0) + 0.05); } // make wrist go to that specific angle
     public void setClaw(double Angle) { Claw.setPosition(Angle / 90 * (Constants.ClawClosedPosition - Constants.ClawOpenPosition) + Constants.ClawOpenPosition); }
     public void openClaw() {
         ClawTargetPosition = Constants.ClawOpenPosition;

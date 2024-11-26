@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.MotorFeedforward;
 import com.acmerobotics.roadrunner.Time;
-import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 
@@ -31,7 +31,7 @@ public class SwerveModule {
         bottomMotor = newBottomMotor;
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
         modulePID = new PIDController(0, 0, 0, topMotorEncoder);
-        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
+        modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
     }
 
 
@@ -45,7 +45,7 @@ public class SwerveModule {
 
     public void setModule(double angle, double speed, double maxPowerLimit) {
         targetAngle = angle;
-        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
+        modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
         if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
@@ -67,7 +67,7 @@ public class SwerveModule {
 
     public void setModuleDual(double angle, DualNum<Time> speed, double maxPowerLimit, MotorFeedforward feedForward, double voltage) {
         targetAngle = angle;
-        modulePID.setVariablesTheSameAs(SubsystemData.SwerveModuleReferencePID);
+        modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
         if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
@@ -92,8 +92,11 @@ public class SwerveModule {
         bottomMotor.setPower(0);
     }
 
+    /*
     public boolean isCloseEnough() {
         return (Math.abs(functions.angleDifference(topMotorEncoder.getAsDouble(), targetAngle, 180)) < SubsystemData.SwerveModuleTolerance);
     }
+
+     */
 
 }

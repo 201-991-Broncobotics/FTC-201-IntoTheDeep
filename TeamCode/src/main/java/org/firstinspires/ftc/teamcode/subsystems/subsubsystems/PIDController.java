@@ -28,14 +28,14 @@ I made a simple example of one way of using this PID in the robot hardware
 
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxIntegral; // all of these variables can be changed elsewhere in the code
 
-    public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false;
+    public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
     public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble() or changing it
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, activeMinPosition, activeMaxPosition;
-    private double maxIntegral = 1, percentMaxSpeed = 1, PIDFrameRate = 0;
+    private double percentMaxSpeed = 1, PIDFrameRate = 0;
 
     private boolean stoppedUntilNextUse = false;
 
@@ -61,12 +61,12 @@ public class PIDController {
         this.speedLimitingEnabled = speedLimitingEnabled;
         this.encoderPosition = encoderPosition;
         mRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        maxIntegral = 1; // sets the maximum percentage of the power that the PID will output based on the PID
 
         // default minPower value when it isn't set and initial power is enabled
         if (minPower == 0 && initialPower > 0) this.minPower = initialPower * 2;
 
         correctValues();
-        if (kI > 0) maxIntegral = maxPower / kI;
 
         reset();
     }
@@ -132,7 +132,7 @@ public class PIDController {
             stoppedUntilNextUse = false;
         }
 
-        correctValues();
+        if (doVariableCorrection) correctValues();
         double power;
         double timeSince = (mRuntime.time() / 1000.0) - previousTime;
         PIDFrameRate = 1.0 / timeSince;
@@ -141,7 +141,7 @@ public class PIDController {
 
         double Error = movingTargetPosition - overrideCurrentPosition; // calculate PID values
         integral += Error * timeSince;
-        if (Math.abs(integral) > maxIntegral) integral = Math.signum(integral) * maxIntegral; // stabilize integral
+        if (Math.abs(integral) > maxIntegral * (maxPower / kI)) integral = Math.signum(integral) * (maxIntegral * (maxPower / kI)); // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
         previousTime = mRuntime.time() / 1000.0;
@@ -169,7 +169,7 @@ public class PIDController {
     }
 
 
-    private void correctValues() { // kind of unnecessary but makes there be less steps when creating code to edit these while driving
+    private void correctValues() { // makes sure the setting variables are in the correct ranges so there can be less steps when creating code to edit these while driving
         if (kP < 0) kP = 0;
         if (kI < 0) kI = 0;
         if (kD < 0) kD = 0;
@@ -182,18 +182,16 @@ public class PIDController {
         if (minDifference < 0) minDifference = 0;
         if (maxSpeed < 0) maxSpeed = 0;
         if (tolerance < 0) tolerance = 0;
-        if (kI > 0) maxIntegral = maxPower / kI;
-        else maxIntegral = 1;
     }
 
 
     public double getPower() { // normal call which just sets current position to current position
-        return getPower(encoderPosition.getAsDouble()); // this allows using the PID by setting the targetPosition to 0 and the amount it needs to change by to the overrideCurrentPosition
+        return getPower(encoderPosition.getAsDouble());
     }
 
 
     public double getPower(double targetPosition, double currentPosition) { // combine setTarget and getPower
-        setTarget(targetPosition);
+        setTarget(targetPosition); // this allows using the PID by setting the targetPosition to 0 and the amount it needs to change by to the overrideCurrentPosition
         return getPower(currentPosition);
     }
 
@@ -218,7 +216,7 @@ public class PIDController {
 
     // This sets all of the variables of the current PID to the same as the PID inputted. Though this keeps
     // any the PID's current instance variables like the encoder DoubleSupplier, integral, current target, etc.
-    public void setVariablesTheSameAs(PIDController referencePID) {
+    public void setSettingsTheSameAs(PIDController referencePID) {
         kP = referencePID.kP;
         kI = referencePID.kI;
         kD = referencePID.kD;
