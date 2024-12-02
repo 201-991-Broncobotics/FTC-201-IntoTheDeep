@@ -83,12 +83,12 @@ public class RightSampleCollection extends CommandOpMode {
 
         DriveAutonCommand.queueAction(
                 new SequentialAction(
-                        armSystem.RunMethod("closeClaw"),
-                        armSystem.RunMethod("moveClawToRamRung"),
+                        //armSystem.RunMethod("closeClaw"),
+                        //armSystem.RunMethod("moveClawToRamRung"),
                         DriveToRungs.build(),
                         armSystem.Wait(1),
-                        armSystem.RunMethod("openClaw"),
-                        armSystem.RunMethod("resetArm", 0.75),
+                        //armSystem.RunMethod("openClaw"),
+                        //armSystem.RunMethod("resetArm", 0.75),
                         armSystem.Wait(0.5),
                         DriveToFirstSample.build()
                 )

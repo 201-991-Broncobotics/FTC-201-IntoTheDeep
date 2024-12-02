@@ -65,7 +65,7 @@ public class DriveCommand extends CommandBase {
             imuNotWorkingTimer.reset();
         }
 
-        double throttleControl = 0.6 + 0.4 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+        double throttleControl = 0.4 + 0.6 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -0.6 * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
@@ -73,6 +73,11 @@ public class DriveCommand extends CommandBase {
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!SubsystemData.absoluteDriving) telemetry.addLine("Absolute Driving is off");
+
+        // convert to vector and normalize values to make it easier for the driver to control
+        double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
+        double joystickMagnitude = Math.hypot(strafe, forward);
+        double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude; //  Math.pow(joystickMagnitude, 3)
 
 
         if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
@@ -82,14 +87,19 @@ public class DriveCommand extends CommandBase {
                 headingHold = Math.toDegrees(drive.pose.heading.toDouble());
                 SubsystemData.HoldClawFieldPos = false;
 
-            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 300 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
+            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 600 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
                 // otherwise hold current heading if no driver input for some time and imu is working
                 // auto aim
                 if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
+
+                // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
+                if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) SubsystemData.HeadingTargetPID.minDifference = 3;
+                else SubsystemData.HeadingTargetPID.minDifference = 0.5;
+
                 turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
                 telemetry.addLine("Heading Correction is Active");
 
-            } else headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+            } else headingHold = Math.toDegrees(drive.pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
 
         } else {
             sinceLastTurnInputTimer.reset();
@@ -100,11 +110,6 @@ public class DriveCommand extends CommandBase {
         }
 
         SubsystemData.HeadHoldTarget = headingHold;
-
-        // convert to vector and normalize values to make it easier for the driver to control
-        double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
-        double joystickMagnitude = Math.hypot(strafe, forward);
-        double drivePower = Math.pow(joystickMagnitude, 3); // Math.abs(joystickMagnitude) * joystickMagnitude
 
         driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
 

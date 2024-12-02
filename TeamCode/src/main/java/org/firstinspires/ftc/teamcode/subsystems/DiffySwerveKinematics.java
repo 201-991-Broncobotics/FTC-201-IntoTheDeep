@@ -37,13 +37,6 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
     private static Telemetry telemetry;
 
-    private static ElapsedTime brakeTimer;
-    private static double brakeStartTime = 0;
-
-    private static boolean goingToTheRight = true;
-
-    public static boolean DiffyEmergencyRealigning = false;
-
     private static final ArrayList<PoseVelocity2dDual<Time>> LastCommands = new ArrayList<PoseVelocity2dDual<Time>>();
 
 
@@ -58,8 +51,6 @@ public class DiffySwerveKinematics extends SubsystemBase {
         telemetry.addData("Current left Diffy Angle:", leftModule.getCurrentAngle());
         telemetry.update();
 
-        brakeTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
-
         driveCommand = new PoseVelocity2dDual<>(
                 new Vector2dDual<>(
                         new DualNum<>(new double[] {0, 1}),
@@ -70,15 +61,19 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
 
     // only use one of these diffy serve methods at one time as some of the values are shared
-    public void driveDifferentialSwerve(double forward, double strafe, double turn, double brake) { // brake will keep the wheels 90 degrees from the direction you are trying to drive or will allow the diffy to "waddle" when the value is between 0 and 1
+    public void driveDifferentialSwerve(double forward, double strafe, double turn, double throttle) {
         double A = -forward - turn; // diffy swerve drive math
         double B = -forward + turn;
         double RightPower = Math.hypot(strafe, A);
         double LeftPower = Math.hypot(strafe, B);
 
+        // This applies the base amount of power needed to start moving the robot to the modules when needed
+        if (Math.abs(RightPower) > 0) RightPower = (1 - Constants.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Constants.driveFeedBackStaticPower;
+        if (Math.abs(LeftPower) > 0) LeftPower = (1 - Constants.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Constants.driveFeedBackStaticPower;
+
         double max_power = Math.max(1, Math.max(RightPower, LeftPower)); // keeps all motor powers under 1
-        RightPower = RightPower / max_power; // target motor speeds
-        LeftPower = LeftPower / max_power;
+        RightPower = (RightPower / max_power) * throttle; // target motor speeds
+        LeftPower = (LeftPower / max_power) * throttle;
         double RightAngle = Math.toDegrees(Math.atan2(strafe, A)); // Target wheel angles
         double LeftAngle = Math.toDegrees(Math.atan2(strafe, B));
 
@@ -97,7 +92,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
     }
 
 
-    public void setDifferentialSwerve(PoseVelocity2dDual<Time> command, PoseVelocity2d currentVelocityPose, double trackWidth, double voltage, MotorFeedforward feedForward) {
+    public void setDifferentialSwerve(PoseVelocity2dDual<Time> command, double trackWidth, double voltage, MotorFeedforward feedForward) {
         driveCommand = command;
         TrackWidth = trackWidth; // I don't actually use this but roadrunner used to
         Voltage = voltage;
@@ -124,34 +119,28 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
          */
 
-        telemetry.addLine("Average command X:" + functions.round(driveCommand.linearVel.x.value(), 3) + " Y:" + functions.round(driveCommand.linearVel.y.value(), 3) + " A:" + functions.round(driveCommand.angVel.value(), 3));
+        // telemetry.addLine("Average command X:" + functions.round(driveCommand.linearVel.x.value(), 3) + " Y:" + functions.round(driveCommand.linearVel.y.value(), 3) + " A:" + functions.round(driveCommand.angVel.value(), 3));
 
 
-        DualNum<Time> forward = driveCommand.linearVel.y;
-        DualNum<Time> strafe = driveCommand.linearVel.x;
+        DualNum<Time> forward = driveCommand.linearVel.x; // roadrunner is stupid so the x and y are flipped
+        DualNum<Time> strafe = driveCommand.linearVel.y.times(-1);
         DualNum<Time> turn = driveCommand.angVel;
-
-        // set forward values to be no greater than 1 so that the turn part can be at the correct ratio
-        if (Math.abs(forward.value()) > 1) forward.div(Math.abs(forward.value()));
-        if (Math.abs(strafe.value()) > 1) strafe.div(Math.abs(strafe.value()));
 
         DualNum<Time> A = forward.times(-1).minus(turn); // diffy swerve drive math
         DualNum<Time> B = forward.times(-1).plus(turn);
         DualNum<Time> RightPower = ((strafe.times(strafe)).plus((A.times(A)))).sqrt();
         DualNum<Time> LeftPower = ((strafe.times(strafe)).plus((B.times(B)))).sqrt();
 
-        double max_power = Math.max(1, Math.max(RightPower.value(), LeftPower.value())); // keeps all motor powers under 1
-        DualNum<Time> RightSpeed = RightPower.div(max_power); // target motor speeds
-        DualNum<Time> LeftSpeed = LeftPower.div(max_power);
+        // No need to cap values at 1 because the units are in how fast the wheels should spin
         double RightAngle = Math.toDegrees(Math.atan2(strafe.get(0), A.get(0))); // Target wheel angles
         double LeftAngle = Math.toDegrees(Math.atan2(strafe.get(0), B.get(0)));
 
         // telemetry.addLine("KIN: RA: " + functions.round(RightAngle, 3) + " LA: " + functions.round(LeftAngle, 3) + " RP: " + functions.round(RightSpeed.value(), 3) + " LP: " + functions.round(LeftSpeed.value(), 3));
 
         // tell the pod to go to the angle at the power
-        if (Math.abs(strafe.value()) > 0 || Math.abs(forward.value()) > 0 || Math.abs(turn.value()) > 0) {
-            rightModule.setModuleDual(RightAngle, RightSpeed, maxPower, FeedForward, Voltage);
-            leftModule.setModuleDual(LeftAngle, LeftSpeed, maxPower, FeedForward, Voltage);
+        if (Math.abs(strafe.value()) > SubsystemData.AutonStoppingDistance || Math.abs(forward.value()) > SubsystemData.AutonStoppingDistance || Math.abs(turn.value()) > SubsystemData.AutonStoppingDistance) {
+            rightModule.setModuleDual(RightAngle, RightPower, maxPower, FeedForward, Voltage);
+            leftModule.setModuleDual(LeftAngle, LeftPower, maxPower, FeedForward, Voltage);
             //rightModule.setModule(RightAngle, RightSpeed.value(), maxPower);
             //leftModule.setModule(LeftAngle, LeftSpeed.value(), maxPower);
             lastRightAngle = RightAngle;

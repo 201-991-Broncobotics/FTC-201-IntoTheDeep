@@ -15,10 +15,19 @@ import org.firstinspires.ftc.teamcode.Roadrunner.TwoDeadWheelLocalizer;
 public final class ManualFeedbackTuner extends LinearOpMode {
     public static double DISTANCE = 20;
 
+    public static double AxialGain = 0.7;
+    public static double LateralGain = 0.7;
+    public static double HeadingGain = 10.0;
+    public static double AxialVelocityGain = 0;
+    public static double LateralVelocityGain = 0;
+    public static double HeadingVelocityGain = 0;
+
+
     @Override
     public void runOpMode() throws InterruptedException {
         if (TuningOpModes.DRIVE_CLASS.equals(DifferentialSwerveDrive.class)) {
-            DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, new Pose2d(0, 0, Math.toRadians(90)), telemetry);
+            Pose2d startingPose = new Pose2d(0, 0, Math.toRadians(0));
+            DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startingPose, telemetry);
             
             if (drive.localizer instanceof TwoDeadWheelLocalizer) {
                 if (TwoDeadWheelLocalizer.PARAMS.perpXTicks == 0 && TwoDeadWheelLocalizer.PARAMS.parYTicks == 0) {
@@ -31,14 +40,15 @@ public final class ManualFeedbackTuner extends LinearOpMode {
             }
             waitForStart();
 
-            PoseVelocity2d currentPose = drive.updatePoseEstimate();
+            drive.updatePoseEstimate();
 
             while (opModeIsActive()) {
+                drive.updateFeedBackParameters(AxialGain, LateralGain, HeadingGain, AxialVelocityGain, LateralVelocityGain, HeadingVelocityGain);
                 Actions.runBlocking(
-                    drive.actionBuilder(new Pose2d(currentPose.linearVel.x, currentPose.linearVel.y, currentPose.angVel))
-                            .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y + DISTANCE))
+                    drive.actionBuilder(startingPose)
+                            .strafeToConstantHeading(new Vector2d(startingPose.position.x + DISTANCE, startingPose.position.y))
                             .waitSeconds(0.5)
-                            .strafeToConstantHeading(new Vector2d(currentPose.linearVel.x, currentPose.linearVel.y))
+                            .strafeToConstantHeading(startingPose.position)
                             .waitSeconds(0.5)
                             .build());
             }

@@ -30,7 +30,7 @@ public class Constants {
     public static double ClawMiddlePosition = ClawOpenPosition + 0.1; // servo units
 
     public static double controllerDeadZone = 0.025;
-    public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.497, extensionGravityPower = 0.080;
+    public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.3, extensionGravityPower = 0.117;
 
     public static double horizontalExpansionLimit = 1066.8; // in millimeters
 
@@ -38,6 +38,9 @@ public class Constants {
     public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15 + 50; // distance that is left within the horizontal expansion limit
 
     public static double TrackWidth = 11.188976; // inches
+
+    public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
+    public static double turnFeedBackStaticPower = 0.075; // power required in order to start moving the robot
 
 
 }

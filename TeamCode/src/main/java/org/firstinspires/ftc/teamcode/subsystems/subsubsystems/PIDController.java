@@ -22,10 +22,8 @@ How to tune a PID:
 3. Increase the D gain until no overshoot occurs
 4. If there is steady state error (or if it is consistently slightly off), increase the I gain until it is corrected
 
-I made a simple example of one way of using this PID in the robot hardware
-
+I made a simple example of one way of using this PID
  */
-
 public class PIDController {
 
     public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxIntegral; // all of these variables can be changed elsewhere in the code

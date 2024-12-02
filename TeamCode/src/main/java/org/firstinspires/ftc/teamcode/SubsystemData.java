@@ -32,7 +32,7 @@ public class SubsystemData {
     public static boolean IMUWorking;
     public static IMU imuInstance;
 
-    public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
+    // public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
     public static HuskyLens.Block[] Vision;
 
@@ -75,40 +75,20 @@ public class SubsystemData {
     public static boolean NeedToRealignHeadingHold = false;
 
 
-
-    public static double TankTurnGain = 0, RamseteZeta = 0.7, RamseteBBar = 2.0;
-
-    public static double RRkSFeedForward, RRkVFeedForward, RRkAFeedForward;
-
-
-    // public static double SwerveModuleTolerance = 8; // degrees
-
-
-
-
-    // Custom Tank Drive Settings
-    // public static PIDController TankLandingPID = new PIDController(0.0, 0.0, 0.0, 0, 0, 0, 1, 0, 2.0, 0, 0,false, false, () -> 0); // distance away from robot center is always 0
-
-    // public static double turnPercentage = 0.5;
-
-    // public static int TankDriveAngleSharpness = 1;
-
-    // public static double stopHeadingChangeDistanceTolerance = 0; // in inches
-
     public static boolean repeatForwardBack = false;
 
 
 
 
-    public static double AutonStoppingDistance = 1, AutonAngleStoppingDifference = 0.1; // angle difference is actually in radians by accident
-
-    public static double AutonMovementGain = 0.1, AutonTurnGain = 0.012;
-
+    public static double AutonStoppingDistance = 0.5; // angle difference is actually in radians unintentionally
 
     public static Pose2d LastAutonPose = new Pose2d(0, 0, Math.toRadians(90));
 
 
     public static double targetPosePerpOffset = 0; // confusing to explain but it supposed to prevent the robot driving in circles around the target position
 
+    public static double VelocityTargetDirectionDifference = 0;
+    public static double VelocityTargetDirectionDifferenceMax = 55;
+    public static double VelocityTargetDirectionDifferenceMaxVelocity = 5; // extra long variable names
 
 }

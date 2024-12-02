@@ -263,15 +263,12 @@ public final class TankDrive extends SubsystemBase {
 
             updatePoseEstimate();
 
-            PARAMS.ramseteZeta = SubsystemData.RamseteZeta;
-            PARAMS.ramseteBBar = SubsystemData.RamseteBBar;
             PoseVelocity2dDual<Time> command = new RamseteController(kinematics.trackWidth, PARAMS.ramseteZeta, PARAMS.ramseteBBar)
                     .compute(x, txWorldTarget, pose);
             driveCommandWriter.write(new DriveCommandMessage(command));
 
             TankKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
-            PARAMS.kA = SubsystemData.RRkAFeedForward;
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
             double leftPower = feedforward.compute(wheelVels.left) / voltage;
@@ -360,7 +357,6 @@ public final class TankDrive extends SubsystemBase {
 
             PoseVelocity2d robotVelRobot = updatePoseEstimate();
 
-            PARAMS.turnGain = SubsystemData.TankTurnGain;
 
             PoseVelocity2dDual<Time> command = new PoseVelocity2dDual<>(
                     Vector2dDual.constant(new Vector2d(0, 0), 3),
@@ -373,7 +369,6 @@ public final class TankDrive extends SubsystemBase {
 
             TankKinematics.WheelVelocities<Time> wheelVels = kinematics.inverse(command);
             double voltage = voltageSensor.getVoltage();
-            PARAMS.kA = SubsystemData.RRkAFeedForward;
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
             double leftPower = feedforward.compute(wheelVels.left) / voltage;
