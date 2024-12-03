@@ -670,14 +670,8 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void moveClawToTopBasket() {
-        // if (CurrentlyReadyPreset == 1) {
-            // enableLoosenClaw();
-            // runMethodAfterSec("openClaw", 0.5);
-            // runMethodAfterSec("disableLoosenClaw", 0.5);
-            // CurrentlyReadyPreset = 0;
-        // } else {
         backPedalExtension = true;
-        PivotTargetAngle = 90;
+        PivotTargetAngle = 85;
         ExtensionTargetLength = 696;
         PushForMaxExtension = true;
         WristTargetAngle = 180;
@@ -688,19 +682,18 @@ public class ArmSystem extends SubsystemBase {
     public void moveClawToTopRung() {
         PushForMaxExtension = false;
         if (CurrentlyReadyPreset == 2) { // second action
-            WristTargetAngle = 180;
             depositSpecimen();
             CurrentlyReadyPreset = 0;
         } else { // normal action
             backPedalExtension = true;
-            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength + 0, 700 - Constants.pivotAxleHeight));
-            WristTargetAngle = 50;
+            moveArmToPoint(new Vector2d(Constants.retractedExtensionLength - 80, 540 - Constants.pivotAxleHeight));
+            WristTargetAngle = 180;
             CurrentlyReadyPreset = 2;
         }
     }
 
 
-    public void depositSpecimen() { // onto a rung
+    public void depositSpecimen() { // onto a rung - this is separate so it is easier to code auton
         ExtensionTargetLength = CurrentExtensionLengthInst + 130;
         // runMethodAfterSec("openClaw", 1.25); // TODO: might not want to open claw here
     }
@@ -710,12 +703,14 @@ public class ArmSystem extends SubsystemBase {
         PushForMaxExtension = false;
         if (CurrentlyReadyPreset == 3) { // second action
             closeClaw();
-            runMethodAfterSec("moveArmDirectly", 0.7, 70, 100);
+            PivotTargetAngle = 75;
+            ExtensionTargetLength = 100;
+            // runMethodAfterSec("moveArmDirectly", 0.7, 75.0, 100.0);
             CurrentlyReadyPreset = 0;
         } else {
             backPedalExtension = true;
             ExtensionTargetLength = 0;
-            PivotTargetAngle = 70;
+            PivotTargetAngle = 75;
             WristTargetAngle = 0;
             openClaw();
             CurrentlyReadyPreset = 3;
@@ -730,6 +725,22 @@ public class ArmSystem extends SubsystemBase {
         moveClawToFieldCoordinate(new Vector2d(0, 0), 120);
         setWristToFloorPickup();
         openClaw();
+    }
+
+
+    public void dropSamplePickup() { // the wrist pivots down to the ground before the claw closes
+        if (CurrentPivotAngleInst < 15) {
+            boolean stopPickup = ClawTargetPosition == Constants.ClawClosedPosition || !(WristTargetAngle == 180); // only try to pickup sample if in the correct starting position, else move to the starting position
+
+            if (!stopPickup) { // execute pickup action
+                setWristToFloorPickup();
+                runMethodAfterSec("closeClaw", 0.6);
+                runMethodAfterSec("setWristToStraight", 1.1);
+            } else { // move wrist and claw to correct position
+                openClaw();
+                WristTargetAngle = 180;
+            }
+        } // otherwise do nothing because the arm is completely in the wrong position
     }
 
 
@@ -757,8 +768,12 @@ public class ArmSystem extends SubsystemBase {
     public void disableLoosenClaw() { LoosenClaw = false; }
     public void toggleLoosenClaw() { LoosenClaw = !LoosenClaw; }
     public void setWristToBack() { WristTargetAngle = 0; }
-    public void setWristToStraight() { WristTargetAngle = 180 + 20; }
-    public void setWristToFloorPickup() { WristTargetAngle = 180; }
+    public void setWristToStraight() { WristTargetAngle = 180; }
+    public void setWristToFloorPickup() { WristTargetAngle = 180 + 20; }
+    public void toggleBetweenStraightAndFloor() {
+        if (!(WristTargetAngle == 180)) WristTargetAngle = 180;
+        else setWristToFloorPickup();
+    }
 
 
     public void toggleTelemetry() { telemetryEnabled = !telemetryEnabled; }
@@ -809,7 +824,7 @@ public class ArmSystem extends SubsystemBase {
 
                     // ArmClaw method names:
                     // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
-                    // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
+                    // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw, dropSamplePickup
                     // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
 
                     // Parameter methods:
@@ -818,12 +833,13 @@ public class ArmSystem extends SubsystemBase {
                     ArrayList<Object> params = AwaitingMethodCallingParams.get(i);
 
                     switch (AwaitingMethodCallingNames.get(i)) {
-                        case "openClaw": openClaw(); break; // I formatted this this way because it looks a lot easier to read
+                        case "openClaw": openClaw(); break; // I formatted this this way because it makes it a lot easier to read
                         case "closeClaw": closeClaw(); break;
                         case "toggleClaw": toggleClaw(); break;
                         case "setWristToBack": setWristToBack(); break;
                         case "setWristToStraight": setWristToStraight(); break;
                         case "setWristToFloorPickup": setWristToFloorPickup(); break;
+                        case "dropSamplePickup": dropSamplePickup(); break;
                         case "depositSpecimen": depositSpecimen(); break;
                         case "enableLoosenClaw": enableLoosenClaw(); break;
                         case "disableLoosenClaw": disableLoosenClaw(); break;
