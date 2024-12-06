@@ -60,24 +60,6 @@ public class DriveAutonCommand extends CommandBase {
 
 
 
-        if (runningActions.isEmpty() && !SubsystemData.inTeleOp && SubsystemData.repeatForwardBack) {
-            runningActions.add(new SequentialAction(
-                    drive.actionBuilder(startPose)
-                            .strafeTo(new Vector2d(0, 30))
-                            .waitSeconds(1)
-                            .strafeTo(new Vector2d(0, 0))
-                            .waitSeconds(1)
-                            //.turnTo(Math.toRadians(270))
-                            //.waitSeconds(1)
-                            //.turnTo(Math.toRadians(90))
-                            .build()
-            ));
-        }
-
-
-
-
-
         telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
 
         // drive.updateDifferentialSwerve(); // keep drivetrain running

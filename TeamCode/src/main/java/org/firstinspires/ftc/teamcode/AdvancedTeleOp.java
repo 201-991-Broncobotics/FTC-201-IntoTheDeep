@@ -42,8 +42,8 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         // Operator controls
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenHeld(new InstantCommand(armSystem::pointClaw)).whenReleased(new InstantCommand(armSystem::toggleClaw));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).whenPressed(new InstantCommand(armSystem::dropSamplePickup));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleBetweenStraightAndFloor));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).toggleWhenPressed(new InstantCommand(armSystem::dropSamplePickup));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(armSystem::toggleBetweenStraightAndFloor));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(armSystem::setWristToBack));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(armSystem::enableLoosenClaw)).whenReleased(new InstantCommand(armSystem::disableLoosenClaw));
 
@@ -61,6 +61,8 @@ public class AdvancedTeleOp extends CommandOpMode {
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
         waitForStart();
+        if (isStopRequested()) return;
+
         armSystem.resetAndPrepareArm();
     }
 }

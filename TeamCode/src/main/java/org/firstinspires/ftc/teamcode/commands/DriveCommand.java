@@ -10,7 +10,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
@@ -23,11 +22,14 @@ public class DriveCommand extends CommandBase {
 
     Telemetry telemetry;
 
+    PoseVelocity2d RobotVelocity;
+    double lastDriveVelocity = 0, lastTurnVelocity = 0;
+
     public DriveCommand(DifferentialSwerveDrive roadrunnerDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
         addRequirements(roadrunnerDrive);
         // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
         drive = roadrunnerDrive;
-        drive.updatePoseEstimate(); // update localization
+        RobotVelocity = drive.updatePoseEstimate(); // update localization
         SubsystemData.absoluteDriving = absoluteDrivingEnabled;
         headingHold = Math.toDegrees(drive.pose.heading.toDouble());
 
@@ -45,39 +47,77 @@ public class DriveCommand extends CommandBase {
         // double lastDiffySwerveTime = 0;
 
         if (SubsystemData.NeedToRealignHeadingHold) { // reset heading hold when imu is reset
-            headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+            headingHold = 90;
             SubsystemData.NeedToRealignHeadingHold = false;
+
+            SubsystemData.HighDriveVel = 0; // also reset the high drive/turn vel/accel counts
+            SubsystemData.HighDriveAccel = 0;
+            SubsystemData.LowDriveAccel = 0;
+            SubsystemData.HighAngVel = 0;
+            SubsystemData.HighAngAccel = 0;
         }
 
         //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
         //lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
-        drive.updatePoseEstimate(); // update localization
+        RobotVelocity = drive.updatePoseEstimate(); // update localization
         SubsystemData.CurrentRobotPose = drive.pose;
+
+        double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
+        if (DriveVelocity > SubsystemData.HighDriveVel) SubsystemData.HighDriveVel = DriveVelocity;
+        if (Math.abs(RobotVelocity.angVel) > SubsystemData.HighAngVel) SubsystemData.HighAngVel = Math.abs(RobotVelocity.angVel);
+        double DriveAcceleration = (DriveVelocity - lastDriveVelocity) * SubsystemData.FrameRate;
+        lastDriveVelocity = DriveVelocity;
+        double TurnAcceleration = (RobotVelocity.angVel - lastTurnVelocity) * SubsystemData.FrameRate;
+        lastTurnVelocity = RobotVelocity.angVel;
+        if (DriveAcceleration > SubsystemData.HighDriveAccel) SubsystemData.HighDriveAccel = DriveAcceleration;
+        if (DriveAcceleration < SubsystemData.LowDriveAccel) SubsystemData.LowDriveAccel = DriveAcceleration;
+        if (Math.abs(TurnAcceleration) > SubsystemData.HighAngAccel) SubsystemData.HighAngAccel = Math.abs(TurnAcceleration);
+
 
         YawPitchRollAngles robotOrientation = SubsystemData.IMUAngles;
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 2000) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 1200) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
         }
 
-        double throttleControl = 0.4 + 0.6 * functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+        double throttleMagnitude = functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
+        double throttleControl = 0.4 + 0.6 * throttleMagnitude;
+        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude;
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
-        double turn = -0.6 * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
+        double turn = -turnThrottleControl * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
         double heading = Math.toDegrees(drive.pose.heading.toDouble());
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!SubsystemData.absoluteDriving) telemetry.addLine("Absolute Driving is off");
 
+
+        /*
+        // Auto Aiming
+        if (SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.05 && Math.abs(forward) < Constants.controllerDeadZone && Math.abs(strafe) < Constants.controllerDeadZone) {
+            if (SubsystemData.CameraTargetPixelsY > 100) { // validates target
+                if (SubsystemData.AutoAimingForWall) {
+                    forward = -1 * SubsystemData.AutoAimForwardGain * (SubsystemData.CameraTargetsPixelsWidth - ) / 160;
+                    strafe = SubsystemData.AutoAimStrafeGain * SubsystemData.CameraTargetPixelsX / 160;
+                }
+
+
+            }
+        }
+
+         */
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
         double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude; //  Math.pow(joystickMagnitude, 3)
+
+
+        if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;
 
 
         if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
@@ -90,7 +130,8 @@ public class DriveCommand extends CommandBase {
             } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 600 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
                 // otherwise hold current heading if no driver input for some time and imu is working
                 // auto aim
-                if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
+                //if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
+                if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
 
                 // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
                 if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) SubsystemData.HeadingTargetPID.minDifference = 3;

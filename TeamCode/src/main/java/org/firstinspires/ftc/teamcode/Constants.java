@@ -18,6 +18,7 @@ public class Constants {
     public static double pivotAxleHeight = 82.242420; //mm not including how much the robot sinks into the tiles
     public static double pivotAxleOffset = -156.0; //mm of distance toward the back of the robot from center of robot
     public static double retractedExtensionLength = 264; //mm from center of pivot axle to end of linear slide when retracted
+    public static double wristLength = 185; //mm from the front of slides to where the claw can best pickup a sample off the ground when wrist is straight
 
     public static double maxManualClawSpeedVertical = 700, maxManualClawSpeedHorizontal = 600; // mm per second
     public static double maxManualExtensionSpeed = 700, maxManualPivotSpeed = 80, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
@@ -30,17 +31,19 @@ public class Constants {
     public static double ClawMiddlePosition = ClawOpenPosition + 0.1; // servo units
 
     public static double controllerDeadZone = 0.025;
-    public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.3, extensionGravityPower = 0.117;
+    public static double pivotRetractedGravityPower = 0.156, pivotExtendedGravityPower = 0.3, extensionGravityPower = 0.166;
 
     public static double horizontalExpansionLimit = 1066.8; // in millimeters
 
     // 420 mm from end of claw to pivot axle, 457.2 is the length of the robot, 15 is extra distance to be sure
-    public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15 + 50; // distance that is left within the horizontal expansion limit
+    public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15 + 50; // distance that is left within the horizontal expansion limit for the linear slide
 
     public static double TrackWidth = 11.188976; // inches
 
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
     public static double turnFeedBackStaticPower = 0.075; // power required in order to start moving the robot
+
+    public static double pivotMotorBacklash = 12; // degrees
 
 
 }

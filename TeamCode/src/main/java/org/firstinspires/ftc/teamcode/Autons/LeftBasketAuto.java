@@ -11,7 +11,6 @@ import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
-import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
@@ -21,11 +20,9 @@ import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 
 import com.arcrobotics.ftclib.command.RunCommand;
 
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
-
-@Autonomous(name="RightSampleCollection")
-public class RightSampleCollection extends CommandOpMode {
+@Autonomous(name="LeftBasketAuto")
+public class LeftBasketAuto extends CommandOpMode {
 
     @Override
     public void initialize() {
@@ -34,7 +31,7 @@ public class RightSampleCollection extends CommandOpMode {
 
         // assume a position of 0, 0, 0 would be at the exact center of the field pointing away from audience
 
-        Pose2d startPose = new Pose2d(new Vector2d(tiles(0.5), tiles(-3) + 7.09), Math.toRadians(90));
+        Pose2d startPose = new Pose2d(new Vector2d(tiles(-0.5), tiles(-3) + 7.09), Math.toRadians(90));
         DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
@@ -50,49 +47,40 @@ public class RightSampleCollection extends CommandOpMode {
 
 
         // setup roadrunner trajectories
-        TrajectoryActionBuilder DriveToRungs = drive.actionBuilder(startPose)
-                .strafeToConstantHeading(tileCoords(0.2, -1.1));
+        TrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
+                .strafeToConstantHeading(tileCoords(-0.2, -1.1));
 
-        TrajectoryActionBuilder DriveToFirstSample = drive.actionBuilder(new Pose2d(tileCoords(0.2, -1.6), startPose.heading.toDouble())) // DriveToRungs.fresh()
-                .setTangent(Math.toRadians(0))
-                .lineToX(tiles(1.2))
-                .splineToLinearHeading(new Pose2d(tileCoords(1.5, -0.5), Math.toRadians(0)), Math.toRadians(90))
-                .strafeToConstantHeading(tileCoords(2.0, -0.5))
-                .strafeToConstantHeading(tileCoords(2.0, -2.5));
 
-        TrajectoryActionBuilder AlignToSample = drive.actionBuilder(new Pose2d(tileCoords(1.4, -1.6), 90))
-                .turnTo(Math.toRadians(45));
-
-        TrajectoryActionBuilder PointTowardObservation = drive.actionBuilder(new Pose2d(tileCoords(1.4, -1.6), Math.toRadians(45))) // DriveToFirstSample.fresh()
-                .turnTo(Math.toRadians(360-90));
+        SequentialAction PlaceSpecimen = new SequentialAction(
+                armSystem.Wait(0.5),
+                armSystem.RunMethod("depositSpecimen"),
+                armSystem.Wait(0.5),
+                armSystem.RunMethod("openClaw")
+        );
 
 
 
         // ArmClaw method names:
-        // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
-        // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
-        // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
+        // openClaw, closeClaw, toggleClaw, setWristToBack, setWristToStraight, setWristToFloorPickup, depositSpecimen
+        // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw, dropSamplePickup
+        // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
 
         // Parameter methods:
         // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
-
-        // Actions:
-        // Wait, RunMethod ^, waitUntilFinishedAwaiting, waitUntilFinishedMoving
 
         drive.updatePoseEstimate();
 
         DriveAutonCommand.queueAction(
                 new SequentialAction(
-                        //armSystem.RunMethod("closeClaw"),
-                        //armSystem.RunMethod("moveClawToRamRung"),
-                        DriveToRungs.build(),
-                        armSystem.Wait(1),
-                        //armSystem.RunMethod("openClaw"),
-                        //armSystem.RunMethod("resetArm", 0.75),
-                        armSystem.Wait(0.5),
-                        DriveToFirstSample.build()
-                )
-        );
+                        armSystem.RunMethod("closeClaw"),
+                        armSystem.RunMethod("setWristToStraight"),
+                        armSystem.Wait(0.75),
+                        armSystem.RunMethod("moveClawToTopRung"),
+                        DriveToChamber1.build(),
+                        PlaceSpecimen,
+                        armSystem.RunMethod("resetArm", 0.3)
+
+                ));
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

@@ -241,8 +241,6 @@ public class DiffySwerveKinematics extends SubsystemBase {
                 new DualNum<>(new double[] {0, 1}));
         VelocityPose = new PoseVelocity2d(new Vector2d(0, 0), 0);
         SubsystemData.HeadingTargetPID.stopUntilNextUse();
-        SubsystemData.AxialPID.stopUntilNextUse();
-        SubsystemData.LateralPID.stopUntilNextUse();
         rightModule.fullStopModule();
         leftModule.fullStopModule();
     }

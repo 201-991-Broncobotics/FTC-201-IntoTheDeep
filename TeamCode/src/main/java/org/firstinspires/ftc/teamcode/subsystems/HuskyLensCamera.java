@@ -38,10 +38,12 @@ public class HuskyLensCamera extends SubsystemBase {
                 }
             }
 
+
             //  return information to arm
             if (functions.intListContains(SubsystemData.AcceptableIds, closestObject.id)) {
                 SubsystemData.CameraTargetPixelsX = closestObject.x - SubsystemData.HuskyLensTargetX;
                 SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - SubsystemData.HuskyLensTargetY);
+                SubsystemData.CameraTargetsPixelsWidth = closestObject.width;
                 SubsystemData.CameraTargetId = closestObject.id;
                 SubsystemData.CameraSeesValidObject = true;
 

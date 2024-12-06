@@ -15,12 +15,17 @@ import org.firstinspires.ftc.teamcode.Roadrunner.TwoDeadWheelLocalizer;
 public final class ManualFeedbackTuner extends LinearOpMode {
     public static double DISTANCE = 20;
 
-    public static double AxialGain = 0.7;
-    public static double LateralGain = 0.7;
-    public static double HeadingGain = 10.0;
+    public static double AxialGain = 2.0;
+    public static double LateralGain = 2.0;
+    public static double HeadingGain = 25.0;
     public static double AxialVelocityGain = 0;
     public static double LateralVelocityGain = 0;
     public static double HeadingVelocityGain = 0;
+
+    public static double MaxWheelVel = 30;
+    public static double MinProfileAccel = -30;
+    public static double MaxProfileAccel = 30;
+    public static double pauseSeconds = 0.5;
 
 
     @Override
@@ -44,12 +49,13 @@ public final class ManualFeedbackTuner extends LinearOpMode {
 
             while (opModeIsActive()) {
                 drive.updateFeedBackParameters(AxialGain, LateralGain, HeadingGain, AxialVelocityGain, LateralVelocityGain, HeadingVelocityGain);
+                drive.updatePathParameters(MaxWheelVel, MinProfileAccel, MaxProfileAccel);
                 Actions.runBlocking(
                     drive.actionBuilder(startingPose)
                             .strafeToConstantHeading(new Vector2d(startingPose.position.x + DISTANCE, startingPose.position.y))
-                            .waitSeconds(0.5)
+                            .waitSeconds(pauseSeconds)
                             .strafeToConstantHeading(startingPose.position)
-                            .waitSeconds(0.5)
+                            .waitSeconds(pauseSeconds)
                             .build());
             }
         } else if (TuningOpModes.DRIVE_CLASS.equals(TankDrive.class)) {

@@ -27,7 +27,6 @@ import com.acmerobotics.roadrunner.TimeTurn;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.TrajectoryBuilderParams;
 import com.acmerobotics.roadrunner.TurnConstraints;
-import com.acmerobotics.roadrunner.Twist2d;
 import com.acmerobotics.roadrunner.Twist2dDual;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.Vector2dDual;
@@ -41,7 +40,6 @@ import com.acmerobotics.roadrunner.ftc.OverflowEncoder;
 import com.acmerobotics.roadrunner.ftc.PositionVelocityPair;
 import com.acmerobotics.roadrunner.ftc.RawEncoder;
 import com.arcrobotics.ftclib.command.SubsystemBase;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -50,7 +48,6 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -63,7 +60,6 @@ import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -92,18 +88,18 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         public double kA = 0.00004;
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 30;
-        public double minProfileAccel = -30;
-        public double maxProfileAccel = 30;
+        public double maxWheelVel = 50; // actual is 70
+        public double minProfileAccel = -60;
+        public double maxProfileAccel = 60; // actual is 115
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.PI / 3; // shared with path
-        public double maxAngAccel = Math.PI / 3;
+        public double maxAngVel = Math.toRadians(360); // actual is 536 degrees
+        public double maxAngAccel = Math.toRadians(720); // actual is 1907 degrees
 
         // path controller gains
-        public double axialGain = 0.7; // im using my own pids cause these suck
+        public double axialGain = 2.0;
         public double lateralGain = axialGain;
-        public double headingGain = 10.0;
+        public double headingGain = 25.0;
 
         public double axialVelGain = 0.0;
         public double lateralVelGain = axialVelGain;
@@ -261,10 +257,6 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
 
 
-        // telemetry.addData("Left Module Angle Before Reset:", functions.angleDifference((leftFront.getCurrentPosition() / Constants.encoderResolution * 360), 0, 360));
-        // telemetry.addData("Right Module Angle Before Reset:", functions.angleDifference((rightFront.getCurrentPosition() / Constants.encoderResolution * 360), 0, 360));
-
-
         //leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         rightBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -274,17 +266,12 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         //rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
-        // 0.012, 0.0, 0.0005
-
-        // 0.05, 0.0, 0.0015
 
         // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
         // NOTE: The Heading PID values displayed on the driver hub are 10x the actual values
-        SubsystemData.HeadingTargetPID = new PIDController(0.004, 0.0, 0.0008, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.0, 0.0008, () -> Math.toDegrees(this.pose.heading.toDouble()));
         SubsystemData.HeadingTargetPID.minDifference = 0.25; // this is also actively changed in DriveCommand
 
-        SubsystemData.AxialPID = new PIDController(0.1, 0.0, 0.0, () -> this.pose.position.y);
-        SubsystemData.LateralPID = new PIDController(SubsystemData.AxialPID.kP, SubsystemData.AxialPID.kI, SubsystemData.AxialPID.kD, () -> this.pose.position.x);
 
 
         SubsystemData.IMUWorking = true;
@@ -510,10 +497,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
     public PoseVelocity2d updatePoseEstimate() {
         Twist2dDual<Time> twist = localizer.update();
-
-        // Roadrunner switched the x and y and made them both negative on me for some reason but heading was fine
-        // Twist2d RoadrunnerIsStupid = new Twist2d(new Vector2d(twist.value().line.y, twist.value().line.x), twist.value().angle);
-        pose = pose.plus(twist.value()); //RoadrunnerIsStupid
+        pose = pose.plus(twist.value());
 
         poseHistory.add(pose);
         while (poseHistory.size() > 100) {
@@ -561,7 +545,10 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     }
 
     public void realignHeading() {
-        newImu.resetYaw();
+        // newImu.resetYaw(); // doesn't work for some reason
+        // SubsystemData.IMUZero = (pose.heading.toDouble() + SubsystemData.IMUZero) - Math.PI / 2;
+        SubsystemData.needToResetIMU = true;
+        SubsystemData.imuInstance.resetYaw(); // idk if my various copies of the imu also need to be individually reset
         SubsystemData.NeedToRealignHeadingHold = true;
     }
 
@@ -619,6 +606,12 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         PARAMS.axialVelGain = AxialVelocityGain;
         PARAMS.lateralVelGain = LateralVelocityGain;
         PARAMS.headingVelGain = HeadingVelocityGain;
+    }
+
+    public void updatePathParameters(double MaxWheelVel, double MinProfileAccel, double MaxProfileAccel) {
+        PARAMS.maxWheelVel = MaxWheelVel;
+        PARAMS.minProfileAccel = MinProfileAccel;
+        PARAMS.maxProfileAccel = MaxProfileAccel;
     }
 
 

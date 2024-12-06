@@ -34,5 +34,7 @@ public class ResetSwerveWheelsOpMode extends CommandOpMode {
         telemetry.addLine("Swerve Wheels have been reset to 0 :)");
         telemetry.update();
 
+        requestOpModeStop();
+
     }
 }

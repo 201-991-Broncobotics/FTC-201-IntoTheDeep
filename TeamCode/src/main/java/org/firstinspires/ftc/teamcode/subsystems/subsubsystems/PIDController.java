@@ -83,7 +83,7 @@ public class PIDController {
             if (newTargetPosition > maxPosition) newTargetPosition = maxPosition;
             else if (newTargetPosition < minPosition) newTargetPosition = minPosition;
         }
-        if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
+        if (!(targetPosition == newTargetPosition)) integral = 0;
         targetPosition = newTargetPosition;
     }
 
@@ -125,14 +125,15 @@ public class PIDController {
         // overrideCurrentPosition is just the current encoder Position unless it is being overridden
 
         if (stoppedUntilNextUse) { // reset all timers and integral when pid is first used again after being stopped
-            mRuntime.reset();
-            reset();
+            //mRuntime.reset();
+            //reset();
             stoppedUntilNextUse = false;
         }
 
         if (doVariableCorrection) correctValues();
         double power;
         double timeSince = (mRuntime.time() / 1000.0) - previousTime;
+        previousTime = mRuntime.time() / 1000.0;
         PIDFrameRate = 1.0 / timeSince;
 
         updateMovingTargetPosition();
@@ -142,7 +143,6 @@ public class PIDController {
         if (Math.abs(integral) > maxIntegral * (maxPower / kI)) integral = Math.signum(integral) * (maxIntegral * (maxPower / kI)); // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
-        previousTime = mRuntime.time() / 1000.0;
         power = (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
 
         power = (Math.abs(power) * (1 - initialPower) + initialPower) * Math.signum(power); // normalizes to start at initial power

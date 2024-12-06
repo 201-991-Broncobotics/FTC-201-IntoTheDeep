@@ -16,6 +16,8 @@ public class SubsystemData {
 
     public static Pose2d CurrentRobotPose; // from roadrunner
 
+    public static double FrameRate = 20; // not actual value, it is constantly updated in ArmSystem
+
 
     public static boolean inTeleOp; // to stop auton in command based
 
@@ -25,22 +27,26 @@ public class SubsystemData {
     public static double OverrideDrivetrainTargetHeading = 0;
 
 
-    public static PIDController HeadingTargetPID, AxialPID, LateralPID; // temporarily here so I can tune the PIDs
+    public static PIDController HeadingTargetPID; // temporarily here so I can tune the PIDs
 
     public static Pose2d AutonError = new Pose2d(new Vector2d(0, 0), 0);
 
     public static boolean IMUWorking;
     public static IMU imuInstance;
 
+    public static double IMUZero = 0; // in radians
+
+    public static boolean needToResetIMU = false;
+
     // public static double[] DriveMotorHighCurrents = new double[] {0, 0, 0, 0};
 
     public static HuskyLens.Block[] Vision;
 
-    public static double CameraTargetPixelsX, CameraTargetPixelsY;
+    public static double CameraTargetPixelsX, CameraTargetPixelsY, CameraTargetsPixelsWidth;
 
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
 
-    public static double HuskyLensTargetX = 160, HuskyLensTargetY = 190; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
+    public static double HuskyLensTargetX = 160, HuskyLensTargetY = 140; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
     // note that 0,0 on the huskylens is the top left corner
 
     public static boolean CameraSeesValidObject = false;
@@ -64,7 +70,7 @@ public class SubsystemData {
 
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
 
-    public static boolean HoldClawFieldPos;
+    public static boolean HoldClawFieldPos = false;
 
 
     public static double OperatorTurningPower = 0;
@@ -90,5 +96,13 @@ public class SubsystemData {
     public static double VelocityTargetDirectionDifference = 0;
     public static double VelocityTargetDirectionDifferenceMax = 55;
     public static double VelocityTargetDirectionDifferenceMaxVelocity = 5; // extra long variable names
+
+
+
+    public static boolean AutoAimingForWall = false; // false means auto aim for ground pickup
+    public static double AutoAimForwardGain = 0;
+    public static double AutoAimStrafeGain = 0;
+
+    public static double HighDriveVel = 0, HighAngVel = 0, HighDriveAccel = 0, LowDriveAccel = 0, HighAngAccel = 0;
 
 }
