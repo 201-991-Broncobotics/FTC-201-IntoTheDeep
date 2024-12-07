@@ -73,7 +73,7 @@ public class ArmSystem extends SubsystemBase {
     private double WristTargetAngle, ClawTargetPosition, PivotTargetAngle, ExtensionTargetLength;
 
     private double CurrentPivotAngleZero = 0, CurrentExtensionLengthZero = 0;
-    public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero;
+    public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero; //  + Constants.pivotMotorBacklash
     public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngle.getAsDouble()) / Constants.SpoolDegreesToMaxExtension * 696 - CurrentExtensionLengthZero;
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
     private boolean delayPivotMovement = false; // allows the pivot to move a small amount after the extension has reached target: it is to prevent the chamber preset from going underneath the bar if too close
@@ -118,7 +118,7 @@ public class ArmSystem extends SubsystemBase {
 
         SubsystemData.HoldClawFieldPos = false; // makes sure this is off on startup
 
-        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble();
+        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble() - CurrentPivotAngleZero;
 
         camera = new HuskyLensCamera(map);
 
@@ -142,18 +142,21 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void resetAndPrepareArm() {
-        setWrist(WristTargetAngle); // reset Extension and Pivot to make sure the backlash doesn't get in the way
-        functions.Sleep(250);
-        ExtensionF.setPower(-0.3);
-        ExtensionB.setPower(-0.3);
-        Pivot.setPower(-0.2); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
-        functions.Sleep(250);
-        ExtensionF.setPower(0);
-        ExtensionB.setPower(0);
-        Pivot.setPower(0);
-        CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble() + CurrentPivotAngleZero + Constants.pivotMotorBacklash;
-        CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble() + CurrentExtensionLengthZero;
-        closeClaw();
+        if (!SubsystemData.alreadyAlignedArm) { // avoids resetting zeros if that has already happened while the robot was on
+            // reset Extension and Pivot to make sure the backlash doesn't get in the way
+            ExtensionF.setPower(-0.3);
+            ExtensionB.setPower(-0.3);
+            Pivot.setPower(0.2); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
+            functions.Sleep(300);
+            ExtensionF.setPower(0);
+            ExtensionB.setPower(0);
+            Pivot.setPower(0);
+            CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360;
+            CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
+
+            SubsystemData.alreadyAlignedArm = true;
+        }
+
     }
 
 
@@ -329,7 +332,10 @@ public class ArmSystem extends SubsystemBase {
             }
 
             holdClawAtFieldCoordinate(FieldCoordHoldPos, FieldCoordHoldHeight);
-        } else needToSetStartCoord = true;
+        } else {
+            needToSetStartCoord = true;
+            SubsystemData.OverrideDrivetrainRotation = false;
+        }
 
 
 
@@ -408,9 +414,9 @@ public class ArmSystem extends SubsystemBase {
         if (activeExtensionReset) { // reset extension length
             ExtensionF.setPower(-0.3);
             ExtensionB.setPower(-0.3);
-            Pivot.setPower(-0.2);
-            CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble() + CurrentPivotAngleZero + Constants.pivotMotorBacklash;
-            CurrentExtensionLengthZero = CurrentExtensionLength.getAsDouble() + CurrentExtensionLengthZero;
+            Pivot.setPower(0.1);
+            // CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble() + CurrentPivotAngleZero - Constants.pivotMotorBacklash;
+            CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
             ExtensionF.setPower(0.3);
             ExtensionB.setPower(0.3);
@@ -888,13 +894,15 @@ public class ArmSystem extends SubsystemBase {
 
                 if (AwaitingMethodCallingTimes.get(i) < runTime.time()) {
 
+                    // NOTE make sure any methods that need parameters are correct and all numbers MUST BE doubles with a decimal place
+
                     // ArmClaw method names:
                     // openClaw, closeClaw, toggleClaw, setWristToBack, setWristToStraight, setWristToFloorPickup, depositSpecimen
                     // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw, dropSamplePickup
                     // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
 
                     // Parameter methods:
-                    // moveArmToPoint, holdClawToFieldCoordinate, moveArmDirectly, setWrist
+                    // moveArmToPoint, holdClawToFieldCoordinate, moveArmDirectly, setWrist, setExtension, setPivot
 
                     ArrayList<Object> params = AwaitingMethodCallingParams.get(i);
 
@@ -926,6 +934,12 @@ public class ArmSystem extends SubsystemBase {
                             break;
                         case "setWrist":
                             setWrist((double) params.get(0));
+                            break;
+                        case "setExtension":
+                            ExtensionTargetLength = (double) params.get(0);
+                            break;
+                        case "setPivot":
+                            PivotTargetAngle = (double) params.get(0);
                             break;
                     }
                 } else {
@@ -1053,6 +1067,7 @@ public class ArmSystem extends SubsystemBase {
         return new RRWaitUntilFinishedAwaiting();
     }
     public class RRWaitUntilFinishedAwaitingTimeout implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        updateClawArm();
         return (!AwaitingMethodCallingTimes.isEmpty() || (timeoutTimer.time() > TimeoutTime));
     }}
     public Action waitUntilFinishedAwaiting(double TimeoutSeconds) {
@@ -1064,6 +1079,7 @@ public class ArmSystem extends SubsystemBase {
 
 
     public class RRWaitUntilFinishedMoving implements Action { @Override public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+        updateClawArm();
         return (ExtensionPID.closeEnough() && PivotPID.closeEnough());
     }}
     public Action waitUntilFinishedMoving() {

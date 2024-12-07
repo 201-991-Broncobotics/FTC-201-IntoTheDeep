@@ -105,4 +105,6 @@ public class SubsystemData {
 
     public static double HighDriveVel = 0, HighAngVel = 0, HighDriveAccel = 0, LowDriveAccel = 0, HighAngAccel = 0;
 
+    public static boolean alreadyAlignedArm = false;
+
 }

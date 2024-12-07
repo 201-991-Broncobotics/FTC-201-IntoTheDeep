@@ -88,13 +88,13 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         public double kA = 0.00004;
 
         // path profile parameters (in inches)
-        public double maxWheelVel = 50; // actual is 70
-        public double minProfileAccel = -60;
-        public double maxProfileAccel = 60; // actual is 115
+        public double maxWheelVel = 50; // max measured to be 70
+        public double minProfileAccel = -60; // max measured to be
+        public double maxProfileAccel = 60; // max measured to be 115
 
         // turn profile parameters (in radians)
-        public double maxAngVel = Math.toRadians(360); // actual is 536 degrees
-        public double maxAngAccel = Math.toRadians(720); // actual is 1907 degrees
+        public double maxAngVel = Math.toRadians(360); // max measured to be 536 degrees
+        public double maxAngAccel = Math.toRadians(360); // max measured to be 1907 degrees
 
         // path controller gains
         public double axialGain = 2.0;

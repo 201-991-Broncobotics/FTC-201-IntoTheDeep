@@ -3,10 +3,14 @@ package org.firstinspires.ftc.teamcode.Autons;
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tiles;
 
+import com.acmerobotics.roadrunner.AngularVelConstraint;
+import com.acmerobotics.roadrunner.MinVelConstraint;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
+import com.acmerobotics.roadrunner.TranslationalVelConstraint;
 import com.acmerobotics.roadrunner.Vector2d;
+import com.acmerobotics.roadrunner.VelConstraint;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
@@ -19,6 +23,8 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 
 import com.arcrobotics.ftclib.command.RunCommand;
+
+import java.util.Arrays;
 
 
 @Autonomous(name="RightPushThreeSpecimen")
@@ -54,17 +60,26 @@ public class RightPushThreeSpecimen extends CommandOpMode {
                 .strafeToConstantHeading(tileCoords(0.2, -1.5))
                 .strafeToConstantHeading(tileCoords(0.2, -1.3));
 
+        VelConstraint VelConstraint = new MinVelConstraint(Arrays.asList(
+                new TranslationalVelConstraint(30.0),
+                new AngularVelConstraint(Math.PI / 2)
+        ));
+
+        VelConstraint VelConstraint2 = new MinVelConstraint(Arrays.asList(
+                new TranslationalVelConstraint(35.0),
+                new AngularVelConstraint(Math.PI / 2)
+        ));
+
+
         TrajectoryActionBuilder PushPresetSamples = drive.actionBuilder(new Pose2d(tileCoords(0.2, -1.3), startPose.heading.toDouble())) // DriveToRungs.fresh()
                 .setTangent(Math.toRadians(360-60))
-                .splineToConstantHeading(tileCoords(1, -1.8), Math.toRadians(0))
-                .splineToConstantHeading(tileCoords(1.55, -0.6), Math.toRadians(60))
-                .splineToConstantHeading(tileCoords(2.1, -0.4), Math.toRadians(0));
-
-        TrajectoryActionBuilder PushPresetSamples2 = drive.actionBuilder(new Pose2d(tileCoords(2.1, -0.4), startPose.heading.toDouble())) // DriveToRungs.fresh()
+                .splineToConstantHeading(tileCoords(1, -1.7), Math.toRadians(0))
+                .splineToConstantHeading(tileCoords(1.55, -0.6), Math.toRadians(70), VelConstraint)
+                .splineToConstantHeading(tileCoords(2.1, -0.4), Math.toRadians(0))
                 .strafeToConstantHeading(tileCoords(2.1, -2.3))
-                .strafeToConstantHeading(tileCoords(2.1, -0.4))
-                .splineToConstantHeading(tileCoords(2.5, -0.6), Math.toRadians(180))
-                .strafeToConstantHeading(tileCoords(2.5, -2.3));
+                .strafeToConstantHeading(tileCoords(2.1, -0.4), VelConstraint2)
+                .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(180), VelConstraint2)
+                .strafeToConstantHeading(tileCoords(2.6, -2.3));
 
         TrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(new Pose2d(tileCoords(2.5, -2.3), startPose.heading.toDouble()))
                 .strafeToConstantHeading(tileCoords(2, -2.4))
@@ -84,7 +99,7 @@ public class RightPushThreeSpecimen extends CommandOpMode {
                 .splineToConstantHeading(tileCoords(0, -1.3), Math.toRadians(90));
 
 
-        SequentialAction PlaceSpecimen = new SequentialAction(
+        SequentialAction PlaceSpecimen1 = new SequentialAction(
                 armSystem.Wait(0.4),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.5),
@@ -107,13 +122,15 @@ public class RightPushThreeSpecimen extends CommandOpMode {
 
 
 
+        // NOTE make sure any methods that need parameters are correct and all numbers MUST BE doubles with a decimal place
+
         // ArmClaw method names:
         // openClaw, closeClaw, toggleClaw, setWristToBack, setWristToStraight, setWristToFloorPickup, depositSpecimen
         // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw, dropSamplePickup
-        // moveClawToTopBasket, moveClawToTopRung, moveClawToHumanPickup, resetArm,
+        // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
 
         // Parameter methods:
-        // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
+        // moveArmToPoint, holdClawToFieldCoordinate, moveArmDirectly, setWrist, setExtension, setPivot
 
         drive.updatePoseEstimate();
 
@@ -121,32 +138,35 @@ public class RightPushThreeSpecimen extends CommandOpMode {
                 new SequentialAction(
                         armSystem.RunMethod("closeClaw"),
                         armSystem.RunMethod("setWristToStraight"),
-                        armSystem.Wait(0.5),
-                        armSystem.RunMethod("moveArmDirectly", 0.01, 79.0, 215.0),
+                        armSystem.Wait(0.3),
+                        armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 215.0),
                         armSystem.Wait(0.3),
                         DriveToChamber1.build(),
                         armSystem.RunMethod("moveClawToTopRung"),
-                        armSystem.Wait(0.25),
-                        PlaceSpecimen,
+                        PlaceSpecimen1,
                         armSystem.RunMethod("resetArm", 0.3),
                         PushPresetSamples.build(),
-                        armSystem.Wait(1),
-                        PushPresetSamples2.build(),
                         armSystem.RunMethod("moveClawToHumanPickup"),
                         DriveToHumanPlayer1.build(),
                         armSystem.Wait(0.5),
                         armSystem.RunMethod("closeClaw"),
                         armSystem.Wait(0.5),
-                        armSystem.RunMethod("moveClawToTopRung", 0.5),
+                        armSystem.RunMethod("setWristToStraight"),
+                        armSystem.RunMethod("moveArmDirectly", 0.5, 76.0, 215.0),
                         DriveToChamber2.build(),
+                        armSystem.RunMethod("moveClawToTopRung"),
+                        armSystem.Wait(0.2),
                         PlaceSpecimen2,
                         armSystem.RunMethod("moveClawToHumanPickup", 0.5),
                         DriveToHumanPlayer2.build(),
                         armSystem.Wait(0.5),
                         armSystem.RunMethod("closeClaw"),
                         armSystem.Wait(0.5),
-                        armSystem.RunMethod("moveClawToTopRung", 0.5),
+                        armSystem.RunMethod("setWristToStraight"),
+                        armSystem.RunMethod("moveArmDirectly", 0.5, 76.0, 215.0),
                         DriveToChamber3.build(),
+                        armSystem.RunMethod("moveClawToTopRung"),
+                        armSystem.Wait(0.2),
                         PlaceSpecimen3,
                         armSystem.RunMethod("resetArm", 0.3),
                         drive.actionBuilder(new Pose2d(tileCoords(0.1, -1.1), startPose.heading.toDouble()))
