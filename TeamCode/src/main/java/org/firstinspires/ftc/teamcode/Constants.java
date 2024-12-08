@@ -21,7 +21,7 @@ public class Constants {
     public static double wristLength = 185; //mm from the front of slides to where the claw can best pickup a sample off the ground when wrist is straight
 
     public static double maxManualClawSpeedVertical = 700, maxManualClawSpeedHorizontal = 600; // mm per second
-    public static double maxManualExtensionSpeed = 700, maxManualPivotSpeed = 80, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
+    public static double maxManualExtensionSpeed = 700, maxManualPivotSpeed = 70, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
 
     public static double maxCameraTargetingSpeed = 500, maxCameraTargetingTurnSpeed = 50; // mm, degrees
 
@@ -36,7 +36,7 @@ public class Constants {
     public static double horizontalExpansionLimit = 1066.8; // in millimeters
 
     // 420 mm from end of claw to pivot axle, 457.2 is the length of the robot, 15 is extra distance to be sure
-    public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15 + 50; // distance that is left within the horizontal expansion limit for the linear slide
+    public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15; // distance that is left within the horizontal expansion limit for the linear slide
 
     public static double TrackWidth = 11.188976; // inches
 
@@ -44,6 +44,8 @@ public class Constants {
     public static double turnFeedBackStaticPower = 0.075; // power required in order to start moving the robot
 
     public static double pivotMotorBacklash = 12; // degrees
+
+    public static double LinearSlideBend = -8; // degrees that the linear slide bends when horizontal and at max extension
 
 
 }
