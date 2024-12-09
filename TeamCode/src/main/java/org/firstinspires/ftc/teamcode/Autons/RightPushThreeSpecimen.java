@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Autons;
 
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoordsP;
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tiles;
 
 import com.acmerobotics.roadrunner.AngularVelConstraint;
@@ -19,8 +20,10 @@ import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.HuskyLensCommand;
+import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
 import com.arcrobotics.ftclib.command.RunCommand;
 
@@ -38,7 +41,8 @@ public class RightPushThreeSpecimen extends CommandOpMode {
         // assume a position of 0, 0, 0 would be at the exact center of the field pointing away from audience
 
         Pose2d startPose = new Pose2d(new Vector2d(tiles(0.5), tiles(-3) + 4.0), Math.toRadians(90));
-        DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
+        Follower drive = new Follower(hardwareMap, startPose, telemetry);
+        drive.startTeleopDrive();
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
@@ -56,45 +60,31 @@ public class RightPushThreeSpecimen extends CommandOpMode {
 
 
         // setup roadrunner trajectories
-        TrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
+        PedroTrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
                 .strafeToConstantHeading(tileCoords(0.2, -1.5))
                 .strafeToConstantHeading(tileCoords(0.2, -1.3));
 
-        VelConstraint VelConstraint = new MinVelConstraint(Arrays.asList(
-                new TranslationalVelConstraint(30.0),
-                new AngularVelConstraint(Math.PI / 2)
-        ));
-
-        VelConstraint VelConstraint2 = new MinVelConstraint(Arrays.asList(
-                new TranslationalVelConstraint(35.0),
-                new AngularVelConstraint(Math.PI / 2)
-        ));
-
-
-        TrajectoryActionBuilder PushPresetSamples = drive.actionBuilder(new Pose2d(tileCoords(0.2, -1.3), startPose.heading.toDouble())) // DriveToRungs.fresh()
-                .setTangent(Math.toRadians(360-60))
-                .splineToConstantHeading(tileCoords(1, -1.7), Math.toRadians(0))
-                .splineToConstantHeading(tileCoords(1.55, -0.6), Math.toRadians(70), VelConstraint)
-                .splineToConstantHeading(tileCoords(2.1, -0.4), Math.toRadians(0))
+        PedroTrajectoryActionBuilder PushPresetSamples = drive.actionBuilder(DriveToChamber1.endPose())
+                .bezierToConstantHeading(tileCoordsP(1.95, -2.5), tileCoordsP(1.05, -0.4), tileCoordsP(2.1, -0.4))
                 .strafeToConstantHeading(tileCoords(2.1, -2.3))
-                .strafeToConstantHeading(tileCoords(2.1, -0.4), VelConstraint2)
-                .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(180), VelConstraint2)
+                .strafeToConstantHeading(tileCoords(2.1, -0.4))
+                .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(180))
                 .strafeToConstantHeading(tileCoords(2.6, -2.3));
 
-        TrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(new Pose2d(tileCoords(2.5, -2.3), startPose.heading.toDouble()))
+        PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamples.endPose())
                 .strafeToConstantHeading(tileCoords(2, -2.4))
                 .strafeToConstantHeading(tileCoords(2, -2.85));
 
-        TrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(new Pose2d(tileCoords(2, -2.85), startPose.heading.toDouble()))
+        PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
                 .setTangent(Math.toRadians(135))
                 .splineToConstantHeading(tileCoords(0.1, -1.3), Math.toRadians(90));
 
-        TrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(new Pose2d(tileCoords(0.1, -1.3), startPose.heading.toDouble()))
+        PedroTrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(DriveToChamber2.endPose())
                 .setTangent(Math.toRadians(360-55))
                 .splineToConstantHeading(tileCoords(2, -2.4), Math.toRadians(360-35))
                 .strafeToConstantHeading(tileCoords(2, -2.85));
 
-        TrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(new Pose2d(tileCoords(2, -2.85), startPose.heading.toDouble()))
+        PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 .setTangent(Math.toRadians(135))
                 .splineToConstantHeading(tileCoords(0, -1.3), Math.toRadians(90));
 
@@ -132,7 +122,7 @@ public class RightPushThreeSpecimen extends CommandOpMode {
         // Parameter methods:
         // moveArmToPoint, holdClawToFieldCoordinate, moveArmDirectly, setWrist, setExtension, setPivot
 
-        drive.updatePoseEstimate();
+        drive.getRRDrive().updatePoseEstimate();
 
         DriveAutonCommand.queueAction(
                 new SequentialAction(

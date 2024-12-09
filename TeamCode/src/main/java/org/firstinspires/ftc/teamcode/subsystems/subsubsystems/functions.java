@@ -6,6 +6,7 @@ import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
 
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Point;
 
 public class functions {
 
@@ -41,6 +42,11 @@ public class functions {
 
     public static Vector2d tileCoords(double X, double Y) { // convert field coords in tiles to coords in inches
         return new Vector2d(X * Constants.tileLength, Y * Constants.tileLength);
+    }
+
+
+    public static Point tileCoordsP(double X, double Y) {
+        return new Point(X * Constants.tileLength, Y * Constants.tileLength);
     }
 
 

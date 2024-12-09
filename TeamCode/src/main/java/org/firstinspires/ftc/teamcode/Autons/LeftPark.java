@@ -16,8 +16,10 @@ import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.HuskyLensCommand;
+import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
 
 @Autonomous(name="LeftPark")
@@ -31,7 +33,8 @@ public class LeftPark extends CommandOpMode {
         // assume a position of 0, 0, 0 would be at the exact center of the field pointing away from audience
 
         Pose2d startPose = new Pose2d(new Vector2d(tiles(-0.5), tiles(-3) + 7.09), Math.toRadians(90));
-        DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
+        Follower drive = new Follower(hardwareMap, startPose, telemetry);
+        drive.startTeleopDrive();
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
@@ -46,7 +49,7 @@ public class LeftPark extends CommandOpMode {
 
 
         // setup roadrunner trajectories
-        TrajectoryActionBuilder DriveToLeft = drive.actionBuilder(startPose)
+        PedroTrajectoryActionBuilder DriveToLeft = drive.actionBuilder(startPose)
                 .strafeToConstantHeading(tileCoords(-2.7, -2.4));
 
 
@@ -62,7 +65,7 @@ public class LeftPark extends CommandOpMode {
         // Actions:
         // Wait, RunMethod ^, waitUntilFinishedAwaiting, waitUntilFinishedMoving
 
-        drive.updatePoseEstimate();
+        drive.getRRDrive().updatePoseEstimate();
 
         DriveAutonCommand.queueAction(
                 new SequentialAction(

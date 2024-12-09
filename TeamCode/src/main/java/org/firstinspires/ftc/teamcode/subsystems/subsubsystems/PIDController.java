@@ -4,25 +4,20 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.util.function.DoubleSupplier;
 
-/*
-This is a PID that I created with a bunch a comments if you want to understand how it works
-Part of the reason why I am sharing this specific version is because I added things like speed
-control, position limits, power limits, and ways of stabilizing the integral component that you
-can now edit if you need to.
-
-This is a good description of how a PID works as well as stuff about Feedback controllers:
-https://gm0.org/en/latest/docs/software/concepts/control-loops.html
-
-Sometimes PID controllers are also called PIDF controllers where F is a function for the power needed
-to counteract a known force such as gravity for example.
-
-How to tune a PID:
-1. Set the I and D gains to zero
-2. Increase the P gain until there are oscillations around the target
-3. Increase the D gain until no overshoot occurs
-4. If there is steady state error (or if it is consistently slightly off), increase the I gain until it is corrected
-
-I made a simple example of one way of using this PID
+/**
+ * This is a PID that I created with a bunch a comments if you want to understand how it works
+ * Part of the reason why I am sharing this specific version is because I added things like speed
+ * control, position limits, power limits, and ways of stabilizing the integral component that you
+ * can now edit if you need to.
+ * This is a good description of how a PID works as well as stuff about Feedback controllers:
+ * https://gm0.org/en/latest/docs/software/concepts/control-loops.html
+ * Sometimes PID controllers are also called PIDF controllers where F is a function for the power needed
+ * to counteract a known force such as gravity for example.
+ * How to tune a PID:
+ * 1. Set the I and D gains to zero
+ * 2. Increase the P gain until there are oscillations around the target
+ * 3. Increase the D gain until no overshoot occurs
+ * 4. If there is steady state error (or if it is consistently slightly off), increase the I gain until it is corrected
  */
 public class PIDController {
 

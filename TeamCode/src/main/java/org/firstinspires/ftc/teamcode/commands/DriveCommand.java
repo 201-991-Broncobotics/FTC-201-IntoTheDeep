@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.commands;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
-import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -8,15 +7,15 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
+import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
 
     public double headingHold;
 
-    DifferentialSwerveDrive drive;
+    Follower drive; // now the implementation for pedro pathing driving
 
     ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer, sinceLastTurnInputTimer;
 
@@ -25,13 +24,15 @@ public class DriveCommand extends CommandBase {
     PoseVelocity2d RobotVelocity;
     double lastDriveVelocity = 0, lastTurnVelocity = 0;
 
-    public DriveCommand(DifferentialSwerveDrive roadrunnerDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
-        addRequirements(roadrunnerDrive);
-        // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        drive = roadrunnerDrive;
-        RobotVelocity = drive.updatePoseEstimate(); // update localization
+    public DriveCommand(Follower pedroPathingDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
+        addRequirements(pedroPathingDrive);
+
+        drive = pedroPathingDrive;
+
+        RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
+        SubsystemData.RobotVelocity = RobotVelocity;
         SubsystemData.absoluteDriving = absoluteDrivingEnabled;
-        headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+        headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
@@ -60,8 +61,10 @@ public class DriveCommand extends CommandBase {
         //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
         //lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
-        RobotVelocity = drive.updatePoseEstimate(); // update localization
-        SubsystemData.CurrentRobotPose = drive.pose;
+        drive.update(); // update localization
+
+        RobotVelocity = SubsystemData.RobotVelocity;
+        SubsystemData.CurrentRobotPose = drive.getRRDrive().pose;
 
         double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
         if (DriveVelocity > SubsystemData.HighDriveVel) SubsystemData.HighDriveVel = DriveVelocity;
@@ -79,7 +82,7 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 1200) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 1000) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
@@ -91,7 +94,7 @@ public class DriveCommand extends CommandBase {
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -turnThrottleControl * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
-        double heading = Math.toDegrees(drive.pose.heading.toDouble());
+        double heading = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
         if (!SubsystemData.absoluteDriving) telemetry.addLine("Absolute Driving is off");
@@ -105,12 +108,10 @@ public class DriveCommand extends CommandBase {
                     forward = -1 * SubsystemData.AutoAimForwardGain * (SubsystemData.CameraTargetsPixelsWidth - ) / 160;
                     strafe = SubsystemData.AutoAimStrafeGain * SubsystemData.CameraTargetPixelsX / 160;
                 }
-
-
             }
         }
-
          */
+
         // convert to vector and normalize values to make it easier for the driver to control
         double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
         double joystickMagnitude = Math.hypot(strafe, forward);
@@ -124,7 +125,7 @@ public class DriveCommand extends CommandBase {
             if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
-                headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+                headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
                 SubsystemData.HoldClawFieldPos = false;
 
             } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 600 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
@@ -140,13 +141,13 @@ public class DriveCommand extends CommandBase {
                 turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
                 telemetry.addLine("Heading Correction is Active");
 
-            } else headingHold = Math.toDegrees(drive.pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
+            } else headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
 
         } else {
             sinceLastTurnInputTimer.reset();
             SubsystemData.OverrideDrivetrainRotation = false;
             turn = turn * throttleControl;
-            headingHold = Math.toDegrees(drive.pose.heading.toDouble());
+            headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
             SubsystemData.HoldClawFieldPos = false;
         }
 
@@ -154,11 +155,12 @@ public class DriveCommand extends CommandBase {
 
         driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
 
-        // convert vector to x and y and multiple by throttle
-        drive.setDrivePowers(new PoseVelocity2d(new Vector2d(
+        // convert vector to x and y and multiple by throttle (i think i switched forward and strafe by accident like 20 years ago)
+        drive.setTeleOpMovementVectors(
+                Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl,
                 Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
-                Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl),
-                turn));
+                turn);
+        drive.update();
 
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
     }

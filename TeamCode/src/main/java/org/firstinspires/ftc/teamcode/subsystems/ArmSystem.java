@@ -31,9 +31,7 @@ import java.util.function.DoubleSupplier;
 /*
 Basic Summary:
 
-This subsystem is designed to control a pivot and extension arm.
-
-It is setup in a few sections:
+ArmSystem is setup in a few sections:
 1. ArmSystem - which initializes the arm
 2. controlArmInTeleOp - which has some of the controller inputs (the rest are instant commands in AdvancedTeleOp)
      - It also has the auto aiming feature
@@ -56,10 +54,12 @@ It is setup in a few sections:
 9. Auton Methods for controlling arm with roadrunner
      - A way of running a preset or control method at a specified time in the future
      - A way for roadrunner to use that method
-
  */
 
-
+/**
+ * This subsystem is designed to control a pivot and extension arm with a wrist and claw by using
+ * motion profiling. It also contains all of the presets, controls, telemetry, and auton actions for the arm.
+ */
 public class ArmSystem extends SubsystemBase {
 
     private DcMotorEx Pivot, ExtensionF, ExtensionB; // for some reason wants final?
@@ -81,6 +81,8 @@ public class ArmSystem extends SubsystemBase {
 
     ElapsedTime ArmLoopTimer, CommandFrameTime, PIDButtonPressTime, runTime, resetArmAlignmentHoldTimer;
     public double FrameRate = 1, ArmLoopTime = 0;
+    private ArrayList<Double> FrameRateCache = new ArrayList<Double>() ;
+
     Telemetry telemetry;
     boolean telemetryEnabled = false;
 
@@ -222,7 +224,7 @@ public class ArmSystem extends SubsystemBase {
             }
         }
 
-        if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 1000) {
+        if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 1500) {
             activeExtensionReset = true; // keep retracting extension past limits until button is unpressed and then reset extension length
         } else if (!gamepad.getButton(GamepadKeys.Button.DPAD_DOWN)) {
             resetArmAlignmentHoldTimer.reset();
@@ -288,7 +290,9 @@ public class ArmSystem extends SubsystemBase {
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
         ArmLoopTimer.reset(); // time it takes the arm for 1 update
-        FrameRate = 1 / (CommandFrameTime.time() / 1000.0); // frame rate of the entire code
+        FrameRateCache.add(1 / (CommandFrameTime.time() / 1000.0));
+        if (FrameRateCache.size() > 4) FrameRateCache.remove(0);
+        FrameRate = FrameRateCache.stream().mapToDouble(d -> d).average().orElse(1.0); // frame rate of the entire code averaged
         SubsystemData.FrameRate = FrameRate;
         CommandFrameTime.reset();
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
@@ -427,6 +431,8 @@ public class ArmSystem extends SubsystemBase {
             ExtensionF.setPower(-0.3);
             ExtensionB.setPower(-0.3);
             Pivot.setPower(-0.15);
+            PivotTargetAngle = 0;
+            ExtensionTargetLength = 0;
             readyToResetArm = true;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
             ExtensionF.setPower(0.3);
@@ -438,12 +444,11 @@ public class ArmSystem extends SubsystemBase {
         } else {
             ExtensionF.setPower(ExtensionPower);
             ExtensionB.setPower(ExtensionPower);
-            // CurrentExtensionLengthZero = newExtensionZero; // This prevents the new extension zero from affecting the current extension's position which would otherwise cancel out
         }
 
         // If the current extension length is ever outside the limits, move the zero so it is again
         if (CurrentExtensionLengthInst < 0) CurrentExtensionLengthZero = CurrentExtensionLengthInst - (0);
-        if (CurrentExtensionLengthInst > 697) CurrentExtensionLengthZero = CurrentExtensionLengthInst - 697;
+        if (CurrentExtensionLengthInst > 700) CurrentExtensionLengthZero = CurrentExtensionLengthInst - 700;
 
 
         // WRIST AND CLAW
@@ -505,13 +510,13 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("Linear Slide Bend Compensation:", linearSlideBendCompensation);
             telemetry.addData("Extension Target Length:", ExtensionTargetLength);
             telemetry.addData("Extension Current Length:", CurrentExtensionLengthInst);
-            telemetry.addData("Pivot Target Angle:", PivotTargetAngle);
-            telemetry.addData("Pivot Current Angle:", CurrentPivotAngleInst -  linearSlideBendCompensation);
+            telemetry.addData("Pivot Target Angle:", PivotTargetAngle + linearSlideBendCompensation);
+            telemetry.addData("Pivot Current Angle:", CurrentPivotAngleInst);
             telemetry.addLine(" ");
             telemetry.addData("Pivot PID Power:", PivotPIDPower);
             telemetry.addData("Extension PID Power:", ExtensionPIDPower);
             telemetry.addData("Extension Difference", ExtensionTargetLength - CurrentExtensionLengthInst);
-            telemetry.addData("Pivot Difference", PivotTargetAngle - CurrentPivotAngleInst -  linearSlideBendCompensation);
+            telemetry.addData("Pivot Difference", PivotTargetAngle + linearSlideBendCompensation - CurrentPivotAngleInst);
 
 
             telemetry.addLine(" ");
@@ -745,7 +750,9 @@ public class ArmSystem extends SubsystemBase {
         if (PivotTargetAngle > 45) { // sets wrist back if pivot was at a higher angle
             WristTargetAngle = 0;
         }
-        PivotTargetAngle = 0;
+        if (PivotTargetAngle > 35 || ExtensionTargetLength < 100) { // makes it so retracting in the submersible doesn't get the arm stuck
+            PivotTargetAngle = 0;
+        }
         ExtensionTargetLength = 0;
 
     }

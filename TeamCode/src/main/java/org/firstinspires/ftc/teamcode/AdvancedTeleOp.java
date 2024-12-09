@@ -5,9 +5,9 @@ import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.commands.ArmClawCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
+import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 
 import com.arcrobotics.ftclib.command.InstantCommand;
@@ -30,15 +30,17 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         Pose2d startPose = SubsystemData.LastAutonPose;
 
-        DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
+        Follower follower = new Follower(hardwareMap, startPose, telemetry);
+        follower.startTeleopDrive();
+
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
 
 
         // BUTTONS
         // Driver controls
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleTelemetry));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(drive::realignHeading));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(drive::toggleAbsoluteDriving));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(follower.getRRDrive()::realignHeading));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(follower.getRRDrive()::toggleAbsoluteDriving));
 
         // Operator controls
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenHeld(new InstantCommand(armSystem::pointClaw)).whenReleased(new InstantCommand(armSystem::toggleClaw));
@@ -55,7 +57,7 @@ public class AdvancedTeleOp extends CommandOpMode {
 
 
         // always running
-        drive.setDefaultCommand(new DriveCommand(drive, telemetry, true));
+        follower.setDefaultCommand(new DriveCommand(follower, telemetry, true));
         armSystem.setDefaultCommand(new ArmClawCommand(armSystem));
 
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled

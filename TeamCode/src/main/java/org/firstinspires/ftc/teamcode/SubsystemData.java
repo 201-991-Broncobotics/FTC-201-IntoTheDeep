@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
@@ -106,5 +107,7 @@ public class SubsystemData {
     public static double HighDriveVel = 0, HighAngVel = 0, HighDriveAccel = 0, LowDriveAccel = 0, HighAngAccel = 0;
 
     public static boolean alreadyAlignedArm = false;
+
+    public static PoseVelocity2d RobotVelocity; // constantly updates with localizer instead of requiring updating localizer an extra time
 
 }

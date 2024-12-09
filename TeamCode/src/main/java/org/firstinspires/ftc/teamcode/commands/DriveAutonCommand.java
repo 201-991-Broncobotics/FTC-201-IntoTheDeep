@@ -14,6 +14,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
+import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
@@ -21,7 +22,9 @@ import java.util.List;
 
 public class DriveAutonCommand extends CommandBase {
 
-    DifferentialSwerveDrive drive;
+    Follower drive; // now the implementation for pedro pathing driving
+
+
 
     private final FtcDashboard dash = FtcDashboard.getInstance();
     public static List<Action> runningActions = new ArrayList<>();
@@ -32,7 +35,7 @@ public class DriveAutonCommand extends CommandBase {
 
     Telemetry telemetry;
 
-    public DriveAutonCommand(DifferentialSwerveDrive drivetrain, Telemetry telemetry) {
+    public DriveAutonCommand(Follower drivetrain, Telemetry telemetry) {
         addRequirements(drivetrain);
         drive = drivetrain;
         this.telemetry = telemetry;
@@ -58,6 +61,8 @@ public class DriveAutonCommand extends CommandBase {
         }
         runningActions = newActions;
 
+        drive.update();
+
 
 
         telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
@@ -75,7 +80,7 @@ public class DriveAutonCommand extends CommandBase {
 
          */
 
-        SubsystemData.LastAutonPose = drive.pose; // keeps track of the pose during auton and saves it for teleOp
+        SubsystemData.LastAutonPose = drive.getRRDrive().pose; // keeps track of the pose during auton and saves it for teleOp
 
         dash.sendTelemetryPacket(packet);
     }

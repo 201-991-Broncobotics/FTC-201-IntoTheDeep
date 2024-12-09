@@ -302,9 +302,9 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     }
 
     public void setDrivePowers(PoseVelocity2d powers) {
-        PoseVelocity2dDual<Time> TheCommand = PoseVelocity2dDual.constant(powers, 1);
+        // PoseVelocity2dDual<Time> TheCommand = PoseVelocity2dDual.constant(powers, 1);
 
-        diffySwerve.driveDifferentialSwerve(TheCommand.linearVel.y.get(0), TheCommand.linearVel.x.get(0), TheCommand.angVel.get(0), 1);
+        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, powers.angVel, 1);
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
@@ -390,7 +390,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
              */
 
-            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            // diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
 
             p.put("x", pose.position.x);
@@ -470,7 +470,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             final MotorFeedforward feedforward = new MotorFeedforward(PARAMS.kS,
                     PARAMS.kV / PARAMS.inPerTick, PARAMS.kA / PARAMS.inPerTick);
 
-            diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
+            // diffySwerve.setDifferentialSwerve(command, PARAMS.inPerTick * PARAMS.trackWidthTicks, voltage, feedforward);
 
 
             Canvas c = p.fieldOverlay();
@@ -508,6 +508,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         SubsystemData.CurrentRobotPose = pose;
         PersistentDataStorage.lastRobotPose = pose;
 
+        SubsystemData.RobotVelocity = twist.velocity().value();
         return twist.velocity().value();
     }
 
@@ -557,9 +558,21 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         diffySwerve.updateKinematicDifferentialSwerve();
     }
 
+    public void setDifferentialSwerve(PoseVelocity2d command) {
+        diffySwerve.setDifferentialSwerve(command);
+    }
+
+    public void setDifferentialSwerve(double forward, double strafe, double turn) {
+        diffySwerve.setDifferentialSwerve(forward, strafe, turn);
+    }
+
     public void stopDifferentialSwerve() {
         diffySwerve.stopDifferentialSwerve();
         diffySwerve.updateKinematicDifferentialSwerve();
+    }
+
+    public void setDifferentialSwerveZeroBehavior(DcMotor.ZeroPowerBehavior mode) {
+        diffySwerve.setDriveMotorsZeroBehavior(mode);
     }
 
     public void toggleAbsoluteDriving() {
