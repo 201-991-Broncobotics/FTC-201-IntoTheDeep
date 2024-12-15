@@ -89,8 +89,8 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50; // max measured to be 70
-        public double minProfileAccel = -60; // max measured to be
-        public double maxProfileAccel = 60; // max measured to be 115
+        public double minProfileAccel = -50; // max measured to be ...
+        public double maxProfileAccel = 50; // max measured to be 115
 
         // turn profile parameters (in radians)
         public double maxAngVel = Math.toRadians(360); // max measured to be 536 degrees
@@ -548,7 +548,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         // newImu.resetYaw(); // doesn't work for some reason
         // SubsystemData.IMUZero = (pose.heading.toDouble() + SubsystemData.IMUZero) - Math.PI / 2;
         SubsystemData.needToResetIMU = true;
-        SubsystemData.imuInstance.resetYaw(); // idk if my various copies of the imu also need to be individually reset
+        SubsystemData.imuInstance.resetYaw(); // my copy of the imu also needs to be individually reset
         SubsystemData.NeedToRealignHeadingHold = true;
     }
 

@@ -29,6 +29,8 @@ public class ResetSwerveWheelsOpMode extends CommandOpMode {
 
         drive.resetSwerveWheelAngles();
 
+        requestOpModeStop();
+
         waitForStart();
 
         telemetry.addLine("Swerve Wheels have been reset to 0 :)");

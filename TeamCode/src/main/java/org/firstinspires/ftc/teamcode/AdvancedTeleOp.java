@@ -28,7 +28,7 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         // Pose2d startPose = new Pose2d(0, 0, Math.toRadians(90));
 
-        Pose2d startPose = SubsystemData.LastAutonPose;
+        Pose2d startPose = SubsystemData.CurrentRobotPose;
 
         DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);

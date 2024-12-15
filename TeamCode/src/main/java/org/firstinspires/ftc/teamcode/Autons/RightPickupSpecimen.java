@@ -26,10 +26,12 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 
 import com.arcrobotics.ftclib.command.RunCommand;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 import java.util.Arrays;
 
 
+@Disabled
 @Autonomous(name="RightPickupSpecimen")
 public class RightPickupSpecimen extends CommandOpMode {
 
@@ -44,6 +46,8 @@ public class RightPickupSpecimen extends CommandOpMode {
         DifferentialSwerveDrive drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
+
+        drive.resetSwerveWheelAngles(); // reset swerve wheels
 
         // always running
         // drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));

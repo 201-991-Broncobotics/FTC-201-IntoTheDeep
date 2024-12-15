@@ -23,7 +23,7 @@ public class Constants {
     public static double maxManualClawSpeedVertical = 700, maxManualClawSpeedHorizontal = 600; // mm per second
     public static double maxManualExtensionSpeed = 700, maxManualPivotSpeed = 70, maxManualHeadingSpeed = 30; // mm, degrees, degrees per second
 
-    public static double maxCameraTargetingSpeed = 500, maxCameraTargetingTurnSpeed = 50; // mm, degrees
+    public static double maxCameraTargetingSpeed = 150, maxCameraTargetingTurnSpeed = 0.5; // mm, percent
 
     public static double ClawOpenPosition = 0.5; // servo units
     public static double ClawClosedPosition = ClawOpenPosition + 0.35; // servo units
@@ -43,7 +43,7 @@ public class Constants {
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
     public static double turnFeedBackStaticPower = 0.075; // power required in order to start moving the robot
 
-    public static double pivotMotorBacklash = 12; // degrees
+    public static double pivotMotorBacklash = 13; // degrees
 
     public static double LinearSlideBend = -8; // degrees that the linear slide bends when horizontal and at max extension
 

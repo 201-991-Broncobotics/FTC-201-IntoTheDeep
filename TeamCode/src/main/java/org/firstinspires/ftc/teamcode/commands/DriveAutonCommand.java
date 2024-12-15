@@ -39,6 +39,7 @@ public class DriveAutonCommand extends CommandBase {
         AutonUpdateSpeedTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
         SubsystemData.repeatForwardBack = false; // make sure this is off if not specifically needed
+        SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
     }
 
 
@@ -47,6 +48,8 @@ public class DriveAutonCommand extends CommandBase {
         telemetry.addLine("Auton frameRate:" + (1 / (AutonUpdateSpeedTimer.time() / 1000)));
         AutonUpdateSpeedTimer.reset();
         TelemetryPacket packet = new TelemetryPacket();
+
+        SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
 
         // update running actions
         List<Action> newActions = new ArrayList<>();
@@ -75,7 +78,7 @@ public class DriveAutonCommand extends CommandBase {
 
          */
 
-        SubsystemData.LastAutonPose = drive.pose; // keeps track of the pose during auton and saves it for teleOp
+        SubsystemData.CurrentRobotPose = drive.pose; // keeps track of the pose during auton and saves it for teleOp
 
         dash.sendTelemetryPacket(packet);
     }

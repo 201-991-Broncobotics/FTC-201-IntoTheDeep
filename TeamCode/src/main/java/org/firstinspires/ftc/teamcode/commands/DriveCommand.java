@@ -48,7 +48,10 @@ public class DriveCommand extends CommandBase {
 
         if (SubsystemData.NeedToRealignHeadingHold) { // reset heading hold when imu is reset
             headingHold = 90;
-            SubsystemData.NeedToRealignHeadingHold = false;
+            if (!SubsystemData.driver.getButton(GamepadKeys.Button.Y)) {
+                SubsystemData.needToResetIMU = true;
+                SubsystemData.NeedToRealignHeadingHold = false;
+            }
 
             SubsystemData.HighDriveVel = 0; // also reset the high drive/turn vel/accel counts
             SubsystemData.HighDriveAccel = 0;
@@ -120,7 +123,7 @@ public class DriveCommand extends CommandBase {
         if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;
 
 
-        if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
+        if (!functions.inUse(turn) && !SubsystemData.NeedToRealignHeadingHold) { // hold robot orientation or point at claw target when driver isn't driving
             if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently

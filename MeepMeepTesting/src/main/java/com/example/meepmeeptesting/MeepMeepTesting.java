@@ -32,7 +32,7 @@ public class MeepMeepTesting {
 
         RoadRunnerBotEntity myBot = new DefaultBotBuilder(meepMeep)
                 // Set bot constraints: maxVel, maxAccel, maxAngVel, maxAngAccel, track width
-                .setConstraints(50, 60, Math.PI * 1, Math.PI * 1, 6)
+                .setConstraints(50, 55, Math.PI * 1, Math.PI * 1, 6)
                 .setDimensions(14.173228, 16.633465)
                 .build();
 
@@ -53,40 +53,66 @@ public class MeepMeepTesting {
         ));
         AccelConstraint SlowDownAccelConstraint = new ProfileAccelConstraint(-30.0, 30.0);
 
+        VelConstraint VelConstraint = new MinVelConstraint(Arrays.asList(
+                new TranslationalVelConstraint(30.0),
+                new AngularVelConstraint(Math.PI / 2)
+        ));
 
+        VelConstraint VelConstraint2 = new MinVelConstraint(Arrays.asList(
+                new TranslationalVelConstraint(35.0),
+                new AngularVelConstraint(Math.PI / 2)
+        ));
+
+
+        /*
 
         myBot.runAction(myBot.getDrive().actionBuilder(startPose1)
-                .strafeToConstantHeading(tileCoords(0.2, -1.5))
-                .strafeToConstantHeading(tileCoords(0.2, -1.3))
+                .waitSeconds(0.6)
 
-                .waitSeconds(0.75)
+                .strafeToConstantHeading(tileCoords(0.2, -1.5))
+                .strafeToConstantHeading(tileCoords(0.2, -1.25))
+
+                .waitSeconds(0.9)
 
                 .setTangent(Math.toRadians(360-60))
-                .splineToLinearHeading(new Pose2d(tileCoords(1.4, -1.7), Math.toRadians(45)), Math.toRadians(0))
+                .splineToConstantHeading(tileCoords(1, -1.7), Math.toRadians(0))
+                .splineToConstantHeading(tileCoords(1.55, -0.6), Math.toRadians(70), VelConstraint)
+                .splineToConstantHeading(tileCoords(2.1, -0.4), Math.toRadians(0))
+                .strafeToConstantHeading(tileCoords(2.1, -2.25))
+                .strafeToConstantHeading(tileCoords(2.1, -0.6), VelConstraint2)
+                .splineToConstantHeading(tileCoords(2.6, -0.4), Math.toRadians(0), VelConstraint2)
+                .strafeToConstantHeading(tileCoords(2.6, -2.25))
+
+                .waitSeconds(1)
+
+                .strafeToConstantHeading(tileCoords(2, -2.4))
+                .strafeToConstantHeading(tileCoords(2, -2.85))
+
+                .waitSeconds(0.2)
+                .waitSeconds(0.9)
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.15, -1.3), Math.toRadians(90))
+
+                .waitSeconds(1)
+
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(2, -2.4), Math.toRadians(360-35))
+                .strafeToConstantHeading(tileCoords(2, -2.85))
+
+                .waitSeconds(0.2)
+                .waitSeconds(0.9)
+
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.1, -1.3), Math.toRadians(90))
 
                 .waitSeconds(0.5)
 
-                .turnTo(Math.toRadians(360-45))
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(2.3, -2.6), Math.toRadians(360-20))
 
-                .waitSeconds(0.1)
-
-                .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(tileCoords(1.8, -1.7), Math.toRadians(45)), Math.toRadians(0), SlowDownVelConstraint, SlowDownAccelConstraint)
-
-                .waitSeconds(0.5)
-
-                .turnTo(Math.toRadians(360-60))
-
-                .waitSeconds(0.1)
-
-                .setTangent(Math.toRadians(0))
-                .splineToLinearHeading(new Pose2d(tileCoords(2.2, -1.7), Math.toRadians(45)), Math.toRadians(0), SlowDownVelConstraint, SlowDownAccelConstraint)
-
-                .waitSeconds(0.5)
-
-                .turnTo(Math.toRadians(360-70))
-
-
+                /*
 
                 .waitSeconds(0.1) // Human Player 1
 
@@ -118,14 +144,18 @@ public class MeepMeepTesting {
                 .setTangent(Math.toRadians(135))
                 .splineToConstantHeading(tileCoords(-0.05, -1.25), Math.toRadians(125), MaxSpeedVelConstraint)
 
+
+
                 .build());
 
 
 
 
+         */
 
 
-        /*
+
+
 
 
         // Basket Side
@@ -164,13 +194,6 @@ public class MeepMeepTesting {
                 .splineToLinearHeading(new Pose2d(tileCoords(-1, -0.5), Math.toRadians(0)), Math.toRadians(0))
 
                 .build());
-
-
-
-         */
-
-
-
 
 
         meepMeep.setBackground(MeepMeep.Background.FIELD_INTO_THE_DEEP_JUICE_DARK)
