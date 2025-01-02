@@ -61,7 +61,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
         waitForStart();
-        if (isStopRequested()) return;
+        if (isStopRequested()) return; // prevents crashing if the opmode is stopped in between init and start
 
         armSystem.resetAndPrepareArm();
     }

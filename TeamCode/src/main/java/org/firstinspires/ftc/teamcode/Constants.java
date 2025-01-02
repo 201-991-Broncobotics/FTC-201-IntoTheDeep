@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 public class Constants {
 
-    public static double maxDrivetrainMotorPower = 0.9; // TODO: Make sure this is what it needs to be before competition
+    public static double maxDrivetrainMotorPower = 1.0; // TODO: Make sure this is what it needs to be before competition
 
     public static double ModuleGearRatio = (21 / 58.0) * (35 / 9.0) * (63.5 * Math.PI / 25.4); // units are in inches (move along the ground) per 1 motor revolution
     private static final int SlidePulleyTeeth = 72; // The gobilda one has 60 teeth though it was slow and the belt skipped too often

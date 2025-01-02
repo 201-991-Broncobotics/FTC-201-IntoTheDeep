@@ -509,10 +509,10 @@ public class ArmSystem extends SubsystemBase {
             // telemetry.addData("Extension Motor Power:", ExtensionPower);
             // telemetry.addData("Extension Motor Current:", ExtensionF.getCurrent(CurrentUnit.AMPS));
             //telemetry.addLine(" ");
-            //telemetry.addData("Highest Drive Velocity:", SubsystemData.HighDriveVel);
-            //telemetry.addData("Highest Turn Velocity:", Math.toDegrees(SubsystemData.HighAngVel));
-            //telemetry.addData("Highest Drive Accel:", SubsystemData.HighDriveAccel);
-            //telemetry.addData("Highest Turn Accel:", Math.toDegrees(SubsystemData.HighAngAccel));
+            telemetry.addData("Highest Drive Velocity:", SubsystemData.HighDriveVel);
+            telemetry.addData("Highest Turn Velocity:", Math.toDegrees(SubsystemData.HighAngVel));
+            telemetry.addData("Highest Drive Accel:", SubsystemData.HighDriveAccel);
+            telemetry.addData("Highest Turn Accel:", Math.toDegrees(SubsystemData.HighAngAccel));
             telemetry.addLine(" ");
             telemetry.addData("Linear Slide Bend Compensation:", linearSlideBendCompensation);
             telemetry.addData("Extension Target Length:", ExtensionTargetLength);
