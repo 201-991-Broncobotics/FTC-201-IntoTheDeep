@@ -38,6 +38,8 @@ public class LeftPark extends CommandOpMode {
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
+        drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
+
         // always running
         // drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));
         schedule(new DriveAutonCommand(drive, telemetry));
@@ -54,13 +56,15 @@ public class LeftPark extends CommandOpMode {
 
 
 
+        // NOTE make sure any methods that need parameters are correct and all numbers MUST BE doubles with a decimal place
+
         // ArmClaw method names:
-        // openClaw, closeClaw, toggleClaw, setWristToCenter, setWristToBasket, setWristToFloorPickup, depositSpecimen
-        // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw,
+        // openClaw, closeClaw, toggleClaw, setWristToBack, setWristToStraight, setWristToFloorPickup, setWristToRaisedFloor, depositSpecimen
+        // enableLoosenClaw, disableLoosenClaw, toggleLoosenClaw, dropSamplePickup
         // moveClawToTopBasket, moveClawToTopRung, moveClawToRamRung, moveClawToHumanPickup, resetArm,
 
         // Parameter methods:
-        // moveArmToPoint, moveClawToFieldCoordinate, moveArmDirectly, setWrist
+        // moveArmToPoint, holdClawToFieldCoordinate, moveArmDirectly, setWrist, setExtension, setPivot
 
         // Actions:
         // Wait, RunMethod ^, waitUntilFinishedAwaiting, waitUntilFinishedMoving

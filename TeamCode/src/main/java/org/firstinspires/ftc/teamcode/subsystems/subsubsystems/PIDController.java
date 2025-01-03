@@ -21,7 +21,7 @@ import java.util.function.DoubleSupplier;
  */
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxIntegral; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxIntegral, maxAcceleration; // all of these variables can be changed elsewhere in the code
 
     public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
@@ -49,6 +49,7 @@ public class PIDController {
         this.initialPower = initialPower; // power needed to start turning the motor / SET A MINIMUM POWER WHEN THIS IS GREATER THAN 0 or the PID will oscillate
         this.minDifference = minDifference; // stops PID when the error is less than this, same units as the doubleSupplier
         this.maxSpeed = maxSpeed; // IF SET TO 0, MAX SPEED WILL BE IGNORED, also doesn't matter what this is if speed limiting is false, in units per second
+        maxAcceleration = 0; // set by default to be ignored and I'm too lazy to incorporate in the rest of the initialize method
         this.tolerance = tolerance; // the range where closeEnough() will return true
         this.positionLimitingEnabled = positionLimitingEnabled;
         this.speedLimitingEnabled = speedLimitingEnabled;
@@ -104,6 +105,8 @@ public class PIDController {
 
     // this limits the speed by making the target position, that the PID is aiming for, approach the set target position at the max speed
     private void updateMovingTargetPosition() {
+
+
         if (speedLimitingEnabled && !speedLimitingOverride && !(maxSpeed == 0)) {
             if (movingTargetPosition < targetPosition) { // move the movingTargetPosition at maxSpeed towards the set targetPosition until the targetPosition is reached
                 if (PIDFrameRate > 0) movingTargetPosition += maxSpeed * percentMaxSpeed / PIDFrameRate;

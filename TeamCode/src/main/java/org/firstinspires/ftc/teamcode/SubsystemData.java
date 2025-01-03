@@ -17,6 +17,8 @@ public class SubsystemData {
 
     public static Pose2d CurrentRobotPose; // from roadrunner
 
+    public static Pose2d CurrentPedroPose; // from Pedro Pathing
+
     public static double FrameRate = 20; // not actual value, it is constantly updated in ArmSystem
 
 
@@ -47,7 +49,7 @@ public class SubsystemData {
 
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
 
-    public static double HuskyLensTargetX = 160, HuskyLensTargetY = 140; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
+    public static double HuskyLensTargetX = 160, HuskyLensTargetY = 110; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
     // note that 0,0 on the huskylens is the top left corner
 
     public static boolean CameraSeesValidObject = false;
@@ -88,8 +90,6 @@ public class SubsystemData {
 
 
     public static double AutonStoppingDistance = 0.5; // angle difference is actually in radians unintentionally
-
-    public static Pose2d LastAutonPose = new Pose2d(0, 0, Math.toRadians(90));
 
 
     public static double targetPosePerpOffset = 0; // confusing to explain but it supposed to prevent the robot driving in circles around the target position

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.commands;
+import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -9,6 +11,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
+import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
@@ -38,6 +41,9 @@ public class DriveCommand extends CommandBase {
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
+        Pose PedroPose = drive.getPose();
+        SubsystemData.CurrentPedroPose = new Pose2d(new Vector2d(PedroPose.getX(), PedroPose.getY()), PedroPose.getHeading());
+
         telemetry = inputTelemetry; // only here if I need it for debugging
     }
 
@@ -49,7 +55,10 @@ public class DriveCommand extends CommandBase {
 
         if (SubsystemData.NeedToRealignHeadingHold) { // reset heading hold when imu is reset
             headingHold = 90;
-            SubsystemData.NeedToRealignHeadingHold = false;
+            if (!SubsystemData.driver.getButton(GamepadKeys.Button.Y)) {
+                SubsystemData.needToResetIMU = true;
+                SubsystemData.NeedToRealignHeadingHold = false;
+            }
 
             SubsystemData.HighDriveVel = 0; // also reset the high drive/turn vel/accel counts
             SubsystemData.HighDriveAccel = 0;
@@ -65,6 +74,8 @@ public class DriveCommand extends CommandBase {
 
         RobotVelocity = SubsystemData.RobotVelocity;
         SubsystemData.CurrentRobotPose = drive.getRRDrive().pose;
+        Pose PedroPose = drive.getPose();
+        SubsystemData.CurrentPedroPose = new Pose2d(new Vector2d(PedroPose.getX(), PedroPose.getY()), PedroPose.getHeading());
 
         double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
         if (DriveVelocity > SubsystemData.HighDriveVel) SubsystemData.HighDriveVel = DriveVelocity;
@@ -82,7 +93,7 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 1000) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 1200) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
@@ -121,7 +132,7 @@ public class DriveCommand extends CommandBase {
         if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;
 
 
-        if (!functions.inUse(turn)) { // hold robot orientation or point at claw target when driver isn't driving
+        if (!functions.inUse(turn) && !SubsystemData.NeedToRealignHeadingHold) { // hold robot orientation or point at claw target when driver isn't driving
             if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
                 sinceLastTurnInputTimer.reset();
                 turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently

@@ -13,10 +13,10 @@ import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 
 /**
  * This is the RRToPedroThreeWheelLocalizer class. This class extends the Localizer superclass and
- * is intended to adapt the old Road Runner three wheel odometry localizer to the new Pedro Pathing
+ * is intended to adapt the working Road Runner two wheel odometry localizer to the stupid Pedro Pathing
  * localizer system.
  *
- * @author Aidan Turico - 201 - Im actually the author now ha
+ * @author Aidan Turico - 201 - Im actually the author now haha
  * @version 1.0, 12/7/2024
  */
 public class RRToPedroTwoWheelLocalizer extends Localizer {

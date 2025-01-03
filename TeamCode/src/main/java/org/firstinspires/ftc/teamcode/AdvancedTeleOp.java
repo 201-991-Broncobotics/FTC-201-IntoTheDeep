@@ -28,7 +28,7 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         // Pose2d startPose = new Pose2d(0, 0, Math.toRadians(90));
 
-        Pose2d startPose = SubsystemData.LastAutonPose;
+        Pose2d startPose = SubsystemData.CurrentRobotPose;
 
         Follower follower = new Follower(hardwareMap, startPose, telemetry);
         follower.startTeleopDrive();
@@ -63,7 +63,7 @@ public class AdvancedTeleOp extends CommandOpMode {
         schedule(new RunCommand(telemetry::update)); // update telemetry needs to be scheduled last as the commands are executed in the order they were scheduled
 
         waitForStart();
-        if (isStopRequested()) return;
+        if (isStopRequested()) return; // prevents crashing if the opmode is stopped in between init and start
 
         armSystem.resetAndPrepareArm();
     }

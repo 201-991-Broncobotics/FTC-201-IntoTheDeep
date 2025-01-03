@@ -88,3 +88,45 @@ public class SwerveModule {
      */
 
 }
+
+
+/*
+Simplified version for readability:
+
+
+
+    // finds the smallest difference between two angles or gets the equivalent angle between -180 and
+    // 180 when target is set to 0 (and wrapAngle is 360)
+    // A wrapAngle of 180 would return the smallest distance to the targetAngle or the angle
+    // directly opposite of targetAngle, depending on which one is closer
+    public double angleDifference(double currentAngle, double targetAngle, int wrapAngle) {
+        double result1 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), wrapAngle * 100L) * 0.01;
+        double result2 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), -wrapAngle * 100L) * 0.01;
+        if (Math.abs(result1) <= Math.abs(result2)) return result1;
+        else return result2;
+    }
+
+    public void setModule(double angle, double speed, double maxPowerLimit) {
+        // prevent module from trying to calculate speeds beyond 1 as it could mess the ratios up
+        if (Math.abs(speed) > 1) speed = Math.signum(speed);
+
+        // finds closest distance to target angle or directly opposite target angle and gets rotation PID power
+        double changeInAngle = angleDifference(getCurrentAngle(), angle, 180); // in degrees from actual target
+        double rotationPower = modulePID.getPower(0, changeInAngle);
+
+        // Slow down drive speed only when wheel is facing in the wrong direction so power can be
+        // diverted to rotating the module. Also reverses power if module is targeting the opposite angle
+        speed = speed * Math.cos(Math.toRadians(
+        angleDifference(getCurrentAngle(), angle, 360)
+        ));
+
+        // combine the speed and rotation but keep it no greater than 1 for correct ratio
+        double R1Power = rotationPower + speed;
+        double R2Power = rotationPower - speed;
+        double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
+
+        topMotor.setPower(R1Power / divider);
+        bottomMotor.setPower(R2Power / divider);
+    }
+
+ */
