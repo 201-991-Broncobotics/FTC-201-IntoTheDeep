@@ -9,10 +9,13 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
+
+import java.util.ArrayList;
 
 public class DriveCommand extends CommandBase {
 
@@ -31,6 +34,8 @@ public class DriveCommand extends CommandBase {
         addRequirements(pedroPathingDrive);
 
         drive = pedroPathingDrive;
+        drive.startTeleopDrive();
+        drive.update();
 
         RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
         SubsystemData.RobotVelocity = RobotVelocity;
@@ -41,8 +46,7 @@ public class DriveCommand extends CommandBase {
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
-        Pose PedroPose = drive.getPose();
-        SubsystemData.CurrentPedroPose = new Pose2d(new Vector2d(PedroPose.getX(), PedroPose.getY()), PedroPose.getHeading());
+        SubsystemData.CurrentPedroPose = drive.getPose();
 
         telemetry = inputTelemetry; // only here if I need it for debugging
     }
@@ -67,15 +71,10 @@ public class DriveCommand extends CommandBase {
             SubsystemData.HighAngAccel = 0;
         }
 
-        //telemetry.addData("Diffy Point 1:", DifferentialSwerveTimer.time() - lastDiffySwerveTime);
-        //lastDiffySwerveTime = DifferentialSwerveTimer.time();
 
-        drive.update(); // update localization
+        // drive.update(); // update localization
 
         RobotVelocity = SubsystemData.RobotVelocity;
-        SubsystemData.CurrentRobotPose = drive.getRRDrive().pose;
-        Pose PedroPose = drive.getPose();
-        SubsystemData.CurrentPedroPose = new Pose2d(new Vector2d(PedroPose.getX(), PedroPose.getY()), PedroPose.getHeading());
 
         double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
         if (DriveVelocity > SubsystemData.HighDriveVel) SubsystemData.HighDriveVel = DriveVelocity;
@@ -93,15 +92,15 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 1200) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 750) SubsystemData.IMUWorking = false;
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
         }
 
         double throttleMagnitude = functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
-        double throttleControl = 0.4 + 0.6 * throttleMagnitude;
-        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude;
+        double throttleControl = 0.4 + 0.6 * throttleMagnitude - 0.3 * SubsystemData.DriveCurrentExtensionLengthPercent;
+        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude - 0.35 * SubsystemData.DriveCurrentExtensionLengthPercent;
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -turnThrottleControl * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
@@ -164,13 +163,16 @@ public class DriveCommand extends CommandBase {
 
         SubsystemData.HeadHoldTarget = headingHold;
 
-        driveDirection = functions.angleDifference(driveDirection - heading, 0, 360);
+        driveDirection = functions.angleDifference(0, driveDirection - heading + 90, 360);
+
+        double strafeControl = -1 * Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl;
 
         // convert vector to x and y and multiple by throttle (i think i switched forward and strafe by accident like 20 years ago)
         drive.setTeleOpMovementVectors(
-                Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl,
                 Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
-                turn);
+                strafeControl,
+                turn /* + strafeControl * Constants.strafeRotationGain */ );
+
         drive.update();
 
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom

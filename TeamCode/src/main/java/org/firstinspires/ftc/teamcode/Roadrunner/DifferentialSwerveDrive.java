@@ -59,7 +59,6 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -269,7 +268,9 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
         // NOTE: The Heading PID values displayed on the driver hub are 10x the actual values
-        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.0, 0.0008, () -> Math.toDegrees(this.pose.heading.toDouble()));
+        // 2nd comp values (before Pedro slowed stuff down): 0.012, 0.0, 0.0008
+
+        SubsystemData.HeadingTargetPID = new PIDController(0.008, 0.0, 0.0004, () -> Math.toDegrees(this.pose.heading.toDouble()));
         SubsystemData.HeadingTargetPID.minDifference = 0.25; // this is also actively changed in DriveCommand
 
 
@@ -310,6 +311,20 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[2] < rightBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[2] = rightBack.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[3] < rightFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[3] = rightFront.getCurrent(CurrentUnit.AMPS);
+    }
+
+
+    public void setDrivePowersNormalized(PoseVelocity2d powers) {
+
+        if (Math.abs(powers.linearVel.x) < Constants.SwerveMinimumPower) {
+            powers = new PoseVelocity2d(new Vector2d(0, powers.linearVel.y), powers.angVel);
+        } if (Math.abs(powers.linearVel.y) < Constants.SwerveMinimumPower) {
+            powers = new PoseVelocity2d(new Vector2d(powers.linearVel.x, 0), powers.angVel);
+        } if (Math.abs(powers.angVel) < Constants.SwerveMinimumPower) {
+            powers = new PoseVelocity2d(powers.linearVel, 0);
+        }
+
+        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, powers.angVel, 1);
     }
 
     public final class FollowTrajectoryAction implements Action {
@@ -506,7 +521,6 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         estimatedPoseWriter.write(new PoseMessage(pose));
         SubsystemData.CurrentRobotPose = pose;
-        PersistentDataStorage.lastRobotPose = pose;
 
         SubsystemData.RobotVelocity = twist.velocity().value();
         return twist.velocity().value();

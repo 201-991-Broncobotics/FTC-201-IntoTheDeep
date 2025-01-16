@@ -66,9 +66,19 @@ public class DriveAutonCommand extends CommandBase {
 
         drive.update();
 
+        // Gives all the times that I logged inside parts of the code so I can optimise
+        if (SubsystemData.loggedTimes.isEmpty()) telemetry.addLine("No times logged");
+        else {
+            for (int i = 0; i < SubsystemData.loggedTimes.size(); i++) {
+                telemetry.addData("Log " + (i + 1) + ":" + SubsystemData.loggedTimes.get(i) + " - ", SubsystemData.loggedMessages.get(i));
+            }
+        }
+        SubsystemData.logReset();
 
 
-        telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
+
+        // telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
+        // telemetry.update();
 
         // drive.updateDifferentialSwerve(); // keep drivetrain running
 

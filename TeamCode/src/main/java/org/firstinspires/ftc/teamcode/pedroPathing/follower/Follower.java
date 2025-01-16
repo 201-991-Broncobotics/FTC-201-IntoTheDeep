@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.follower;
 
+import static org.firstinspires.ftc.teamcode.SubsystemData.log;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.drivePIDFFeedForward;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.drivePIDFSwitch;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.forwardZeroPowerAcceleration;
@@ -27,7 +28,9 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
+import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.PoseUpdater;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierPoint;
@@ -46,6 +49,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.util.KalmanFilter;
 import org.firstinspires.ftc.teamcode.pedroPathing.util.PIDFController;
 import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
 
@@ -56,7 +60,8 @@ import java.util.ArrayList;
  * @author Anyi Lin - 10158 Scott's Bots
  * @author Aaron Yang - 10158 Scott's Bots
  * @author Harrison Womack - 10158 Scott's Bots
- * @version 1.0, 3/4/2024
+ * @author Aidan Turico - 201 BroncobotsOne - Roadrunner and Differential Swerve implementation
+ * @version 1.0, 1/15/2025
  */
 @Config
 public class Follower extends SubsystemBase {
@@ -66,7 +71,7 @@ public class Follower extends SubsystemBase {
     Telemetry telemetry;
     DifferentialSwerveDrive drive;
 
-    Pose2d startPose;
+    Pose startPose;
 
     // private List<DcMotorEx> motors;
 
@@ -151,9 +156,17 @@ public class Follower extends SubsystemBase {
      */
     public Follower(HardwareMap hardwareMap, Pose2d startPose, Telemetry telemetry) {
         this.hardwareMap = hardwareMap;
-        this.startPose = startPose;
-        setStartingPose(new Pose(startPose.position.x, startPose.position.y, startPose.heading.toDouble()));
+        this.startPose = functions.RRToPedroPose(startPose);
         this.telemetry = telemetry;
+        drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
+        initialize();
+    }
+
+    public Follower(HardwareMap hardwareMap, Pose startPose, Telemetry telemetry) {
+        this.hardwareMap = hardwareMap;
+        this.startPose = startPose;
+        this.telemetry = telemetry;
+        drive = new DifferentialSwerveDrive(hardwareMap, functions.PedroToRRPose(startPose), telemetry);
         initialize();
     }
 
@@ -168,11 +181,11 @@ public class Follower extends SubsystemBase {
      * second derivatives for teleop are set.
      */
     public void initialize() {
-        drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
-
 
         driveVectorScaler = new DriveVectorScaler(FollowerConstants.frontLeftVector);
         poseUpdater = new PoseUpdater(hardwareMap, drive);
+
+        setStartingPose(startPose);
 
 
         // TODO: Make sure that this is the direction your motors need to be reversed in.
@@ -478,8 +491,9 @@ public class Follower extends SubsystemBase {
             if (currentPath != null) {
                 if (holdingPosition) {
                     closestPose = currentPath.getClosestPoint(poseUpdater.getPose(), 1);
+                    log("Closest Pose X:" + closestPose.getX() + " Y:" + closestPose.getY());
 
-                    drive.setDrivePowers(driveVectorScaler.getDrivePowers(MathFunctions.scalarMultiplyVector(getTranslationalCorrection(), holdPointTranslationalScaling), MathFunctions.scalarMultiplyVector(getHeadingVector(), holdPointHeadingScaling), new Vector(), poseUpdater.getPose().getHeading()));
+                    drive.setDrivePowersNormalized(driveVectorScaler.getDrivePowers(MathFunctions.scalarMultiplyVector(getTranslationalCorrection(), holdPointTranslationalScaling), MathFunctions.scalarMultiplyVector(getHeadingVector(), holdPointHeadingScaling), new Vector(), poseUpdater.getPose().getHeading()));
 
 
                 } else {
@@ -488,7 +502,7 @@ public class Follower extends SubsystemBase {
 
                         if (followingPathChain) updateCallbacks();
 
-                        drive.setDrivePowers(driveVectorScaler.getDrivePowers(getCorrectiveVector(), getHeadingVector(), getDriveVector(), poseUpdater.getPose().getHeading()));
+                        drive.setDrivePowersNormalized(driveVectorScaler.getDrivePowers(getCorrectiveVector(), getHeadingVector(), getDriveVector(), poseUpdater.getPose().getHeading()));
 
 
                     }
@@ -529,8 +543,6 @@ public class Follower extends SubsystemBase {
             calculateAveragedVelocityAndAcceleration();
 
             drive.setDrivePowers(driveVectorScaler.getDrivePowers(getCentripetalForceCorrection(), teleopHeadingVector, teleopDriveVector, poseUpdater.getPose().getHeading()));
-
-
         }
     }
 
@@ -1042,7 +1054,7 @@ public class Follower extends SubsystemBase {
                 followPath(PathToFollow, true);
                 alreadyScheduledPath = true;
             }
-            return (Math.abs(getPose().getX() - EndPose.getX()) > 1 || Math.abs(getPose().getY() - EndPose.getY()) > 1);
+            return isBusy(); // (Math.abs(getPose().getX() - EndPose.getX()) > Constants.PedroDistanceFromTargetTol || Math.abs(getPose().getY() - EndPose.getY()) > Constants.PedroDistanceFromTargetTol)
         }
     }
     public Action followPathAction(PathChain path, Pose endPose) {

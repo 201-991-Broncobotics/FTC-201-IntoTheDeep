@@ -1,27 +1,18 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
-import com.acmerobotics.roadrunner.Arclength;
-import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.MotorFeedforward;
-import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Pose2dDual;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.Vector2dDual;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.SubsystemData;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
 
@@ -57,8 +48,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
     // only use one of these diffy serve methods at one time as some of the values are shared
     public void driveDifferentialSwerve(double forward, double strafe, double turn, double throttle) {
-        double A = -forward - turn; // diffy swerve drive math
-        double B = -forward + turn;
+        double A = -forward + turn; // diffy swerve drive math
+        double B = -forward - turn;
         double RightPower = Math.hypot(strafe, A);
         double LeftPower = Math.hypot(strafe, B);
 
@@ -98,7 +89,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
     }
 
     public void updateKinematicDifferentialSwerve() {
-        driveDifferentialSwerve(driveCommand.linearVel.x, driveCommand.linearVel.y, driveCommand.angVel, 1);
+        driveDifferentialSwerve(driveCommand.linearVel.y, driveCommand.linearVel.x, driveCommand.angVel, 1);
     }
 
 

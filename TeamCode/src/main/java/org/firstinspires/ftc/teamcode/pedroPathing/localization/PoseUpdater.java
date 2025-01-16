@@ -1,15 +1,19 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.localization;
 
+import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
+import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.localizers.RRToPedroTwoWheelLocalizer;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.localizers.ThreeWheelLocalizer;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.MathFunctions;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 /**
  * This is the PoseUpdater class. This class handles getting pose data from the localizer and returning
@@ -87,6 +91,7 @@ public class PoseUpdater {
         previousPoseTime = currentPoseTime;
         currentPoseTime = System.nanoTime();
         localizer.update();
+        SubsystemData.CurrentPedroPose = localizer.getPose();
     }
 
     /**
@@ -266,6 +271,7 @@ public class PoseUpdater {
 //            currentVelocity.setOrthogonalComponents(getPose().getX() - previousPose.getX(), getPose().getY() - previousPose.getY());
 //            currentVelocity.setMagnitude(MathFunctions.distance(getPose(), previousPose) / ((currentPoseTime - previousPoseTime) / Math.pow(10.0, 9)));
             currentVelocity = localizer.getVelocityVector();
+            SubsystemData.CurrentPedroVelocity = currentVelocity;
             return MathFunctions.copyVector(currentVelocity);
         } else {
             return MathFunctions.copyVector(currentVelocity);

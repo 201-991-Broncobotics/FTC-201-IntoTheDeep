@@ -7,19 +7,26 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+
+import java.util.ArrayList;
 
 public class SubsystemData {
 
     // This needs to be here as each subsystem can't interact or communicate with each other directly because command based.
 
-    public static Pose2d CurrentRobotPose; // from roadrunner
+    public static Pose2d CurrentRobotPose = new Pose2d(new Vector2d(0, 0), Math.toRadians(90)); // from roadrunner
 
-    public static Pose2d CurrentPedroPose; // from Pedro Pathing
+    public static Pose CurrentPedroPose = new Pose(0, 0, Math.toRadians(90)); // from Pedro Pathing
 
-    public static double FrameRate = 20; // not actual value, it is constantly updated in ArmSystem
+    public static Vector CurrentPedroVelocity;
+
+    public static double FrameRate = 20; // just starting value, it is constantly updated in ArmSystem
 
 
     public static boolean inTeleOp; // to stop auton in command based
@@ -109,5 +116,31 @@ public class SubsystemData {
     public static boolean alreadyAlignedArm = false;
 
     public static PoseVelocity2d RobotVelocity; // constantly updates with localizer instead of requiring updating localizer an extra time
+
+
+
+    private static ElapsedTime logTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+
+    public static void log(String message) {
+        loggedTimes.add(logTimer.time());
+        logTimer.reset();
+        loggedMessages.add(message);
+    }
+
+    public static void log() {
+        log("");
+    }
+
+    public static void logReset() {
+        loggedTimes.clear();
+        loggedMessages.clear();
+        logTimer.reset();
+    }
+
+    public static ArrayList<Double> loggedTimes = new ArrayList<Double>();
+    public static ArrayList<String> loggedMessages = new ArrayList<String>();
+
+
+    public static double DriveCurrentExtensionLengthPercent = 0;
 
 }

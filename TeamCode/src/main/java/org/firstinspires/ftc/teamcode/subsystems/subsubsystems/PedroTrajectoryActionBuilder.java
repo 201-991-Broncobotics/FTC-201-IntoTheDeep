@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
+import static org.firstinspires.ftc.teamcode.SubsystemData.log;
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.addAnglesRad;
+
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
@@ -11,6 +14,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierLine;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierPoint;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathBuilder;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Point;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,13 +34,13 @@ public class PedroTrajectoryActionBuilder {
 
     public PedroTrajectoryActionBuilder(PathBuilder pathConstructor, Pose2d startPose, Follower followerInput) {
         this.currentPath = pathConstructor;
-        this.lastPose = new Pose(startPose.position.x, startPose.position.y, startPose.heading.toDouble());
+        this.lastPose = functions.RRToPedroPose(startPose);
         this.follower = followerInput;
     }
 
 
     public PedroTrajectoryActionBuilder setTangent(double Rotation) {
-        lastTangent = Rotation;
+        lastTangent = functions.RRToPedroAngle(Rotation);
         return this;
     }
 
@@ -48,7 +52,9 @@ public class PedroTrajectoryActionBuilder {
 
 
     public PedroTrajectoryActionBuilder turnTo(double heading) {
-        currentPath.addPath(new BezierPoint(new Point(lastPose.getX(), lastPose.getY())))
+        heading = functions.RRToPedroAngle(heading);
+
+        currentPath.addPath(new BezierPoint(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN)))
                 .setLinearHeadingInterpolation(lastPose.getHeading(), heading);
         currentPath.setReversed(isReversed);
         lastTangent = heading;
@@ -58,67 +64,83 @@ public class PedroTrajectoryActionBuilder {
 
 
     public PedroTrajectoryActionBuilder strafeTo(Vector2d pos) {
-        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY()), new Point(pos.x, pos.y)));
+        Point PedroPos = functions.RRToPedroPoint(pos);
+
+        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos));
         currentPath.setReversed(isReversed);
-        lastTangent = Math.atan2(pos.y - lastPose.getY(), pos.x - lastPose.getX());
-        lastPose = new Pose(pos.x, pos.y, lastPose.getHeading());
+        lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX() - lastPose.getX());
+        lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
     }
 
 
     public PedroTrajectoryActionBuilder strafeToConstantHeading(Vector2d pos) {
-        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY()), new Point(pos.x, pos.y)))
+        Point PedroPos = functions.RRToPedroPoint(pos);
+
+        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos))
                 .setConstantHeadingInterpolation(lastPose.getHeading());
         currentPath.setReversed(isReversed);
-        lastTangent = Math.atan2(pos.y - lastPose.getY(), pos.x - lastPose.getX());
-        lastPose = new Pose(pos.x, pos.y, lastPose.getHeading());
+        lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX()- lastPose.getX());
+        lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
     }
 
 
     public PedroTrajectoryActionBuilder strafeToLinearHeading(Vector2d pos, double heading) {
-        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY()), new Point(pos.x, pos.y)))
+        Point PedroPos = functions.RRToPedroPoint(pos);
+        heading = functions.RRToPedroAngle(heading);
+
+        currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos))
                 .setLinearHeadingInterpolation(lastPose.getHeading(), heading);
         currentPath.setReversed(isReversed);
-        lastTangent = Math.atan2(pos.y - lastPose.getY(), pos.x - lastPose.getX());
-        lastPose = new Pose(pos.x, pos.y, heading);
+        lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX() - lastPose.getX());
+        lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), heading);
         return this;
     }
 
 
     public PedroTrajectoryActionBuilder splineTo(Vector2d pos, double tangent) {
-        double tangentDistance = 0.429412 * Math.hypot(pos.x - lastPose.getX(), pos.y - lastPose.getY());
-        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent));
-        Point secondPoint = new Point(pos.x + tangentDistance * Math.cos(tangent + Math.PI), pos.y + tangentDistance * Math.sin(tangent + Math.PI));
-        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY()), firstPoint, secondPoint, new Point(pos.x, pos.y)));
+        Point PedroPos = functions.RRToPedroPoint(pos);
+        tangent = functions.RRToPedroAngle(tangent);
+
+        double tangentDistance = 0.429412 * Math.hypot(PedroPos.getX() - lastPose.getX(), PedroPos.getY() - lastPose.getY());
+        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent), Point.CARTESIAN);
+        Point secondPoint = new Point(PedroPos.getX() + tangentDistance * Math.cos(tangent + Math.PI), PedroPos.getY() + tangentDistance * Math.sin(tangent + Math.PI), Point.CARTESIAN);
+        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, PedroPos));
         currentPath.setReversed(isReversed);
         lastTangent = tangent;
-        lastPose = new Pose(pos.x, pos.y, lastPose.getHeading());
+        lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
     }
 
 
     public PedroTrajectoryActionBuilder splineToConstantHeading(Vector2d pos, double tangent) {
-        double tangentDistance = 0.429412 * Math.hypot(pos.x - lastPose.getX(), pos.y - lastPose.getY());
-        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent));
-        Point secondPoint = new Point(pos.x + tangentDistance * Math.cos(tangent + Math.PI), pos.y + tangentDistance * Math.sin(tangent + Math.PI));
-        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY()), firstPoint, secondPoint, new Point(pos.x, pos.y)))
+        Point PedroPos = functions.RRToPedroPoint(pos);
+        tangent = functions.RRToPedroAngle(tangent);
+
+        double tangentDistance = 0.429412 * Math.hypot(PedroPos.getX() - lastPose.getX(), PedroPos.getY() - lastPose.getY());
+        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent), Point.CARTESIAN);
+        Point secondPoint = new Point(PedroPos.getX() + tangentDistance * Math.cos(tangent + Math.PI), PedroPos.getY() + tangentDistance * Math.sin(tangent + Math.PI), Point.CARTESIAN);
+        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, PedroPos))
                 .setConstantHeadingInterpolation(lastPose.getHeading());
         currentPath.setReversed(isReversed);
         lastTangent = tangent;
-        lastPose = new Pose(pos.x, pos.y, lastPose.getHeading());
+        lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
     }
 
     public PedroTrajectoryActionBuilder splineToLinearHeading(Pose2d pose, double tangent) {
-        double tangentDistance = 0.429412 * Math.hypot(pose.position.x - lastPose.getX(), pose.position.y - lastPose.getY());
-        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent));
-        Point secondPoint = new Point(pose.position.x + tangentDistance * Math.cos(tangent + Math.PI), pose.position.y + tangentDistance * Math.sin(tangent + Math.PI));
-        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY()), firstPoint, secondPoint, new Point(pose.position.x, pose.position.y)))
-                .setLinearHeadingInterpolation(lastPose.getHeading(), pose.heading.toDouble());
+        Pose PedroPose = functions.RRToPedroPose(pose);
+        tangent = functions.RRToPedroAngle(tangent);
+
+        double tangentDistance = 0.429412 * Math.hypot(PedroPose.getX() - lastPose.getX(), PedroPose.getY() - lastPose.getY());
+        Point firstPoint = new Point(lastPose.getX() + tangentDistance * Math.cos(lastTangent), lastPose.getY() + tangentDistance * Math.sin(lastTangent), Point.CARTESIAN);
+        Point secondPoint = new Point(PedroPose.getX() + tangentDistance * Math.cos(tangent + Math.PI), PedroPose.getY() + tangentDistance * Math.sin(tangent + Math.PI), Point.CARTESIAN);
+        currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, new Point(PedroPose.getX(), PedroPose.getY(), Point.CARTESIAN)))
+                .setLinearHeadingInterpolation(lastPose.getHeading(), PedroPose.getHeading());
         currentPath.setReversed(isReversed);
         lastTangent = tangent;
-        lastPose = new Pose(pose.position.x, pose.position.y, pose.heading.toDouble());
+        lastPose = PedroPose;
         return this;
     }
 
@@ -132,9 +154,14 @@ public class PedroTrajectoryActionBuilder {
      *                      last path.
      */
     public PedroTrajectoryActionBuilder bezierTo(Point... controlPoints) {
+        ArrayList<Point> resultArray = new ArrayList<Point>();
+        for (Point i : controlPoints) {
+            resultArray.add(new Point(i.getY(), -1 * i.getX(), Point.CARTESIAN));
+        }
+
         ArrayList<Point> bezierCurvePoints = new ArrayList<Point>();
-        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY()));
-        bezierCurvePoints.addAll(Arrays.asList(controlPoints));
+        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN));
+        bezierCurvePoints.addAll(resultArray);
         BezierCurve actualBezierCurve = new BezierCurve(bezierCurvePoints);
         currentPath.addPath(actualBezierCurve);
         currentPath.setReversed(isReversed);
@@ -152,9 +179,14 @@ public class PedroTrajectoryActionBuilder {
      *                      last path.
      */
     public PedroTrajectoryActionBuilder bezierToConstantHeading(Point... controlPoints) {
+        ArrayList<Point> resultArray = new ArrayList<Point>();
+        for (Point i : controlPoints) {
+            resultArray.add(new Point(i.getY(), -1 * i.getX(), Point.CARTESIAN));
+        }
+
         ArrayList<Point> bezierCurvePoints = new ArrayList<Point>();
-        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY()));
-        bezierCurvePoints.addAll(Arrays.asList(controlPoints));
+        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN));
+        bezierCurvePoints.addAll(resultArray);
         BezierCurve actualBezierCurve = new BezierCurve(bezierCurvePoints);
         currentPath.addPath(actualBezierCurve)
                 .setConstantHeadingInterpolation(lastPose.getHeading());
@@ -170,13 +202,19 @@ public class PedroTrajectoryActionBuilder {
      * This will allow the robot to follow a bezier curve like it was part of a roadrunner trajectory.
      * @param heading This is the target heading
      * @param controlPoints This is the specified control points that define the BezierCurve. NOTE:
-     *                      Do NOT put the start point as that is assumed to be at the end of the
-     *                      last path.
+     *                      Do NOT put the start point as that is already assumed to be at the end of
+     *                      the last path.
      */
     public PedroTrajectoryActionBuilder bezierToLinearHeading(double heading, Point... controlPoints) {
+        heading = functions.RRToPedroAngle(heading);
+        ArrayList<Point> resultArray = new ArrayList<Point>();
+        for (Point i : controlPoints) {
+            resultArray.add(new Point(i.getY(), -1 * i.getX(), Point.CARTESIAN));
+        }
+
         ArrayList<Point> bezierCurvePoints = new ArrayList<Point>();
-        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY()));
-        bezierCurvePoints.addAll(Arrays.asList(controlPoints));
+        bezierCurvePoints.add(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN));
+        bezierCurvePoints.addAll(resultArray);
         BezierCurve actualBezierCurve = new BezierCurve(bezierCurvePoints);
         currentPath.addPath(actualBezierCurve)
                 .setLinearHeadingInterpolation(lastPose.getHeading(), heading);
@@ -193,7 +231,7 @@ public class PedroTrajectoryActionBuilder {
      * @return Pose2d
      */
     public Pose2d endPose() {
-        return new Pose2d(lastPose.getX(), lastPose.getY(), lastPose.getHeading());
+        return functions.PedroToRRPose(lastPose);
     }
 
 

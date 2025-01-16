@@ -54,7 +54,6 @@ import org.firstinspires.ftc.teamcode.Roadrunner.messages.TankCommandMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PersistentDataStorage;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -426,7 +425,6 @@ public final class TankDrive extends SubsystemBase {
 
         estimatedPoseWriter.write(new PoseMessage(pose));
         SubsystemData.CurrentRobotPose = pose;
-        PersistentDataStorage.lastRobotPose = pose;
 
         return twist.velocity().value();
     }

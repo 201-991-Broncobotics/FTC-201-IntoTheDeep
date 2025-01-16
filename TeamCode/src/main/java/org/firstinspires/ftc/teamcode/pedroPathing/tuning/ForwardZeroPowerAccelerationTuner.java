@@ -60,7 +60,7 @@ public class ForwardZeroPowerAccelerationTuner extends OpMode {
 
     private PoseUpdater poseUpdater;
 
-    public static double VELOCITY = 30;
+    public static double VELOCITY = 50;
 
     private double previousVelocity;
 
@@ -131,6 +131,9 @@ public class ForwardZeroPowerAccelerationTuner extends OpMode {
      */
     @Override
     public void loop() {
+
+        swerveDrive.updateDifferentialSwerve();
+
         if (gamepad1.cross || gamepad1.a) {
             /*
             for (DcMotorEx motor : motors) {

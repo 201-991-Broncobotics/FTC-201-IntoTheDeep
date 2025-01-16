@@ -42,7 +42,7 @@ public class RightPark extends CommandOpMode {
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
-        drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
+        drive.getRRDrive().resetSwerveWheelAngles(); // resets swerve wheels obviously
 
         // always running
         // drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));

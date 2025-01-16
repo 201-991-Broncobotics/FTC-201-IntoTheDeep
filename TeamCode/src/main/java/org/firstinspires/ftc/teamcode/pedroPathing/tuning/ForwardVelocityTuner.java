@@ -22,6 +22,7 @@ import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.PoseUpdater;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.MathFunctions;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,6 +133,8 @@ public class ForwardVelocityTuner extends OpMode {
      */
     @Override
     public void loop() {
+        swerveDrive.updateDifferentialSwerve();
+
         if (gamepad1.cross || gamepad1.a) {
             /*
             for (DcMotorEx motor : motors) {
@@ -184,6 +187,8 @@ public class ForwardVelocityTuner extends OpMode {
 
             telemetryA.addData("forward velocity:", average);
             telemetryA.update();
+
+            functions.Sleep(8000);
         }
     }
 }

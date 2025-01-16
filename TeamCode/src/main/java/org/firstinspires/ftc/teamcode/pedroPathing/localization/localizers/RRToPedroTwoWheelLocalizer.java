@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.localization.localizers;
 
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.addAnglesRad;
+
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -47,7 +49,7 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
     @Override
     public Pose getPose() {
         Pose2d pose = drive.pose;
-        return new Pose(pose.position.x, pose.position.y, pose.heading.toDouble());
+        return new Pose(pose.position.y, -1 * pose.position.x, addAnglesRad(pose.heading.toDouble(), Math.PI/-2));
     }
 
     /**
@@ -85,7 +87,7 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
         Pose oldStart = startPose;
         startPose = setStart;
         Pose startDiff = MathFunctions.subtractPoses(startPose, oldStart);
-        drive.pose = new Pose2d(getPose().getX() + startDiff.getX(), getPose().getY() + startDiff.getY(), getPose().getHeading() + startDiff.getHeading());
+        drive.pose = new Pose2d(-1 * (getPose().getY() + startDiff.getY()), getPose().getX() + startDiff.getX(), addAnglesRad(getPose().getHeading() + startDiff.getHeading(), Math.PI/2));
     }
 
     /**
@@ -95,7 +97,7 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
      */
     @Override
     public void setPose(Pose setPose) {
-        drive.pose = new Pose2d(setPose.getX(), setPose.getY(), setPose.getHeading());
+        drive.pose = new Pose2d(-1 * setPose.getY(), setPose.getX(), addAnglesRad(setPose.getHeading(), Math.PI/2));
     }
 
     /**
