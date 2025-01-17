@@ -1,10 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
-import com.acmerobotics.roadrunner.DualNum;
-import com.acmerobotics.roadrunner.MotorFeedforward;
-import com.acmerobotics.roadrunner.Time;
-
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -47,7 +44,7 @@ public class SwerveModule {
     public void setModule(double angle, double speed, double maxPowerLimit) {
         targetAngle = angle;
         modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
-        if (SubsystemData.SwerveModuleDriveSharpness < 1) SubsystemData.SwerveModuleDriveSharpness = 1;
+        if (Settings.SwerveModuleDriveSharpness < 1) Settings.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);
 
@@ -55,7 +52,7 @@ public class SwerveModule {
 
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
         double DriveSharpnessCurve = Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2);
-        speed = speed * (Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, SubsystemData.SwerveModuleDriveSharpness)));
+        speed = speed * (Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, Settings.SwerveModuleDriveSharpness)));
 
         // maintain the correct motor speed balance
         double R1Power = speed + rotation;

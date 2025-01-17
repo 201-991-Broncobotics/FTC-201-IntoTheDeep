@@ -42,7 +42,6 @@ public class LeftSpecimen3BasketAuto extends CommandOpMode {
 
         Pose2d startPose = new Pose2d(new Vector2d(tiles(-0.5), tiles(-3) + 7.09), Math.toRadians(90));
         Follower drive = new Follower(hardwareMap, startPose, telemetry);
-        drive.startTeleopDrive();
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 

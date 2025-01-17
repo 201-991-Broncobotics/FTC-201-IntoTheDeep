@@ -5,13 +5,10 @@ import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.
 
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
-import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
-import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
@@ -23,7 +20,7 @@ import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 import com.arcrobotics.ftclib.command.RunCommand;
 
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.TelemetryLogger;
 
 
 @Autonomous(name="RightPark")
@@ -38,7 +35,6 @@ public class RightPark extends CommandOpMode {
 
         Pose2d startPose = new Pose2d(new Vector2d(tiles(0.5), tiles(-3) + 7.09), Math.toRadians(90));
         Follower drive = new Follower(hardwareMap, startPose, telemetry);
-        drive.startTeleopDrive();
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
@@ -80,7 +76,8 @@ public class RightPark extends CommandOpMode {
                 )
         );
 
-        telemetry.addLine("Auton Ready");
+        telemetry.addLine("Auton Ready \n");
+        TelemetryLogger.addLogsToTelemetry(telemetry);
         telemetry.update();
     }
 

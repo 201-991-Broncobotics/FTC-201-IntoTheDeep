@@ -4,15 +4,11 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
-import org.firstinspires.ftc.teamcode.Roadrunner.TankDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
@@ -25,7 +21,7 @@ public class DriveAutonCommand extends CommandBase {
     Follower drive; // now the implementation for pedro pathing driving
 
 
-
+    private double AutonTime = 0;
     private final FtcDashboard dash = FtcDashboard.getInstance();
     public static List<Action> runningActions = new ArrayList<>();
 
@@ -48,7 +44,8 @@ public class DriveAutonCommand extends CommandBase {
 
     @Override
     public void execute() {
-        telemetry.addLine("Auton frameRate:" + (1 / (AutonUpdateSpeedTimer.time() / 1000)));
+        telemetry.addLine("Pedro Target " + functions.TilePoseAsString(functions.PedroToRRPose(SubsystemData.TargetPedroPose)));
+        telemetry.addLine("Auton Time:" + AutonTime);
         AutonUpdateSpeedTimer.reset();
         TelemetryPacket packet = new TelemetryPacket();
 
@@ -66,41 +63,27 @@ public class DriveAutonCommand extends CommandBase {
 
         drive.update();
 
-        // Gives all the times that I logged inside parts of the code so I can optimise
-        if (SubsystemData.loggedTimes.isEmpty()) telemetry.addLine("No times logged");
-        else {
-            for (int i = 0; i < SubsystemData.loggedTimes.size(); i++) {
-                telemetry.addData("Log " + (i + 1) + ":" + SubsystemData.loggedTimes.get(i) + " - ", SubsystemData.loggedMessages.get(i));
-            }
-        }
-        SubsystemData.logReset();
-
-
-
-        // telemetry.addLine("Error X:" + functions.round(SubsystemData.AutonError.position.x, 3) + " Y:" + functions.round(SubsystemData.AutonError.position.y, 3) + " A:" + functions.round(Math.toDegrees(SubsystemData.AutonError.heading.toDouble()), 3));
-        // telemetry.update();
-
-        // drive.updateDifferentialSwerve(); // keep drivetrain running
-
-        // telemetry.update();
-
         /*
         if (SubsystemData.driver.getButton(GamepadKeys.Button.A)) { // locks the entire code so I can read the telemetry
             while (Thread.currentThread().isAlive()) {
                 drive.stopDifferentialSwerve();
             }
         }
-
          */
 
-        // SubsystemData.CurrentRobotPose = drive.pose; // keeps track of the pose during auton and saves it for teleOp
-
+        drive.telemetryDebugWithoutUpdate(telemetry);
         dash.sendTelemetryPacket(packet);
+        AutonTime = AutonUpdateSpeedTimer.time();
     }
 
 
     public static void queueAction(Action action) {
         runningActions.add(action);
+    }
+
+    public static Runnable queueActionRunnable(Action action) {
+        runningActions.add(action);
+        return null;
     }
 
 

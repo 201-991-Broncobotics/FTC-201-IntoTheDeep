@@ -165,8 +165,10 @@ public class Path {
      * @param set sets tangential heading reversed or not.
      */
     public void setReversed(boolean set) {
-        isTangentHeadingInterpolation = true;
-        followTangentReversed = set;
+        if (set != isTangentHeadingInterpolation) {
+            isTangentHeadingInterpolation = true;
+            followTangentReversed = set;
+        }
     }
 
     /**

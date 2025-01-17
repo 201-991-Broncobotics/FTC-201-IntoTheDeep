@@ -47,12 +47,12 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.TankCommandMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
+import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 
 import java.util.Arrays;
@@ -177,7 +177,7 @@ public final class TankDrive extends SubsystemBase {
 
         // secretly initializing diffy alongside mecanum...
 
-        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Constants.maxDrivetrainMotorPower, telemetry);
+        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Settings.maxDrivetrainMotorPower, telemetry);
 
         // TODO: reverse motor directions if needed
         //   leftMotors.get(0).setDirection(DcMotorSimple.Direction.REVERSE);
@@ -193,11 +193,6 @@ public final class TankDrive extends SubsystemBase {
         SubsystemData.imuInstance = newImu;
 
         localizer = new TwoDeadWheelLocalizer(hardwareMap, newImu, PARAMS.inPerTick);
-
-
-        // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
-        SubsystemData.HeadingTargetPID = new PIDController(0.012, 0.0, 0.0005, () -> Math.toDegrees(this.pose.heading.toDouble()));
-        SubsystemData.HeadingTargetPID.minDifference = 0.5; // helps get the drivetrain turning when at low values
 
         // Tank Landing PID is initialized in SubsystemData
 

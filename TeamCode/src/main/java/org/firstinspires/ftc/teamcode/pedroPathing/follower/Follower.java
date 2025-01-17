@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.follower;
 
-import static org.firstinspires.ftc.teamcode.SubsystemData.log;
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.TelemetryLogger.log;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.drivePIDFFeedForward;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.drivePIDFSwitch;
 import static org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants.forwardZeroPowerAcceleration;
@@ -23,12 +23,12 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
@@ -47,11 +47,11 @@ import org.firstinspires.ftc.teamcode.pedroPathing.util.Drawing;
 import org.firstinspires.ftc.teamcode.pedroPathing.util.FilteredPIDFController;
 import org.firstinspires.ftc.teamcode.pedroPathing.util.KalmanFilter;
 import org.firstinspires.ftc.teamcode.pedroPathing.util.PIDFController;
-import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
+import java.util.function.BooleanSupplier;
 
 /**
  * This is the Follower class. It handles the actual following of the paths and all the on-the-fly
@@ -72,6 +72,8 @@ public class Follower extends SubsystemBase {
     DifferentialSwerveDrive drive;
 
     Pose startPose;
+
+    ElapsedTime pathRuntime, pathFinishedRuntime;
 
     // private List<DcMotorEx> motors;
 
@@ -158,7 +160,7 @@ public class Follower extends SubsystemBase {
         this.hardwareMap = hardwareMap;
         this.startPose = functions.RRToPedroPose(startPose);
         this.telemetry = telemetry;
-        drive = new DifferentialSwerveDrive(hardwareMap, startPose, telemetry);
+        drive = new DifferentialSwerveDrive(hardwareMap, new Pose2d(new Vector2d(0, 0), Math.toRadians(90)), telemetry);
         initialize();
     }
 
@@ -166,7 +168,7 @@ public class Follower extends SubsystemBase {
         this.hardwareMap = hardwareMap;
         this.startPose = startPose;
         this.telemetry = telemetry;
-        drive = new DifferentialSwerveDrive(hardwareMap, functions.PedroToRRPose(startPose), telemetry);
+        drive = new DifferentialSwerveDrive(hardwareMap, new Pose2d(new Vector2d(0, 0), 0), telemetry);
         initialize();
     }
 
@@ -417,6 +419,8 @@ public class Follower extends SubsystemBase {
      */
     public void followPath(Path path, boolean holdEnd) {
         breakFollowing();
+        pathRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        pathFinishedRuntime = null;
         holdPositionAtEnd = holdEnd;
         isBusy = true;
         followingPathChain = false;
@@ -441,6 +445,8 @@ public class Follower extends SubsystemBase {
      */
     public void followPath(PathChain pathChain, boolean holdEnd) {
         breakFollowing();
+        pathRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        pathFinishedRuntime = null;
         holdPositionAtEnd = holdEnd;
         pathStartTimes = new long[pathChain.size()];
         pathStartTimes[0] = System.currentTimeMillis();
@@ -491,7 +497,6 @@ public class Follower extends SubsystemBase {
             if (currentPath != null) {
                 if (holdingPosition) {
                     closestPose = currentPath.getClosestPoint(poseUpdater.getPose(), 1);
-                    log("Closest Pose X:" + closestPose.getX() + " Y:" + closestPose.getY());
 
                     drive.setDrivePowersNormalized(driveVectorScaler.getDrivePowers(MathFunctions.scalarMultiplyVector(getTranslationalCorrection(), holdPointTranslationalScaling), MathFunctions.scalarMultiplyVector(getHeadingVector(), holdPointHeadingScaling), new Vector(), poseUpdater.getPose().getHeading()));
 
@@ -522,6 +527,7 @@ public class Follower extends SubsystemBase {
                             if (!reachedParametricPathEnd) {
                                 reachedParametricPathEnd = true;
                                 reachedParametricPathEndTime = System.currentTimeMillis();
+                                pathFinishedRuntime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
                             }
 
                             if ((System.currentTimeMillis() - reachedParametricPathEndTime > currentPath.getPathEndTimeoutConstraint()) || (poseUpdater.getVelocity().getMagnitude() < currentPath.getPathEndVelocityConstraint() && MathFunctions.distance(poseUpdater.getPose(), closestPose) < currentPath.getPathEndTranslationalConstraint() && MathFunctions.getSmallestAngleDifference(poseUpdater.getPose().getHeading(), currentPath.getClosestPointHeadingGoal()) < currentPath.getPathEndHeadingConstraint())) {
@@ -535,6 +541,8 @@ public class Follower extends SubsystemBase {
                         }
                     }
                 }
+
+                SubsystemData.TargetPedroPose = closestPose;
             }
         } else {
             velocities.add(poseUpdater.getVelocity());
@@ -681,6 +689,7 @@ public class Follower extends SubsystemBase {
         teleopHeadingVector = new Vector();
 
         drive.stopDifferentialSwerve();
+        pathRuntime = null;
     }
 
     /**
@@ -925,6 +934,28 @@ public class Follower extends SubsystemBase {
     }
 
     /**
+     * This returns the amount of time since the follower was given the path.
+     * @return time in seconds
+     */
+    public double getFollowingRuntime() {
+        if (pathRuntime == null) {
+            return 0;
+        } else {
+            return pathRuntime.time() / 1000;
+        }
+    }
+    /**
+     * This returns the amount of time since the follower was given the path.
+     * @return time in seconds
+     */
+    public double getTimeSincePathFinished() {
+        if (pathFinishedRuntime == null) {
+            return 0;
+        } else {
+            return pathFinishedRuntime.time() / 1000;
+        }
+    }
+    /**
      * This returns the t value of the closest point on the current Path to the robot
      * In the absence of a current Path, it returns 1.0.
      *
@@ -988,7 +1019,37 @@ public class Follower extends SubsystemBase {
             Drawing.drawDebug(this);
         }
     }
-
+    public void telemetryDebugWithoutUpdate(MultipleTelemetry telemetry) {
+        telemetry.addData("follower busy", isBusy());
+        telemetry.addData("heading error", headingError);
+        telemetry.addData("heading vector magnitude", headingVector.getMagnitude());
+        telemetry.addData("corrective vector magnitude", correctiveVector.getMagnitude());
+        telemetry.addData("corrective vector heading", correctiveVector.getTheta());
+        telemetry.addData("translational error magnitude", getTranslationalError().getMagnitude());
+        telemetry.addData("translational error direction", getTranslationalError().getTheta());
+        telemetry.addData("translational vector magnitude", translationalVector.getMagnitude());
+        telemetry.addData("translational vector heading", translationalVector.getMagnitude());
+        telemetry.addData("centripetal vector magnitude", centripetalVector.getMagnitude());
+        telemetry.addData("centripetal vector heading", centripetalVector.getTheta());
+        telemetry.addData("drive error", driveError);
+        telemetry.addData("drive vector magnitude", driveVector.getMagnitude());
+        telemetry.addData("drive vector heading", driveVector.getTheta());
+        telemetry.addData("x", getPose().getX());
+        telemetry.addData("y", getPose().getY());
+        telemetry.addData("heading", getPose().getHeading());
+        telemetry.addData("total heading", poseUpdater.getTotalHeading());
+        telemetry.addData("velocity magnitude", getVelocity().getMagnitude());
+        telemetry.addData("velocity heading", getVelocity().getTheta());
+        driveKalmanFilter.debug(telemetry);
+        if (drawOnDashboard) {
+            Drawing.drawDebug(this);
+        }
+    }
+    public void telemetryDebugJustDraw() {
+        if (drawOnDashboard) {
+            Drawing.drawDebug(this);
+        }
+    }
     /**
      * This writes out information about the various motion Vectors to the Telemetry specified.
      *
@@ -997,6 +1058,10 @@ public class Follower extends SubsystemBase {
      */
     public void telemetryDebug(Telemetry telemetry) {
         telemetryDebug(new MultipleTelemetry(telemetry));
+    }
+
+    public void telemetryDebugWithoutUpdate(Telemetry telemetry) {
+        telemetryDebugWithoutUpdate(new MultipleTelemetry(telemetry));
     }
 
     /**
@@ -1041,12 +1106,13 @@ public class Follower extends SubsystemBase {
 
     public class RRFollowPath implements Action {
 
-        boolean alreadyScheduledPath = false;
+        boolean alreadyScheduledPath = false, UseOrStatements;
         PathChain PathToFollow;
-        Pose EndPose;
-        public RRFollowPath(PathChain path, Pose endPose) {
+        ArrayList<BooleanSupplier> pathEndConditionList;
+        public RRFollowPath(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean useOrStatements) {
             PathToFollow = path;
-            EndPose = endPose;
+            pathEndConditionList = endConditions;
+            UseOrStatements = useOrStatements;
         }
         @Override
         public boolean run(@NonNull TelemetryPacket telemetryPacket) {
@@ -1054,11 +1120,35 @@ public class Follower extends SubsystemBase {
                 followPath(PathToFollow, true);
                 alreadyScheduledPath = true;
             }
-            return isBusy(); // (Math.abs(getPose().getX() - EndPose.getX()) > Constants.PedroDistanceFromTargetTol || Math.abs(getPose().getY() - EndPose.getY()) > Constants.PedroDistanceFromTargetTol)
+            boolean shouldEndPath = false;
+            if (UseOrStatements) {
+                for (BooleanSupplier condition : pathEndConditionList) {
+                    if (condition.getAsBoolean()) {
+                        shouldEndPath = true;
+                        break;
+                    }
+                }
+            } else {
+                for (BooleanSupplier condition : pathEndConditionList) {
+                    if (!condition.getAsBoolean()) {
+                        shouldEndPath = false;
+                        break;
+                    } else {
+                        shouldEndPath = true;
+                    }
+                }
+            }
+
+            return !shouldEndPath;
         }
     }
-    public Action followPathAction(PathChain path, Pose endPose) {
-        return new RRFollowPath(path, endPose);
+
+    public Action followPathAction(PathChain path, ArrayList<BooleanSupplier> endConditions) {
+        return new RRFollowPath(path, endConditions, false);
+    }
+
+    public Action followPathAction(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean OnlyRequireOneCondition) {
+        return new RRFollowPath(path, endConditions, OnlyRequireOneCondition);
     }
 
 }

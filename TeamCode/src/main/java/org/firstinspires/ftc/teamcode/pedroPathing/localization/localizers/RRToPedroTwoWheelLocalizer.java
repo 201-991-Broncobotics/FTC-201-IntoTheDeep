@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.MathFunctions;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
 import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 /**
  * This is the RRToPedroThreeWheelLocalizer class. This class extends the Localizer superclass and
@@ -87,7 +88,7 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
         Pose oldStart = startPose;
         startPose = setStart;
         Pose startDiff = MathFunctions.subtractPoses(startPose, oldStart);
-        drive.pose = new Pose2d(-1 * (getPose().getY() + startDiff.getY()), getPose().getX() + startDiff.getX(), addAnglesRad(getPose().getHeading() + startDiff.getHeading(), Math.PI/2));
+        drive.pose = functions.PedroToRRPose(new Pose(getPose().getX() + startDiff.getX(), getPose().getY() + startDiff.getY(), getPose().getHeading() + startDiff.getHeading()));
     }
 
     /**

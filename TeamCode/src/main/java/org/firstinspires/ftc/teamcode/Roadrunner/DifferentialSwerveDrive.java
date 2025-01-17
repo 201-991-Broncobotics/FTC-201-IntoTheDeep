@@ -52,13 +52,14 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.MecanumLocalizerInputsMessage;
 import org.firstinspires.ftc.teamcode.Roadrunner.messages.PoseMessage;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.DiffySwerveKinematics;
+import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -266,22 +267,13 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         //rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
 
-        // Custom Heading PID controller for auton as roadrunner's doesn't work how I want it to
-        // NOTE: The Heading PID values displayed on the driver hub are 10x the actual values
-        // 2nd comp values (before Pedro slowed stuff down): 0.012, 0.0, 0.0008
-
-        SubsystemData.HeadingTargetPID = new PIDController(0.008, 0.0, 0.0004, () -> Math.toDegrees(this.pose.heading.toDouble()));
-        SubsystemData.HeadingTargetPID.minDifference = 0.25; // this is also actively changed in DriveCommand
-
-
-
         SubsystemData.IMUWorking = true;
 
         SubsystemData.brokenDiffyEncoder = rightFront;
 
         // secretly initializing diffy alongside mecanum...
 
-        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Constants.maxDrivetrainMotorPower, telemetry);
+        diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Settings.maxDrivetrainMotorPower, telemetry);
 
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -305,7 +297,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     public void setDrivePowers(PoseVelocity2d powers) {
         // PoseVelocity2dDual<Time> TheCommand = PoseVelocity2dDual.constant(powers, 1);
 
-        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, powers.angVel, 1);
+        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, functions.capValue(powers.angVel, Settings.maxDrivetrainTurnPower), 1);
 
         //if (SubsystemData.DriveMotorHighCurrents[0] < leftFront.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[0] = leftFront.getCurrent(CurrentUnit.AMPS);
         //if (SubsystemData.DriveMotorHighCurrents[1] < leftBack.getCurrent(CurrentUnit.AMPS)) SubsystemData.DriveMotorHighCurrents[1] = leftBack.getCurrent(CurrentUnit.AMPS);
@@ -316,15 +308,15 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
     public void setDrivePowersNormalized(PoseVelocity2d powers) {
 
-        if (Math.abs(powers.linearVel.x) < Constants.SwerveMinimumPower) {
+        if (Math.abs(powers.linearVel.x) < Settings.SwerveMinimumPower) {
             powers = new PoseVelocity2d(new Vector2d(0, powers.linearVel.y), powers.angVel);
-        } if (Math.abs(powers.linearVel.y) < Constants.SwerveMinimumPower) {
+        } if (Math.abs(powers.linearVel.y) < Settings.SwerveMinimumPower) {
             powers = new PoseVelocity2d(new Vector2d(powers.linearVel.x, 0), powers.angVel);
-        } if (Math.abs(powers.angVel) < Constants.SwerveMinimumPower) {
+        } if (Math.abs(powers.angVel) < Settings.SwerveMinimumPower) {
             powers = new PoseVelocity2d(powers.linearVel, 0);
         }
 
-        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, powers.angVel, 1);
+        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, functions.capValue(powers.angVel, Settings.maxDrivetrainTurnPower), 1);
     }
 
     public final class FollowTrajectoryAction implements Action {

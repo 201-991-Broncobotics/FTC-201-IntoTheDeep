@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.commands;
-import com.acmerobotics.roadrunner.Pose2d;
+
 import com.acmerobotics.roadrunner.PoseVelocity2d;
-import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -9,16 +8,15 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
-import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
-
-import java.util.ArrayList;
 
 public class DriveCommand extends CommandBase {
 
+    public static PIDController HeadingTargetPID; // temporarily here so I can tune the PIDs
     public double headingHold;
 
     Follower drive; // now the implementation for pedro pathing driving
@@ -36,6 +34,9 @@ public class DriveCommand extends CommandBase {
         drive = pedroPathingDrive;
         drive.startTeleopDrive();
         drive.update();
+
+        HeadingTargetPID = new PIDController(Settings.HeadingPIDVariables.kP, Settings.HeadingPIDVariables.kI, Settings.HeadingPIDVariables.kD, () -> Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
+        HeadingTargetPID.minDifference = Settings.HeadingPIDVariables.minDifference; // this is also actively changed in DriveCommand
 
         RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
         SubsystemData.RobotVelocity = RobotVelocity;
@@ -64,16 +65,25 @@ public class DriveCommand extends CommandBase {
                 SubsystemData.NeedToRealignHeadingHold = false;
             }
 
+            /*
             SubsystemData.HighDriveVel = 0; // also reset the high drive/turn vel/accel counts
             SubsystemData.HighDriveAccel = 0;
             SubsystemData.LowDriveAccel = 0;
             SubsystemData.HighAngVel = 0;
             SubsystemData.HighAngAccel = 0;
+             */
         }
+
+        // Makes sure any changes to pid variables get applied to the actual pids
+        HeadingTargetPID.kP = Settings.HeadingPIDVariables.kP;
+        HeadingTargetPID.kI = Settings.HeadingPIDVariables.kI;
+        HeadingTargetPID.kD = Settings.HeadingPIDVariables.kD;
+        HeadingTargetPID.minDifference = Settings.HeadingPIDVariables.minDifference;
 
 
         // drive.update(); // update localization
 
+        /*
         RobotVelocity = SubsystemData.RobotVelocity;
 
         double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
@@ -86,6 +96,7 @@ public class DriveCommand extends CommandBase {
         if (DriveAcceleration > SubsystemData.HighDriveAccel) SubsystemData.HighDriveAccel = DriveAcceleration;
         if (DriveAcceleration < SubsystemData.LowDriveAccel) SubsystemData.LowDriveAccel = DriveAcceleration;
         if (Math.abs(TurnAcceleration) > SubsystemData.HighAngAccel) SubsystemData.HighAngAccel = Math.abs(TurnAcceleration);
+         */
 
 
         YawPitchRollAngles robotOrientation = SubsystemData.IMUAngles;
@@ -103,7 +114,7 @@ public class DriveCommand extends CommandBase {
         double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude - 0.35 * SubsystemData.DriveCurrentExtensionLengthPercent;
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
-        double turn = -turnThrottleControl * Math.pow(functions.deadZone(SubsystemData.driver.getLeftX()), 3); // normalized for easier driving
+        double turn = -turnThrottleControl * Math.pow(SubsystemData.driver.getLeftX(), 3); // normalized for easier driving
         double heading = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
         if (!SubsystemData.absoluteDriving || !SubsystemData.IMUWorking) heading = 90;
 
@@ -138,18 +149,17 @@ public class DriveCommand extends CommandBase {
                 headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
                 SubsystemData.HoldClawFieldPos = false;
 
-            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 600 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
+            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 500 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
                 // otherwise hold current heading if no driver input for some time and imu is working
                 // auto aim
                 //if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
                 if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
 
                 // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
-                if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) SubsystemData.HeadingTargetPID.minDifference = 3;
-                else SubsystemData.HeadingTargetPID.minDifference = 0.5;
+                if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) HeadingTargetPID.minDifference = 3;
+                else HeadingTargetPID.minDifference = 0.5;
 
-                turn = -1 * SubsystemData.HeadingTargetPID.getPowerWrapped(headingHold, 360);
-                telemetry.addLine("Heading Correction is Active");
+                turn = -1 * HeadingTargetPID.getPowerWrapped(headingHold, 360);
 
             } else headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
 

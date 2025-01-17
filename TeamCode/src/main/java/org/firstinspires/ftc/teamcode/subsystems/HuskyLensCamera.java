@@ -5,6 +5,7 @@ import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
@@ -31,18 +32,18 @@ public class HuskyLensCamera extends SubsystemBase {
             // find the closest object information
             HuskyLens.Block closestObject = VisionData[0];
             for (HuskyLens.Block value : VisionData) { // if it has the correct color and has the closest distance to the claw
-                if (functions.intListContains(SubsystemData.AcceptableIds, value.id) &&
-                        Math.hypot(value.x - SubsystemData.HuskyLensTargetX, value.y - SubsystemData.HuskyLensTargetY)
-                                < Math.hypot(closestObject.x - SubsystemData.HuskyLensTargetX, closestObject.y - SubsystemData.HuskyLensTargetY)) {
+                if (functions.intListContains(Settings.AcceptableIds, value.id) &&
+                        Math.hypot(value.x - Settings.HuskyLensTargetX, value.y - Settings.HuskyLensTargetY)
+                                < Math.hypot(closestObject.x - Settings.HuskyLensTargetX, closestObject.y - Settings.HuskyLensTargetY)) {
                     closestObject = value; // set that object as the target
                 }
             }
 
 
             //  return information to arm
-            if (functions.intListContains(SubsystemData.AcceptableIds, closestObject.id)) {
-                SubsystemData.CameraTargetPixelsX = closestObject.x - SubsystemData.HuskyLensTargetX;
-                SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - SubsystemData.HuskyLensTargetY);
+            if (functions.intListContains(Settings.AcceptableIds, closestObject.id)) {
+                SubsystemData.CameraTargetPixelsX = closestObject.x - Settings.HuskyLensTargetX;
+                SubsystemData.CameraTargetPixelsY = -1 * (closestObject.y - Settings.HuskyLensTargetY);
                 SubsystemData.CameraTargetsPixelsWidth = closestObject.width;
                 SubsystemData.CameraTargetId = closestObject.id;
                 SubsystemData.CameraSeesValidObject = true;

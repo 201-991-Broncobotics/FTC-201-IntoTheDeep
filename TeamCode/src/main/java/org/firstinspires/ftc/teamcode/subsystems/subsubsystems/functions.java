@@ -1,20 +1,23 @@
 package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
-import com.acmerobotics.roadrunner.DualNum;
 import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
 
 import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Point;
-import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Vector;
+import org.firstinspires.ftc.teamcode.Settings;
 
 public class functions {
 
-    // finds the smallest difference between two angles or gets the equivalent angle between -180 and 180 when the currentAngle is 0 (and wrapAngle is 360)
-    // or finds the equivalent angle between 0 and 360 when the currentAngle is -180 and you add +180 to the result
-    // wrapAngle of 180 treats the targetAngle and the angle directly opposite of targetAngle the same
+    /** Finds the smallest difference between two angles or gets the equivalent angle between -180 and
+     * 180 when the currentAngle is 0 (and wrapAngle is 360).
+     * A wrapAngle of 180 treats the targetAngle and the angle directly opposite of targetAngle the same
+     *
+     * @param currentAngle degrees
+     * @param targetAngle degrees
+     * @param wrapAngle Should be 360 unless you are doing a swerve module
+     */
     public static double angleDifference(double currentAngle, double targetAngle, int wrapAngle) {
         double result1 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), wrapAngle * 100L) * 0.01;
         double result2 = Math.floorMod(Math.round((targetAngle - currentAngle) * 100), -wrapAngle * 100L) * 0.01;
@@ -22,16 +25,34 @@ public class functions {
         else return result2;
     }
 
+    public static double normalizeAngle(double angle) {
+        return angleDifference(-180, angle, 360) + 180;
+    }
+
     public static double round(double input, int decimalPlaces) {
         return Math.round(input * (Math.pow(10, decimalPlaces))) / (Math.pow(10, decimalPlaces));
     }
 
     public static boolean inUse(double value) {
-        return (Math.abs(value) > Constants.controllerDeadZone);
+        return (Math.abs(value) > Settings.controllerDeadZone);
     }
 
     public static double deadZone(double value) {
-        if (Math.abs(value) > Constants.controllerDeadZone) return value;
+        if (Math.abs(value) > Settings.controllerDeadZone) return value;
+        else return 0.0;
+    }
+
+    public static double capValue(double value, double limit) {
+        if (Math.abs(value) > limit) return limit * Math.signum(value);
+        else return value;
+    }
+
+    /**
+     * If the absolute value of the input is less than the deadZone, this returns 0 though if it is greater,
+     * this returns the difference between the deadZone and the input. Example: -0.5, -0.25, 0, 0, 0, 0.25, 0.5
+     */
+    public static double deadZoneNormalized(double value, double deadZone) {
+        if (Math.abs(value) > deadZone) return value - Math.abs(deadZone) * Math.signum(value);
         else return 0.0;
     }
 
@@ -43,20 +64,19 @@ public class functions {
         }
     }
 
+    /**
+     * Converts Coordinates based on the number of field tiles to inches in the Roadrunner coordinate system
+     * @param X tiles (23.5625 inches)
+     * @param Y tiles (23.5625 inches)
+     * @return inches
+     */
     public static Vector2d tileCoords(double X, double Y) { // convert field coords in tiles to coords in inches
         return new Vector2d(X * Constants.tileLength, Y * Constants.tileLength);
     }
 
-
-    public static Point tileCoordsP(double X, double Y) {
-        return new Point(X * Constants.tileLength, Y * Constants.tileLength);
-    }
-
-
     public static double tiles(double tiles) { // convert number of tiles to inches
         return tiles * Constants.tileLength;
     }
-
 
     public static boolean intListContains(int[] list, int value) {
         for (int item : list) {
@@ -64,7 +84,6 @@ public class functions {
         }
         return false;
     }
-
 
     public static double addAnglesRad(double angleRadians1, double angleRadians2) {
         double sum = angleRadians1 + angleRadians2;
@@ -75,7 +94,6 @@ public class functions {
         double sum = angleDegrees1 + angleDegrees2;
         return angleDifference(-180, sum, 360) + 180;
     }
-
 
     public static Pose RRToPedroPose(Pose2d pose) {
         return new Pose(pose.position.y, -1 * pose.position.x, addAnglesRad(pose.heading.toDouble(), Math.PI/-2));
@@ -99,6 +117,22 @@ public class functions {
 
     public static double PedroToRRAngle(double angle) {
         return addAnglesRad(angle, Math.PI/2);
+    }
+
+    public static String PoseAsString(Pose pose) {
+        return "X:" + round(pose.getX(), 2) + " Y:" + round(pose.getY(), 2) + " H:" + round(Math.toDegrees(pose.getHeading()), 2);
+    }
+
+    public static String PoseAsString(Pose2d pose) {
+        return "X:" + round(pose.position.x, 2) + " Y:" + round(pose.position.y, 2) + " H:" + round(Math.toDegrees(pose.heading.toDouble()), 2);
+    }
+
+    public static String TilePoseAsString(Pose pose) {
+        return "X:" + round(tiles(pose.getX()), 3) + " Y:" + round(tiles(pose.getY()), 3) + " H:" + round(Math.toDegrees(pose.getHeading()), 2);
+    }
+
+    public static String TilePoseAsString(Pose2d pose) {
+        return "X:" + round(tiles(pose.position.x), 3) + " Y:" + round(tiles(pose.position.y), 3) + " H:" + round(Math.toDegrees(pose.heading.toDouble()), 2);
     }
 
 

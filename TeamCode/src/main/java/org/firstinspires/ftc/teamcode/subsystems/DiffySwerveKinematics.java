@@ -10,9 +10,10 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Constants;
-import org.firstinspires.ftc.teamcode.SubsystemData;
+import org.firstinspires.ftc.teamcode.Settings;
+import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
 
@@ -54,8 +55,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         double LeftPower = Math.hypot(strafe, B);
 
         // This applies the base amount of power needed to start moving the robot to the modules when needed
-        if (Math.abs(RightPower) > 0) RightPower = (1 - Constants.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Constants.driveFeedBackStaticPower;
-        if (Math.abs(LeftPower) > 0) LeftPower = (1 - Constants.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Constants.driveFeedBackStaticPower;
+        if (Math.abs(RightPower) > 0) RightPower = (1 - Settings.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Settings.driveFeedBackStaticPower;
+        if (Math.abs(LeftPower) > 0) LeftPower = (1 - Settings.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Settings.driveFeedBackStaticPower;
 
         double max_power = Math.max(1, Math.max(RightPower, LeftPower)); // keeps all motor powers under 1
         RightPower = (RightPower / max_power) * throttle; // target motor speeds
@@ -89,13 +90,13 @@ public class DiffySwerveKinematics extends SubsystemBase {
     }
 
     public void updateKinematicDifferentialSwerve() {
-        driveDifferentialSwerve(driveCommand.linearVel.y, driveCommand.linearVel.x, driveCommand.angVel, 1);
+        driveDifferentialSwerve(driveCommand.linearVel.y, driveCommand.linearVel.x, functions.capValue(driveCommand.angVel, Settings.maxDrivetrainTurnPower), 1);
     }
 
 
     public void stopDifferentialSwerve() {
         driveCommand = new PoseVelocity2d(new Vector2d(0, 0), 0);
-        SubsystemData.HeadingTargetPID.stopUntilNextUse();
+        DriveCommand.HeadingTargetPID.stopUntilNextUse();
         rightModule.fullStopModule();
         leftModule.fullStopModule();
     }
