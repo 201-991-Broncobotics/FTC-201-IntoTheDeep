@@ -96,7 +96,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
     public void stopDifferentialSwerve() {
         driveCommand = new PoseVelocity2d(new Vector2d(0, 0), 0);
-        DriveCommand.HeadingTargetPID.stopUntilNextUse();
+        // DriveCommand.HeadingTargetPID.stopUntilNextUse();
         rightModule.fullStopModule();
         leftModule.fullStopModule();
     }

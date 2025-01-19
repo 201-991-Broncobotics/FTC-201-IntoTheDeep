@@ -71,7 +71,7 @@ public class DriveAutonCommand extends CommandBase {
         }
          */
 
-        drive.telemetryDebugWithoutUpdate(telemetry);
+        // drive.telemetryDebugWithoutUpdate(telemetry);
         dash.sendTelemetryPacket(packet);
         AutonTime = AutonUpdateSpeedTimer.time();
     }

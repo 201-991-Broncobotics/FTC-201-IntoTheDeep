@@ -110,8 +110,8 @@ public class DriveCommand extends CommandBase {
         }
 
         double throttleMagnitude = functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
-        double throttleControl = 0.4 + 0.6 * throttleMagnitude - 0.3 * SubsystemData.DriveCurrentExtensionLengthPercent;
-        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude - 0.35 * SubsystemData.DriveCurrentExtensionLengthPercent;
+        double throttleControl = 0.4 + 0.6 * throttleMagnitude - Settings.DriveExtensionDriveReduction * SubsystemData.DriveCurrentExtensionLengthPercent;
+        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude - Settings.DriveExtensionTurnReduction * SubsystemData.DriveCurrentExtensionLengthPercent;
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -turnThrottleControl * Math.pow(SubsystemData.driver.getLeftX(), 3); // normalized for easier driving

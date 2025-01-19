@@ -29,7 +29,7 @@ public class PedroTrajectoryActionBuilder {
 
     double lastTangent;
 
-    boolean isReversed = false;
+    boolean isReversed = false, OnlyRequireOneEndCondition = false;
 
 
     public PedroTrajectoryActionBuilder(PathBuilder pathConstructor, Pose2d startPose, Follower followerInput) {
@@ -328,7 +328,7 @@ public class PedroTrajectoryActionBuilder {
      * This end condition is true when Pedro has stopped following the path because it has finished
      * or been ended.
      */
-    public PedroTrajectoryActionBuilder endWhenDoneFollowing() { // this is the default end condition when no other condition is given
+    public PedroTrajectoryActionBuilder endWhenDoneFollowing() { // this is part of the default end condition when no other condition is given
         endConditions.add(() -> !follower.isBusy());
         return this;
     }
@@ -379,11 +379,17 @@ public class PedroTrajectoryActionBuilder {
      * This end condition makes it so the robot will stop following if it has been taking too long.
      * @param seconds length of time
      */
-    public PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) {
+    public PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) { // second part of default end condition
         endConditions.add(() -> follower.getTimeSincePathFinished() > seconds);
         return this;
     }
 
+
+
+    public PedroTrajectoryActionBuilder onlyRequireOneEndCondition() {
+        OnlyRequireOneEndCondition = true;
+        return this;
+    }
 
 
 
@@ -401,8 +407,11 @@ public class PedroTrajectoryActionBuilder {
             endConditions.add(() -> (Math.abs(follower.getPose().getX() - lastPose.getX()) > distanceFromFinishThatPathIsEnded || Math.abs(follower.getPose().getY() - lastPose.getY()) > distanceFromFinishThatPathIsEnded));
         }
 
-        if (endConditions.isEmpty()) endWhenDoneFollowing(); // default end condition
-        return follower.followPathAction(currentPath.build(), endConditions);
+        if (endConditions.isEmpty()) {
+            endWhenDoneFollowing(); // default end condition
+            endAfterTimeSincePathFinished(0.5);
+        }
+        return follower.followPathAction(currentPath.build(), endConditions, OnlyRequireOneEndCondition);
     }
 
 

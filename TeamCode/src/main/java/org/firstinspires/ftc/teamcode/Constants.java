@@ -18,6 +18,6 @@ public class Constants {
     // 420 mm from end of claw to pivot axle, 457.2 is the length of the robot, 15 is extra distance to be sure
     public static double freeHorizontalExpansion = horizontalExpansionLimit - 457.2 - 15; // distance that is left within the horizontal expansion limit for the linear slide
     public static double TrackWidth = 11.188976; // inches
-    public static double PivotDownAngle = 5.5;
+    public static double PivotDownAngle = 4.5;
 
 }

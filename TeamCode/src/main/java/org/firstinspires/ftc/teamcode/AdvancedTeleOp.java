@@ -40,12 +40,13 @@ public class AdvancedTeleOp extends CommandOpMode {
         // Driver controls
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleTelemetry));
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(follower.getRRDrive()::realignHeading));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(follower.getRRDrive()::toggleAbsoluteDriving));
+        // SubsystemData.driver.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(follower.getRRDrive()::toggleAbsoluteDriving));
 
         // Operator controls
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenReleased(new InstantCommand(armSystem::toggleClaw));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).toggleWhenPressed(new InstantCommand(armSystem::dropSamplePickup));
-        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).toggleWhenPressed(new InstantCommand(armSystem::toggleBetweenStraightAndFloor));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(new InstantCommand(armSystem::openClaw));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER).whenPressed(new InstantCommand(armSystem::closeClaw));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.A).whenPressed(new InstantCommand(armSystem::dropSamplePickup));
+        SubsystemData.operator.getGamepadButton(GamepadKeys.Button.X).whenPressed(new InstantCommand(armSystem::toggleBetweenStraightAndFloor));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.Y).whenPressed(new InstantCommand(armSystem::setWristToBack));
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.B).whenPressed(new InstantCommand(armSystem::enableLoosenClaw)).whenReleased(new InstantCommand(armSystem::disableLoosenClaw));
 

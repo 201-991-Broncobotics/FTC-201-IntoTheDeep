@@ -106,6 +106,10 @@ public class ArmSystem extends SubsystemBase {
 
     HuskyLensCamera camera;
 
+    private double StartPivotZero, StartPivotDirectZero;
+
+    private boolean OrthogonalMode = false, AutoAimCurrentlyExtending = false;
+
 
 
     public ArmSystem(HardwareMap map, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
@@ -121,7 +125,7 @@ public class ArmSystem extends SubsystemBase {
         PivotEncoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
-        ClawTargetPosition = Settings.ClawOpenPosition; // open claw
+        ClawTargetPosition = Settings.ArmSystemSettings.ClawOpenPosition; // open claw
         WristTargetAngle = 0; // claw can't point straight up when arm is down anymore because of the hook
         lastWristAngle = WristTargetAngle;
 
@@ -144,7 +148,7 @@ public class ArmSystem extends SubsystemBase {
         telemetry = inputTelemetry;
 
         PivotPID = new PIDController(Settings.PivotPIDVariables.kP, Settings.PivotPIDVariables.kI, Settings.PivotPIDVariables.kD,
-                0, Settings.pivotMaxAngle, 0, 1, 0, 0,
+                0, Settings.ArmSystemSettings.pivotMaxAngle, 0, 1, 0, 0,
                 Settings.PivotPIDVariables.maxSpeed, 3, true, true, CurrentPivotAngle);
         ExtensionPID = new PIDController(Settings.ExtensionPIDVariables.kP, Settings.ExtensionPIDVariables.kI,
                 Settings.ExtensionPIDVariables.kD, 1, Constants.extensionMaxLength, 0,
@@ -158,14 +162,16 @@ public class ArmSystem extends SubsystemBase {
             // reset Extension and Pivot to make sure the backlash doesn't get in the way
             ExtensionF.setPower(-0.3);
             ExtensionB.setPower(-0.3);
-            Pivot.setPower(-0.2); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
+            Pivot.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
             functions.Sleep(500);
             ExtensionF.setPower(0);
             ExtensionB.setPower(0);
             Pivot.setPower(0);
-            CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.pivotMotorBacklash;
+            CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
+            StartPivotZero = CurrentPivotAngleZero;
+            StartPivotDirectZero = CurrentPivotAngleDirectZero;
 
             SubsystemData.alreadyAlignedArm = true;
             readyToResetArm = false;
@@ -193,7 +199,8 @@ public class ArmSystem extends SubsystemBase {
         double joystickLeftY = Math.pow(gamepad.getLeftY(), 3); //Math.abs(gamepad.getLeftY()) * gamepad.getLeftY();
         double joystickLeftX = Math.pow(gamepad.getLeftX(), 3); //Math.abs(gamepad.getLeftX()) * gamepad.getLeftX();
         double joystickRightY = Math.pow(gamepad.getRightY(), 3); //Math.abs(gamepad.getRightY()) * gamepad.getRightY();
-        if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) {
+        if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) {
+            OrthogonalMode = true;
             SubsystemData.HoldClawFieldPos = true;
             if (needToSetStartCoord) {
                 FieldCoordHoldPos = getTargetClawPose().position;
@@ -207,7 +214,7 @@ public class ArmSystem extends SubsystemBase {
             if (FrameRate > 2) {
                 double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
 
-                if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) { // field coords control (one joystick controls height, the other controls forward and strafe)
+                if (OrthogonalMode) { // field coords control (one joystick controls height, the other controls forward and strafe)
                     /* Orthogonal version
                     Vector2d targetClawPos = getTargetClawPoint();
                     moveArmToPoint(new Vector2d(
@@ -220,16 +227,16 @@ public class ArmSystem extends SubsystemBase {
                         needToSetStartCoord = false;
                     }
                     FieldCoordHoldPos = new Vector2d(
-                            FieldCoordHoldPos.x + (Settings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftX * ArmThrottle / FrameRate,
-                            FieldCoordHoldPos.y + (Settings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftY * ArmThrottle / FrameRate);
-                    FieldCoordHoldHeight = FieldCoordHoldHeight + Settings.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate;
+                            FieldCoordHoldPos.x + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftX * ArmThrottle / FrameRate,
+                            FieldCoordHoldPos.y + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftY * ArmThrottle / FrameRate);
+                    FieldCoordHoldHeight = FieldCoordHoldHeight + Settings.ArmSystemSettings.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate;
 
                 } else { // direct control (one joystick controls pivot, the other controls extension)
                     SubsystemData.HoldClawFieldPos = false;
-                    double pivotThrottle = 1 - (1 - Settings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
+                    double pivotThrottle = 1 - (1 - Settings.ArmSystemSettings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
                     moveArmDirectly(
-                            PivotTargetAngle + Settings.maxManualPivotSpeed * -1 * joystickRightY * ArmThrottle * pivotThrottle / FrameRate,
-                            ExtensionTargetLength + Settings.maxManualExtensionSpeed * joystickLeftY * ArmThrottle / FrameRate);
+                            PivotTargetAngle + Settings.ArmSystemSettings.maxManualPivotSpeed * -1 * joystickRightY * ArmThrottle * pivotThrottle / FrameRate,
+                            ExtensionTargetLength + Settings.ArmSystemSettings.maxManualExtensionSpeed * joystickLeftY * ArmThrottle / FrameRate);
                     //SubsystemData.HoldClawFieldPos = false;
                 }
             }
@@ -238,20 +245,36 @@ public class ArmSystem extends SubsystemBase {
             // AUTO AIM
             double AutoAimTrigger = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
             if (functions.inUse(AutoAimTrigger)) {
+                OrthogonalMode = false;
+                SubsystemData.HoldClawFieldPos = false;
                 SubsystemData.OperatorTurningPower = 0; // make sure not actively turning
                 if (!cameraToggle) {
                     cameraToggle = true;
                     camera.StartHuskyLensThread();
+                    setWristToRaisedFloor();
+                    if (CurrentExtensionLengthInst < 100 && CurrentPivotAngleInst < 30) {
+                        AutoAimCurrentlyExtending = true;
+                        ExtensionTargetLength = 250;
+                    }
                 }
+                if (AutoAimCurrentlyExtending && CurrentExtensionLengthInst > 250) {
+                    AutoAimCurrentlyExtending = false;
+                }
+
                 camera.ScanForSample();
 
                 if (SubsystemData.CameraSeesValidObject) {
+                    if (AutoAimCurrentlyExtending) { // the point of this is to extend the extension when auto aim is first pressed but if it sees something before it fully extends, it will stop
+                        ExtensionTargetLength = CurrentExtensionLengthInst;
+                        AutoAimCurrentlyExtending = false;
+                    }
 
                     // needs to move differently based on the pivot's current angle
                     // Vector2d targetClawPosition = getTargetClawPoint();
                     if (CurrentPivotAngleInst < 40) { // only when picking up from ground
-                        //moveArmToPoint(new Vector2d(targetClawPosition.x + Constants.maxCameraTargetingSpeed * AutoAimTrigger * (-1 * SubsystemData.CameraTargetPixelsY / 120) / FrameRate, targetClawPosition.y));
-                        moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + -1 * Settings.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
+                        double ExtensionInput = AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate;
+                        double ExtensionPower = -1 * (Settings.ArmSystemSettings.maxCameraTargetingSpeed * ExtensionInput + Settings.ArmSystemSettings.maxCameraTargetingSpeedSquared * Math.abs(ExtensionInput) * ExtensionInput);
+                        moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + ExtensionPower);
                     }
 
 
@@ -267,7 +290,7 @@ public class ArmSystem extends SubsystemBase {
                     //telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
                     //telemetry.addData("Auto Aim Extension Change:", Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
 
-                } // else SubsystemData.OverrideDrivetrainRotation = false;
+                }
 
             } else {
                 if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
@@ -277,7 +300,7 @@ public class ArmSystem extends SubsystemBase {
 
                 // operator can control turn when not auto aiming and driver isn't turning
                 if (Math.abs(gamepad.getLeftX()) > 0.75 && !SubsystemData.HoldClawFieldPos && CurrentExtensionLengthInst > 100 && CurrentPivotAngleInst < 40) {
-                    SubsystemData.OperatorTurningPower = -Settings.OperatorTurnOverridePower * functions.deadZoneNormalized(gamepad.getLeftX(), 0.75);
+                    SubsystemData.OperatorTurningPower = -1 * Settings.ArmSystemSettings.OperatorTurnOverridePower * gamepad.getLeftX();
                 } else {
                     SubsystemData.OperatorTurningPower = 0;
                     // SubsystemData.OverrideDrivetrainRotation = false;
@@ -313,7 +336,7 @@ public class ArmSystem extends SubsystemBase {
         //telemetry.addData("HuskyLens Loop Time", SubsystemData.HuskyLensLoopTime);
         //telemetry.addData("HuskyLens Thread Loop Time", SubsystemData.HuskyLensThreadLoopTime);
         //telemetry.addLine(" ");
-        // very important that this is updating or it doesn't work correctly, WHY? you may ask, idk
+        // very important that this is in telemetry or the encoder doesn't work correctly, WHY? idk
         telemetry.addData("Schrödinger's Encoder", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
 
         // Makes sure any changes to pid variables get applied to the actual pids
@@ -327,7 +350,7 @@ public class ArmSystem extends SubsystemBase {
 
 
         // this speeds up the code a lot by only checking sensors once per update
-        CurrentPivotAngleInst = CurrentPivotAngleDirect.getAsDouble(); // uses the mor accurate direct only when below 70 degrees to prevent the backlash from affecting the arm
+        CurrentPivotAngleInst = CurrentPivotAngleDirect.getAsDouble(); // uses the more accurate direct encoder only when below 70 degrees to prevent the backlash from affecting the arm
         if (CurrentPivotAngleInst > 70) CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble();
 
         if (CurrentPivotAngleInst < Constants.PivotDownAngle) CurrentPivotAngleInst = Constants.PivotDownAngle; // caps pivot angle values to within range
@@ -374,7 +397,7 @@ public class ArmSystem extends SubsystemBase {
 
 
         // Make sure the targets are within the limits
-        if (PivotTargetAngle > Settings.pivotMaxAngle) PivotTargetAngle = Settings.pivotMaxAngle;
+        if (PivotTargetAngle > Settings.ArmSystemSettings.pivotMaxAngle) PivotTargetAngle = Settings.ArmSystemSettings.pivotMaxAngle;
         else if (PivotTargetAngle < Constants.PivotDownAngle) PivotTargetAngle = Constants.PivotDownAngle;
         if (ExtensionTargetLength > Constants.extensionMaxLength + 2) ExtensionTargetLength = Constants.extensionMaxLength + 2;
         else if (ExtensionTargetLength < -2) ExtensionTargetLength = -2;
@@ -386,7 +409,7 @@ public class ArmSystem extends SubsystemBase {
 
 
         // LINEAR SLIDE BENDING IS STUPID
-        double linearSlideBendCompensation = -1 * Settings.LinearSlideBend * (CurrentExtensionLengthInst / Constants.extensionMaxLength) * Math.cos(Math.toRadians(PivotTargetAngle));
+        double linearSlideBendCompensation = -1 * Settings.ArmSystemSettings.LinearSlideBend * (CurrentExtensionLengthInst / Constants.extensionMaxLength) * Math.cos(Math.toRadians(PivotTargetAngle));
 
 
         // BACKPEDALING
@@ -398,14 +421,7 @@ public class ArmSystem extends SubsystemBase {
         if (Math.abs(PivotTargetAngle - CurrentPivotAngleInst) < 10) backPedalExtension = false;
 
         if (backPedalExtension) {
-            if (PivotTargetAngle > 82) {
-                PivotTargetAngle = 82; // prevent the arm from swinging as much
-                PivotPID.setTarget(PivotTargetAngle);
-            }
-
-            if (CurrentPivotAngleInst < 15) { // if claw could be hanging low to the ground
-                PivotPID.setTarget(20); // raise pivot a little first
-            } else if (CurrentExtensionLengthInst < 150) { // if extension is already retracted
+            if (CurrentExtensionLengthInst < 150 || CurrentPivotAngleInst > Settings.ArmSystemSettings.PivotBacklashMaxAngle) { // if extension is already retracted
                 PivotPID.setTarget(PivotTargetAngle); // move pivot
                 ExtensionPID.setTarget(25);
             } else ExtensionPID.setTarget(25); // otherwise stop changing the pivot target in the pid (hold the current pivot angle) and retract extension
@@ -427,10 +443,10 @@ public class ArmSystem extends SubsystemBase {
 
         // PIVOT
 
-        PivotPID.setPercentMaxSpeed(1 - (1 - Settings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength));
+        PivotPID.setPercentMaxSpeed(1 - (1 - Settings.ArmSystemSettings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength));
         // set pivot power to pid value + the amount of power needed to counteract gravity at the current pivot angle and current extension length
         double PivotPIDPower = PivotPID.getPower();
-        double PivotPower = PivotPIDPower + ((Settings.pivotExtendedGravityPower - Settings.pivotRetractedGravityPower) / Constants.extensionMaxLength * CurrentExtensionLengthInst + Settings.pivotRetractedGravityPower) * Math.cos(Math.toRadians(CurrentPivotAngleInst));
+        double PivotPower = PivotPIDPower + ((Settings.ArmSystemSettings.pivotExtendedGravityPower - Settings.ArmSystemSettings.pivotRetractedGravityPower) / Constants.extensionMaxLength * CurrentExtensionLengthInst + Settings.ArmSystemSettings.pivotRetractedGravityPower) * Math.cos(Math.toRadians(CurrentPivotAngleInst));
         // if (Math.abs(PivotPower) > 0.75) PivotPower = Math.signum(PivotPower) * 0.75; // sets max pivot power
         if ((CurrentPivotAngleInst < 2 + Constants.PivotDownAngle && PivotTargetAngle < 2 + Constants.PivotDownAngle && ExtensionTargetLength < 75) || FrameRate < 2) { // stop pivot if it is resting on the mechanical stop or if the framerate is less than 2
             PivotPower = 0;
@@ -443,7 +459,7 @@ public class ArmSystem extends SubsystemBase {
         // EXTENSION
 
         double ExtensionPIDPower = ExtensionPID.getPower();
-        double ExtensionPower = ExtensionPIDPower + Math.sin(Math.toRadians(CurrentPivotAngleInst)) * Settings.extensionGravityPower;
+        double ExtensionPower = ExtensionPIDPower + Math.sin(Math.toRadians(CurrentPivotAngleInst)) * Settings.ArmSystemSettings.extensionGravityPower;
         if (FrameRate < 2) ExtensionPower = 0; // emergency stop extension if framerate is less than 2
 
         if (CurrentExtensionLengthInst * Math.cos(Math.toRadians(CurrentPivotAngleInst)) > Constants.freeHorizontalExpansion && ExtensionPower > 0) {
@@ -462,7 +478,7 @@ public class ArmSystem extends SubsystemBase {
             ExtensionF.setPower(0.3);
             ExtensionB.setPower(0.3);
         } else if (readyToResetArm) {
-            CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.pivotMotorBacklash;
+            CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             readyToResetArm = false;
@@ -479,9 +495,10 @@ public class ArmSystem extends SubsystemBase {
 
         // slightly loosens the claw's grip
         double clawAdjustment = 0;
-        if (LoosenClaw) clawAdjustment = 0.05;
+        if (LoosenClaw) clawAdjustment = Settings.ArmSystemSettings.loosenClawAngle;
         else clawAdjustment = 0;
-        Claw.setPosition(ClawTargetPosition - clawAdjustment);
+        // Claw.setPosition(ClawTargetPosition - clawAdjustment);
+        setClaw(ClawTargetPosition + clawAdjustment);
 
 
         telemetry.addLine("Robot Pose: " + functions.TilePoseAsString(SubsystemData.CurrentRobotPose));
@@ -533,6 +550,8 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("Pivot Current Angle Direct", CurrentPivotAngleDirect.getAsDouble());
             telemetry.addData("Pivot Current Angle in use", CurrentPivotAngleInst);
             telemetry.addLine(" ");
+            telemetry.addData("Distance from Pivot Start Zero", CurrentPivotAngleZero - StartPivotZero);
+            telemetry.addData("Distance from Pivot Encoder Start Zero", CurrentPivotAngleDirectZero - StartPivotDirectZero);
             //telemetry.addData("Pivot PID Power:", PivotPIDPower);
             //telemetry.addData("Extension PID Power:", ExtensionPIDPower);
             //telemetry.addData("Extension Difference", ExtensionTargetLength - CurrentExtensionLengthInst);
@@ -594,24 +613,24 @@ public class ArmSystem extends SubsystemBase {
                 case 1: Settings.ExtensionPIDVariables.kP = functions.round(Settings.ExtensionPIDVariables.kP + PIDChangeIncrement, 4); break;
                 case 2: Settings.ExtensionPIDVariables.kI = functions.round(Settings.ExtensionPIDVariables.kI + PIDChangeIncrement, 4); break;
                 case 3: Settings.ExtensionPIDVariables.kD = functions.round(Settings.ExtensionPIDVariables.kD + PIDChangeIncrement, 4); break;
-                case 4: Settings.extensionGravityPower = functions.round(Settings.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 4: Settings.ArmSystemSettings.extensionGravityPower = functions.round(Settings.ArmSystemSettings.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
                 case 5: Settings.PivotPIDVariables.kP = functions.round(Settings.PivotPIDVariables.kP + PIDChangeIncrement, 4); break;
                 case 6: Settings.PivotPIDVariables.kI = functions.round(Settings.PivotPIDVariables.kI + PIDChangeIncrement, 4); break;
                 case 7: Settings.PivotPIDVariables.kD = functions.round(Settings.PivotPIDVariables.kD + PIDChangeIncrement, 4); break;
                 case 8: Settings.PivotPIDVariables.maxSpeed = functions.round(Settings.PivotPIDVariables.maxSpeed + PIDChangeIncrement * 1000, 1); break;
-                case 9: Settings.pivotRetractedGravityPower = functions.round(Settings.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
-                case 10: Settings.pivotExtendedGravityPower = functions.round(Settings.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 9: Settings.ArmSystemSettings.pivotRetractedGravityPower = functions.round(Settings.ArmSystemSettings.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
+                case 10: Settings.ArmSystemSettings.pivotExtendedGravityPower = functions.round(Settings.ArmSystemSettings.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
                 case 11: Settings.HeadingPIDVariables.kP = functions.round(Settings.HeadingPIDVariables.kP + PIDChangeIncrement / 10, 5); break;
                 case 12: Settings.HeadingPIDVariables.kI = functions.round(Settings.HeadingPIDVariables.kI + PIDChangeIncrement / 10, 5); break;
                 case 13: Settings.HeadingPIDVariables.kD = functions.round(Settings.HeadingPIDVariables.kD + PIDChangeIncrement / 10, 5); break;
                 case 14: Settings.HeadingPIDVariables.minDifference = functions.round(Settings.HeadingPIDVariables.minDifference + PIDChangeIncrement * 100, 2); break;
                 case 15: Settings.driveFeedBackStaticPower = functions.round(Settings.driveFeedBackStaticPower + PIDChangeIncrement * 10, 3); break;
-                case 16: Settings.maxCameraTargetingSpeed = Math.round(Settings.maxCameraTargetingSpeed + PIDChangeIncrement * 10000); break;
-                case 17: Settings.maxCameraTargetingTurnSpeed = functions.round(Settings.maxCameraTargetingTurnSpeed + PIDChangeIncrement * 10, 3); break;
-                case 18: Settings.ServoMSPerDegree = functions.round(Settings.ServoMSPerDegree + PIDChangeIncrement * 100, 2); break;
-                case 19: Settings.WristServoRatio = functions.round(Settings.WristServoRatio + PIDChangeIncrement * 10, 3); break;
-                case 20: Settings.WristServoOffset = functions.round(Settings.WristServoOffset + PIDChangeIncrement * 10, 3); break;
-                case 21: Settings.WristFloorAngle = functions.round(Settings.ServoMSPerDegree + PIDChangeIncrement * 100, 2); break;
+                case 16: Settings.ArmSystemSettings.maxCameraTargetingSpeed = Math.round(Settings.ArmSystemSettings.maxCameraTargetingSpeed + PIDChangeIncrement * 10000); break;
+                case 17: Settings.ArmSystemSettings.maxCameraTargetingTurnSpeed = functions.round(Settings.ArmSystemSettings.maxCameraTargetingTurnSpeed + PIDChangeIncrement * 10, 3); break;
+                case 18: Settings.ArmSystemSettings.WristServoMSPerDegree = functions.round(Settings.ArmSystemSettings.WristServoMSPerDegree + PIDChangeIncrement * 100, 2); break;
+                case 19: Settings.ArmSystemSettings.WristServoRatio = functions.round(Settings.ArmSystemSettings.WristServoRatio + PIDChangeIncrement * 10, 3); break;
+                case 20: Settings.ArmSystemSettings.WristServoOffset = functions.round(Settings.ArmSystemSettings.WristServoOffset + PIDChangeIncrement * 10, 3); break;
+                case 21: Settings.ArmSystemSettings.WristFloorAngle = functions.round(Settings.ArmSystemSettings.WristServoMSPerDegree + PIDChangeIncrement * 100, 2); break;
                 //case 20: SubsystemData.SwerveModuleReferencePID.kP = functions.round(SubsystemData.SwerveModuleReferencePID.kP + PIDChangeIncrement / 10, 5); break;
                 //case 21: SubsystemData.SwerveModuleReferencePID.kI = functions.round(SubsystemData.SwerveModuleReferencePID.kI + PIDChangeIncrement / 10, 5); break;
                 //case 22: SubsystemData.SwerveModuleReferencePID.kD = functions.round(SubsystemData.SwerveModuleReferencePID.kD + PIDChangeIncrement / 10, 5); break;
@@ -631,24 +650,24 @@ public class ArmSystem extends SubsystemBase {
             case 1: telemetry.addData("Editing: Extension Kp -", Settings.ExtensionPIDVariables.kP); break;
             case 2: telemetry.addData("Editing: Extension Ki -", Settings.ExtensionPIDVariables.kI); break;
             case 3: telemetry.addData("Editing: Extension Kd -", Settings.ExtensionPIDVariables.kD); break;
-            case 4: telemetry.addData("Editing: Extension Gravity -", Settings.extensionGravityPower); break;
+            case 4: telemetry.addData("Editing: Extension Gravity -", Settings.ArmSystemSettings.extensionGravityPower); break;
             case 5: telemetry.addData("Editing: Pivot Kp -", Settings.PivotPIDVariables.kP); break;
             case 6: telemetry.addData("Editing: Pivot Ki -", Settings.PivotPIDVariables.kI); break;
             case 7: telemetry.addData("Editing: Pivot Kd -", Settings.PivotPIDVariables.kD); break;
             case 8: telemetry.addData("Editing: Pivot maxSpeed -", Settings.PivotPIDVariables.maxSpeed); break;
-            case 9: telemetry.addData("Editing: Pivot Retracted Gravity -", Settings.pivotRetractedGravityPower); break;
-            case 10: telemetry.addData("Editing: Pivot Extended Gravity -", Settings.pivotExtendedGravityPower); break;
+            case 9: telemetry.addData("Editing: Pivot Retracted Gravity -", Settings.ArmSystemSettings.pivotRetractedGravityPower); break;
+            case 10: telemetry.addData("Editing: Pivot Extended Gravity -", Settings.ArmSystemSettings.pivotExtendedGravityPower); break;
             case 11: telemetry.addData("Editing: Heading Kp (*10) -", Settings.HeadingPIDVariables.kP * 10); break; // addData only prints doubles up to 4 decimal places
             case 12: telemetry.addData("Editing: Heading Ki (*10) -", Settings.HeadingPIDVariables.kI * 10); break;
             case 13: telemetry.addData("Editing: Heading Kd (*10) -", Settings.HeadingPIDVariables.kD * 10); break;
             case 14: telemetry.addData("Editing: Heading minDifference -", Settings.HeadingPIDVariables.minDifference); break;
             case 15: telemetry.addData("Editing: Drive Static Power -", Settings.driveFeedBackStaticPower); break;
-            case 16: telemetry.addData("Editing: Auto Aim Extension Speed -", Settings.maxCameraTargetingSpeed); break;
-            case 17: telemetry.addData("Editing: Auto Aim Turn Speed -", Settings.maxCameraTargetingTurnSpeed); break;
-            case 18: telemetry.addData("Editing: Servo MS Per Degree -", Settings.ServoMSPerDegree); break;
-            case 19: telemetry.addData("Editing: Wrist Servo Ratio -", Settings.WristServoRatio); break;
-            case 20: telemetry.addData("Editing: Wrist Servo Offset -", Settings.WristServoOffset); break;
-            case 21: telemetry.addData("Editing: Wrist Floor Angle -", Settings.WristFloorAngle); break;
+            case 16: telemetry.addData("Editing: Auto Aim Extension Speed -", Settings.ArmSystemSettings.maxCameraTargetingSpeed); break;
+            case 17: telemetry.addData("Editing: Auto Aim Turn Speed -", Settings.ArmSystemSettings.maxCameraTargetingTurnSpeed); break;
+            case 18: telemetry.addData("Editing: Servo MS Per Degree -", Settings.ArmSystemSettings.WristServoMSPerDegree); break;
+            case 19: telemetry.addData("Editing: Wrist Servo Ratio -", Settings.ArmSystemSettings.WristServoRatio); break;
+            case 20: telemetry.addData("Editing: Wrist Servo Offset -", Settings.ArmSystemSettings.WristServoOffset); break;
+            case 21: telemetry.addData("Editing: Wrist Floor Angle -", Settings.ArmSystemSettings.WristFloorAngle); break;
             //case 20: telemetry.addData("Editing: Swerve Module Kp -", SubsystemData.SwerveModuleReferencePID.kP); break;
             //case 21: telemetry.addData("Editing: Swerve Module Ki -", SubsystemData.SwerveModuleReferencePID.kI); break;
             //case 22: telemetry.addData("Editing: Swerve Module Kd -", SubsystemData.SwerveModuleReferencePID.kD); break;
@@ -710,7 +729,7 @@ public class ArmSystem extends SubsystemBase {
         PivotTargetAngle = pivotTarget;
         ExtensionTargetLength = extensionTarget;
         if (PivotTargetAngle < Constants.PivotDownAngle) PivotTargetAngle = Constants.PivotDownAngle; // prevent pivot from exceeding max positions
-        else if (PivotTargetAngle > Settings.pivotMaxAngle) PivotTargetAngle = Settings.pivotMaxAngle;
+        else if (PivotTargetAngle > Settings.ArmSystemSettings.pivotMaxAngle) PivotTargetAngle = Settings.ArmSystemSettings.pivotMaxAngle;
         // extension get realigned because it skips a lot instead of locking it at max positions
         // if (ExtensionTargetLength < 0) ExtensionTargetLength = 0;
         // else if (ExtensionTargetLength > Constants.extensionMaxLength) ExtensionTargetLength = Constants.extensionMaxLength;
@@ -755,12 +774,13 @@ public class ArmSystem extends SubsystemBase {
         SubsystemData.HoldClawFieldPos = false;
         PushForMaxExtension = false;
         delayPivotMovement = false;
+        OrthogonalMode = false;
         CurrentlyReadyPreset = 0;
         backPedalExtension = true;
         if (PivotTargetAngle > 40 || ExtensionTargetLength < 100 || !SubsystemData.inTeleOp) { // makes it so retracting in the submersible doesn't get the arm stuck
             PivotTargetAngle = 0;
             WristTargetAngle = 0;
-        } else if (PivotTargetAngle < 40 && ExtensionTargetLength > 100) WristTargetAngle = 150;
+        } else if (PivotTargetAngle < 40 && ExtensionTargetLength > 100 && WristTargetAngle > 150) WristTargetAngle = 150;
         ExtensionTargetLength = 0;
 
     }
@@ -770,6 +790,7 @@ public class ArmSystem extends SubsystemBase {
         SubsystemData.HoldClawFieldPos = false;
         backPedalExtension = true;
         delayPivotMovement = false;
+        OrthogonalMode = false;
         PivotTargetAngle = 85;
         ExtensionTargetLength = 696;
         PushForMaxExtension = true;
@@ -781,6 +802,7 @@ public class ArmSystem extends SubsystemBase {
     public void moveClawToTopRung() {
         SubsystemData.HoldClawFieldPos = false;
         PushForMaxExtension = false;
+        OrthogonalMode = false;
         if (CurrentlyReadyPreset == 2) { // second action
             depositSpecimen();
             CurrentlyReadyPreset = 0;
@@ -788,8 +810,8 @@ public class ArmSystem extends SubsystemBase {
             backPedalExtension = true;
             delayPivotMovement = false;
             // moveArmToPoint(new Vector2d(120, 450));
-            PivotTargetAngle = 71;
-            ExtensionTargetLength = 215;
+            PivotTargetAngle = Settings.ArmSystemSettings.ChamberPresetPivotAngle;
+            ExtensionTargetLength = Settings.ArmSystemSettings.ChamberPresetExtensionLength;
             //PivotTargetAngle -= delayedPivotDegrees; // make pivot target slightly higher (so it doesn't go under bar) until extension reaches correct height
             WristTargetAngle = 180;
             CurrentlyReadyPreset = 2;
@@ -799,7 +821,6 @@ public class ArmSystem extends SubsystemBase {
 
     public void depositSpecimen() { // onto a rung - this is separate so it is easier to code auton
         ExtensionTargetLength = CurrentExtensionLengthInst + 130;
-        // runMethodAfterSec("openClaw", 1.25); // TODO: might not want to open claw here
     }
 
 
@@ -807,16 +828,16 @@ public class ArmSystem extends SubsystemBase {
         SubsystemData.HoldClawFieldPos = false;
         PushForMaxExtension = false;
         delayPivotMovement = false;
+        OrthogonalMode = false;
         if (CurrentlyReadyPreset == 3) { // second action
             closeClaw();
-            PivotTargetAngle = 75;
+            PivotTargetAngle = Settings.ArmSystemSettings.HumanPlayerPresetPivotAngle;
             ExtensionTargetLength = 100;
-            // runMethodAfterSec("moveArmDirectly", 0.7, 75.0, 100.0);
             CurrentlyReadyPreset = 0;
         } else {
             backPedalExtension = true;
             ExtensionTargetLength = 0;
-            PivotTargetAngle = 75;
+            PivotTargetAngle = Settings.ArmSystemSettings.HumanPlayerPresetPivotAngle;
             WristTargetAngle = 0;
             openClaw();
             CurrentlyReadyPreset = 3;
@@ -828,6 +849,7 @@ public class ArmSystem extends SubsystemBase {
         CurrentlyReadyPreset = 4;
         backPedalExtension = true;
         delayPivotMovement = false;
+        OrthogonalMode = true;
         SubsystemData.HoldClawFieldPos = true;
         holdClawAtFieldCoordinate(new Vector2d(0, 0), 120);
         setWristToFloorPickup();
@@ -858,21 +880,23 @@ public class ArmSystem extends SubsystemBase {
     // boolean goingToZeroPosition = true;
 
     public void setWrist(double Angle) { // make wrist go to that specific angle
-        if (!(Angle == lastWristAngle) && WristServoTimer.time() > Settings.ServoMSPerDegree * lastServoTravel) {
-            Wrist.setPosition(1 - (Settings.WristServoRatio * ((Angle + Settings.WristServoOffset) / 360.0))); // (48/40.0) * 1.33
+        if (Settings.ArmSystemSettings.WristServoReversed) Wrist.setDirection(Servo.Direction.REVERSE);
+        else Wrist.setDirection(Servo.Direction.FORWARD);
+        if (!(Angle == lastWristAngle) && WristServoTimer.time() > Settings.ArmSystemSettings.WristServoMSPerDegree * lastServoTravel) {
+            Wrist.setPosition(1 - (Settings.ArmSystemSettings.WristServoRatio * ((Angle + Settings.ArmSystemSettings.WristServoOffset) / 360.0))); // (48/40.0) * 1.33
             WristServoTimer.reset();
             lastServoTravel = Math.abs(Angle - lastWristAngle);
             lastWristAngle = Angle;
         }
     }
 
-    public void setClaw(double Angle) { Claw.setPosition(Angle / 90 * (Settings.ClawClosedPosition - Settings.ClawOpenPosition) + Settings.ClawOpenPosition); }
+    public void setClaw(double Angle) { Claw.setPosition((Angle / 360) * Settings.ArmSystemSettings.ClawServoRatio); }
     public void openClaw() {
-        ClawTargetPosition = Settings.ClawOpenPosition;
+        ClawTargetPosition = Settings.ArmSystemSettings.ClawOpenPosition;
         ClawWasLastOpen = true;
     }
     public void closeClaw() {
-        ClawTargetPosition = Settings.ClawClosedPosition;
+        ClawTargetPosition = Settings.ArmSystemSettings.ClawClosedPosition;
         ClawWasLastOpen = false;
     }
     public void toggleClaw() {
@@ -885,7 +909,7 @@ public class ArmSystem extends SubsystemBase {
     public void setWristToBack() { WristTargetAngle = 0; }
     public void setWristToStraight() { WristTargetAngle = 180; }
     public void setWristToRaisedFloor() { WristTargetAngle = 180; } // remember to update this value in the dropSamplePickup
-    public void setWristToFloorPickup() { WristTargetAngle = Settings.WristFloorAngle; }
+    public void setWristToFloorPickup() { WristTargetAngle = Settings.ArmSystemSettings.WristFloorAngle; }
     public void toggleBetweenStraightAndFloor() {
         if (!(WristTargetAngle == 180 || WristTargetAngle == 170))
             if (CurrentPivotAngleInst > 45) setWristToStraight();
