@@ -108,7 +108,7 @@ public class ArmSystem extends SubsystemBase {
 
     private double StartPivotZero, StartPivotDirectZero;
 
-    private boolean OrthogonalMode = false, AutoAimCurrentlyExtending = false;
+    private boolean OrthogonalMode = false, AutoAimCurrentlyExtending = false, autoAiming = false;
 
 
 
@@ -163,7 +163,7 @@ public class ArmSystem extends SubsystemBase {
             ExtensionF.setPower(-0.3);
             ExtensionB.setPower(-0.3);
             Pivot.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
-            functions.Sleep(500);
+            functions.Sleep(700);
             ExtensionF.setPower(0);
             ExtensionB.setPower(0);
             Pivot.setPower(0);
@@ -180,25 +180,13 @@ public class ArmSystem extends SubsystemBase {
     }
 
 
-    // Dictionary of things the arm has to do
-    // 1. move claw to length and height position (robot centric)
-    // 2. move claw to xyz position (field centric)
-    // 3. pickup (robot centric)
-    // 4. pickup (field centric)
-    // 5. pickup from field wall
-    // 6. score high basket
-    // 7. score high rung
-    // 8. hang 1st level
-    // 9. hang 2nd level
-    // 10.hang 3rd level (runs 2nd level hang first)
-
-
     public void controlArmTeleOp() {
         GamepadEx gamepad = SubsystemData.operator;
         // Manual arm control when controllers active
         double joystickLeftY = Math.pow(gamepad.getLeftY(), 3); //Math.abs(gamepad.getLeftY()) * gamepad.getLeftY();
         double joystickLeftX = Math.pow(gamepad.getLeftX(), 3); //Math.abs(gamepad.getLeftX()) * gamepad.getLeftX();
         double joystickRightY = Math.pow(gamepad.getRightY(), 3); //Math.abs(gamepad.getRightY()) * gamepad.getRightY();
+        double AutoAimTrigger = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
         if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) {
             OrthogonalMode = true;
             SubsystemData.HoldClawFieldPos = true;
@@ -208,95 +196,36 @@ public class ArmSystem extends SubsystemBase {
             }
         }
 
-        if (functions.inUse(joystickRightY) || functions.inUse(joystickLeftY) || functions.inUse(joystickLeftX)) {
+        // turn off huskylens thread when not in use cause its laggy
+        if ((functions.inUse(joystickRightY) || functions.inUse(joystickLeftY) || functions.inUse(joystickLeftX)) && FrameRate > 2) {
             if (functions.inUse(joystickLeftY)) PushForMaxExtension = false;
             backPedalExtension = false;
-            if (FrameRate > 2) {
-                double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
+            double ArmThrottle = 0.5 + 0.5 * gamepad.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER);
 
-                if (OrthogonalMode) { // field coords control (one joystick controls height, the other controls forward and strafe)
-                    /* Orthogonal version
-                    Vector2d targetClawPos = getTargetClawPoint();
-                    moveArmToPoint(new Vector2d(
-                            targetClawPos.x + Constants.maxManualClawSpeedHorizontal * joystickLeftY * ArmThrottle / FrameRate,
-                            targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate));
-                     */
-                    SubsystemData.HoldClawFieldPos = true;
-                    if (needToSetStartCoord) {
-                        FieldCoordHoldPos = getTargetClawPose().position;
-                        needToSetStartCoord = false;
-                    }
-                    FieldCoordHoldPos = new Vector2d(
-                            FieldCoordHoldPos.x + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftX * ArmThrottle / FrameRate,
-                            FieldCoordHoldPos.y + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftY * ArmThrottle / FrameRate);
-                    FieldCoordHoldHeight = FieldCoordHoldHeight + Settings.ArmSystemSettings.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate;
-
-                } else { // direct control (one joystick controls pivot, the other controls extension)
-                    SubsystemData.HoldClawFieldPos = false;
-                    double pivotThrottle = 1 - (1 - Settings.ArmSystemSettings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
-                    moveArmDirectly(
-                            PivotTargetAngle + Settings.ArmSystemSettings.maxManualPivotSpeed * -1 * joystickRightY * ArmThrottle * pivotThrottle / FrameRate,
-                            ExtensionTargetLength + Settings.ArmSystemSettings.maxManualExtensionSpeed * joystickLeftY * ArmThrottle / FrameRate);
-                    //SubsystemData.HoldClawFieldPos = false;
+            if (OrthogonalMode) { // field coords control (one joystick controls height, the other controls forward and strafe)
+                /* Orthogonal version
+                Vector2d targetClawPos = getTargetClawPoint();
+                moveArmToPoint(new Vector2d(
+                        targetClawPos.x + Constants.maxManualClawSpeedHorizontal * joystickLeftY * ArmThrottle / FrameRate,
+                        targetClawPos.y + Constants.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate));
+                 */
+                SubsystemData.HoldClawFieldPos = true;
+                if (needToSetStartCoord) {
+                    FieldCoordHoldPos = getTargetClawPose().position;
+                    needToSetStartCoord = false;
                 }
-            }
-        } else {
+                FieldCoordHoldPos = new Vector2d(
+                        FieldCoordHoldPos.x + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftX * ArmThrottle / FrameRate,
+                        FieldCoordHoldPos.y + (Settings.ArmSystemSettings.maxManualClawSpeedHorizontal / 25.4) * joystickLeftY * ArmThrottle / FrameRate);
+                FieldCoordHoldHeight = FieldCoordHoldHeight + Settings.ArmSystemSettings.maxManualClawSpeedVertical * -1 * joystickRightY * ArmThrottle / FrameRate;
 
-            // AUTO AIM
-            double AutoAimTrigger = gamepad.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER);
-            if (functions.inUse(AutoAimTrigger)) {
-                OrthogonalMode = false;
+            } else { // direct control (one joystick controls pivot, the other controls extension)
                 SubsystemData.HoldClawFieldPos = false;
-                SubsystemData.OperatorTurningPower = 0; // make sure not actively turning
-                if (!cameraToggle) {
-                    cameraToggle = true;
-                    camera.StartHuskyLensThread();
-                    setWristToRaisedFloor();
-                    if (CurrentExtensionLengthInst < 100 && CurrentPivotAngleInst < 30) {
-                        AutoAimCurrentlyExtending = true;
-                        ExtensionTargetLength = 250;
-                    }
-                }
-                if (AutoAimCurrentlyExtending && CurrentExtensionLengthInst > 250) {
-                    AutoAimCurrentlyExtending = false;
-                }
-
-                camera.ScanForSample();
-
-                if (SubsystemData.CameraSeesValidObject) {
-                    if (AutoAimCurrentlyExtending) { // the point of this is to extend the extension when auto aim is first pressed but if it sees something before it fully extends, it will stop
-                        ExtensionTargetLength = CurrentExtensionLengthInst;
-                        AutoAimCurrentlyExtending = false;
-                    }
-
-                    // needs to move differently based on the pivot's current angle
-                    // Vector2d targetClawPosition = getTargetClawPoint();
-                    if (CurrentPivotAngleInst < 40) { // only when picking up from ground
-                        double ExtensionInput = AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate;
-                        double ExtensionPower = -1 * (Settings.ArmSystemSettings.maxCameraTargetingSpeed * ExtensionInput + Settings.ArmSystemSettings.maxCameraTargetingSpeedSquared * Math.abs(ExtensionInput) * ExtensionInput);
-                        moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + ExtensionPower);
-                    }
-
-
-                    // slows down camera auto aim turn speed the further extension is extended
-                    double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
-                    //SubsystemData.OperatorTurningPower = -0.15 * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
-
-                    // double AutoAimHeadingChange = Constants.maxCameraTargetingTurnSpeed * AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
-                    double AutoAimHeadingChange = AutoAimTrigger * CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
-                    // SubsystemData.AutoAimHeading = AutoAimHeadingChange / FrameRate;
-                    SubsystemData.OperatorTurningPower = 0.45 * AutoAimHeadingChange;
-                    //telemetry.addData("Auto Aim Turn Power:", SubsystemData.OperatorTurningPower);
-                    //telemetry.addData("Auto Aim Change:", AutoAimHeadingChange);
-                    //telemetry.addData("Auto Aim Extension Change:", Constants.maxCameraTargetingSpeed * AutoAimTrigger * (SubsystemData.CameraTargetPixelsY / 120) / FrameRate);
-
-                }
-
-            } else {
-                if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
-                    cameraToggle = false;
-                    camera.EndHuskyLensThread();
-                }
+                double pivotThrottle = 1 - (1 - Settings.ArmSystemSettings.minimumPivotSpeedPercent) * (CurrentExtensionLengthInst / Constants.extensionMaxLength);
+                moveArmDirectly(
+                        PivotTargetAngle + Settings.ArmSystemSettings.maxManualPivotSpeed * -1 * joystickRightY * ArmThrottle * pivotThrottle / FrameRate,
+                        ExtensionTargetLength + Settings.ArmSystemSettings.maxManualExtensionSpeed * joystickLeftY * ArmThrottle / FrameRate);
+                //SubsystemData.HoldClawFieldPos = false;
 
                 // operator can control turn when not auto aiming and driver isn't turning
                 if (Math.abs(gamepad.getLeftX()) > 0.75 && !SubsystemData.HoldClawFieldPos && CurrentExtensionLengthInst > 100 && CurrentPivotAngleInst < 40) {
@@ -306,7 +235,12 @@ public class ArmSystem extends SubsystemBase {
                     // SubsystemData.OverrideDrivetrainRotation = false;
                 }
             }
+
+        } else {
+            SubsystemData.OperatorTurningPower = 0;
+            autoAiming = functions.inUse(AutoAimTrigger);
         }
+
 
         if (gamepad.getButton(GamepadKeys.Button.DPAD_DOWN) && resetArmAlignmentHoldTimer.time() > 1000) {
             activeExtensionReset = true; // keep retracting extension past limits until button is unpressed and then reset extension length
@@ -315,10 +249,11 @@ public class ArmSystem extends SubsystemBase {
             activeExtensionReset = false;
         }
 
-        tunePIDsWithController(SubsystemData.driver);
+        // tunePIDsWithController(SubsystemData.driver); // we can just use ftc dashboard now which is so much easier
 
         updateClawArm();
     }
+
 
 
     public void updateClawArm() { // VERY IMPORTANT that this needs to be looping constantly
@@ -329,6 +264,7 @@ public class ArmSystem extends SubsystemBase {
         SubsystemData.FrameRate = FrameRate;
         CommandFrameTime.reset();
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
+        if (!SubsystemData.eligibleForAutoDriving) telemetry.addLine("Auto Driving is not locked in");
         telemetry.addData("Code FrameRate", FrameRate);
         telemetry.addData("Code Loop Time", 1 / FrameRate);
         //telemetry.addData("Arm System Loop Time", ArmLoopTime);
@@ -365,6 +301,49 @@ public class ArmSystem extends SubsystemBase {
 
         //telemetry.addData("Point 1:", ArmLoopTimer.time() - LastArmLoopTime);
         //LastArmLoopTime = ArmLoopTimer.time();
+
+
+
+        // AUTO AIMING
+        if (autoAiming) { // AUTO AIM
+            telemetry.addLine("Auto Aiming Active");
+            OrthogonalMode = false;
+            SubsystemData.HoldClawFieldPos = false;
+            if (!cameraToggle) {
+                cameraToggle = true;
+                camera.StartHuskyLensThread();
+                setWristToRaisedFloor();
+                if (CurrentExtensionLengthInst < 100 && CurrentPivotAngleInst < 30) {
+                    AutoAimCurrentlyExtending = true;
+                    ExtensionTargetLength = 250;
+                }
+            }
+            if (AutoAimCurrentlyExtending && CurrentExtensionLengthInst > 250) {
+                AutoAimCurrentlyExtending = false;
+            }
+
+            camera.ScanForSample();
+
+            if (SubsystemData.CameraSeesValidObject) {
+                if (AutoAimCurrentlyExtending) { // the point of this is to extend the extension when auto aim is first pressed but if it sees something before it fully extends, it will stop
+                    ExtensionTargetLength = CurrentExtensionLengthInst;
+                    AutoAimCurrentlyExtending = false;
+                }
+
+                double ExtensionInput = (SubsystemData.CameraTargetPixelsY / 120) / FrameRate;
+                double ExtensionPower = -1 * (Settings.ArmSystemSettings.maxCameraTargetingSpeed * ExtensionInput + Settings.ArmSystemSettings.maxCameraTargetingSpeedSquared * Math.abs(ExtensionInput) * ExtensionInput);
+                moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + ExtensionPower);
+
+                // slows down camera auto aim turn speed the further extension is extended
+                double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
+                double AutoAimHeadingChange = CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
+                SubsystemData.OperatorTurningPower = 0.45 * AutoAimHeadingChange;
+            }
+
+        } else if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
+            cameraToggle = false;
+            camera.EndHuskyLensThread();
+        }
 
 
         // HOLD CLAW AT A FIELD COORD
@@ -470,13 +449,13 @@ public class ArmSystem extends SubsystemBase {
         if (activeExtensionReset) { // reset extension length
             ExtensionF.setPower(-0.3);
             ExtensionB.setPower(-0.3);
-            Pivot.setPower(-0.2);
+            Pivot.setPower(-0.4);
             PivotTargetAngle = 0;
             ExtensionTargetLength = -2;
             readyToResetArm = true;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
-            ExtensionF.setPower(0.3);
-            ExtensionB.setPower(0.3);
+            ExtensionF.setPower(0.25);
+            ExtensionB.setPower(0.25);
         } else if (readyToResetArm) {
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
@@ -520,11 +499,19 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addLine("Robot Pose (tiles) X: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.x / Constants.tileLength, 3) + " Y: " +
                 functions.round(SubsystemData.CurrentRobotPose.position.y / Constants.tileLength, 3));
-
          */
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
+            telemetry.addData("Is Auto Driving", SubsystemData.AutoDriving);
+            switch (SubsystemData.CurrentPathSetting) {
+                case 0: telemetry.addData("Current Auto Driving Selection", "Submersible");
+                case 1: telemetry.addData("Current Auto Driving Selection", "Human Player");
+                case 2: telemetry.addData("Current Auto Driving Selection", "Chamber");
+                case 3: telemetry.addData("Current Auto Driving Selection", "Basket");
+            }
+            telemetry.addData("Current Auto Driving Path", SubsystemData.CurrentPathSetting);
+            telemetry.addData("Auto Driving Power", SubsystemData.AutoDrivingPower);
             telemetry.addData("Servo Position", Wrist.getPosition());
             telemetry.addData("Servo set angle", lastWristAngle);
             telemetry.addData("Wrist Target Angle", WristTargetAngle);
@@ -791,7 +778,7 @@ public class ArmSystem extends SubsystemBase {
         backPedalExtension = true;
         delayPivotMovement = false;
         OrthogonalMode = false;
-        PivotTargetAngle = 85;
+        PivotTargetAngle = 87;
         ExtensionTargetLength = 696;
         PushForMaxExtension = true;
         WristTargetAngle = 165;
@@ -858,8 +845,9 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void dropSamplePickup() { // the wrist pivots down to the ground before the claw closes
-        if (CurrentPivotAngleInst < 30 || !SubsystemData.inTeleOp) {
 
+        // Doesn't work in autons for whatever reason
+        if (CurrentPivotAngleInst < 30 || !SubsystemData.inTeleOp) {
             // only try to pickup sample if in the correct starting position, else move to the starting position
             if (WristTargetAngle > 135 || !SubsystemData.inTeleOp) { // execute pickup action
                 setWristToFloorPickup();

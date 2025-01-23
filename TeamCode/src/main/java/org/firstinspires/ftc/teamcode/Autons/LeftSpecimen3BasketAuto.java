@@ -208,6 +208,8 @@ public class LeftSpecimen3BasketAuto extends CommandOpMode {
 
                 ));
 
+        SubsystemData.eligibleForAutoDriving = true;
+
         telemetry.addLine("Auton Ready");
         telemetry.update();
     }

@@ -8,6 +8,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Point;
 import org.firstinspires.ftc.teamcode.Settings;
 
+
+
 public class functions {
 
     /** Finds the smallest difference between two angles or gets the equivalent angle between -180 and
@@ -51,9 +53,13 @@ public class functions {
      * If the absolute value of the input is less than the deadZone, this returns 0 though if it is greater,
      * this returns the difference between the deadZone and the input. Example: -0.5, -0.25, 0, 0, 0, 0.25, 0.5
      */
-    public static double deadZoneNormalized(double value, double deadZone) {
+    public static double deadZoneFlattened(double value, double deadZone) {
         if (Math.abs(value) > deadZone) return value - Math.abs(deadZone) * Math.signum(value);
         else return 0.0;
+    }
+
+    public static double deadZoneNormalized(double value, double deadZone) {
+        return deadZoneFlattened(value, deadZone) * Math.abs(1 / (1 - deadZone));
     }
 
     public static void Sleep(long milliseconds) {
@@ -135,5 +141,10 @@ public class functions {
         return "X:" + round(tiles(pose.position.x), 3) + " Y:" + round(tiles(pose.position.y), 3) + " H:" + round(Math.toDegrees(pose.heading.toDouble()), 2);
     }
 
+
+    public static boolean isPointAboveLine(Vector2d point, Vector2d linePoint1, Vector2d linePoint2) {
+        return ((linePoint2.y - linePoint1.y) / (linePoint2.x - linePoint1.x)
+                * (point.x - linePoint1.x) + linePoint1.y) <= 0;
+    }
 
 }

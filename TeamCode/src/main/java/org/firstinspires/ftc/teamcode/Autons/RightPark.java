@@ -76,8 +76,9 @@ public class RightPark extends CommandOpMode {
                 )
         );
 
+        SubsystemData.eligibleForAutoDriving = true;
+
         telemetry.addLine("Auton Ready \n");
-        TelemetryLogger.addLogsToTelemetry(telemetry);
         telemetry.update();
     }
 

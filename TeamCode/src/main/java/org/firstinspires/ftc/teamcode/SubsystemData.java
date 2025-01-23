@@ -68,4 +68,10 @@ public class SubsystemData {
 
     public static Pose TargetPedroPose = new Pose();
 
+    public static boolean AutoDriving = false;
+    public static int CurrentPathSetting = 0; // Submersible, Human Player, Chamber, Basket
+
+    public static double AutoDrivingPower = 1;
+
+    public static boolean eligibleForAutoDriving = false;
 }

@@ -12,24 +12,26 @@ import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierCurve;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierLine;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.BezierPoint;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathBuilder;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathChain;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Point;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.FollowerConstants;
 
 import java.util.ArrayList;
 import java.util.function.BooleanSupplier;
 
 public class PedroTrajectoryActionBuilder {
 
-    Follower follower;
+    private Follower follower;
 
-    PathBuilder currentPath;
+    private PathBuilder currentPath;
 
-    Pose lastPose;
+    private Pose lastPose;
 
-    ArrayList<BooleanSupplier> endConditions = new ArrayList<BooleanSupplier>();
+    private ArrayList<BooleanSupplier> endConditions = new ArrayList<BooleanSupplier>();
 
-    double lastTangent;
+    private double lastTangent;
 
-    boolean isReversed = false, OnlyRequireOneEndCondition = false;
+    private boolean isReversed = false, OnlyRequireOneEndCondition = false;
 
 
     public PedroTrajectoryActionBuilder(PathBuilder pathConstructor, Pose2d startPose, Follower followerInput) {
@@ -57,6 +59,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(new BezierPoint(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN)));
         currentPath.setLinearHeadingInterpolation(lastPose.getHeading(), heading);
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = heading;
         lastPose = new Pose(lastPose.getX(), lastPose.getY(), heading);
         return this;
@@ -68,6 +71,7 @@ public class PedroTrajectoryActionBuilder {
 
         currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos));
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX() - lastPose.getX());
         lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
@@ -80,6 +84,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos));
         currentPath.setConstantHeadingInterpolation(lastPose.getHeading());
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX()- lastPose.getX());
         lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
@@ -93,6 +98,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(new BezierLine(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), PedroPos));
         currentPath.setLinearHeadingInterpolation(lastPose.getHeading(), heading);
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = Math.atan2(PedroPos.getY() - lastPose.getY(), PedroPos.getX() - lastPose.getX());
         lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), heading);
         return this;
@@ -108,6 +114,7 @@ public class PedroTrajectoryActionBuilder {
         Point secondPoint = new Point(PedroPos.getX() + tangentDistance * Math.cos(tangent + Math.PI), PedroPos.getY() + tangentDistance * Math.sin(tangent + Math.PI), Point.CARTESIAN);
         currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, PedroPos));
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = tangent;
         lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
@@ -124,6 +131,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, PedroPos));
         currentPath.setConstantHeadingInterpolation(lastPose.getHeading());
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = tangent;
         lastPose = new Pose(PedroPos.getX(), PedroPos.getY(), lastPose.getHeading());
         return this;
@@ -139,6 +147,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(new BezierCurve(new Point(lastPose.getX(), lastPose.getY(), Point.CARTESIAN), firstPoint, secondPoint, new Point(PedroPose.getX(), PedroPose.getY(), Point.CARTESIAN)));
         currentPath.setLinearHeadingInterpolation(lastPose.getHeading(), PedroPose.getHeading());
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = tangent;
         lastPose = PedroPose;
         return this;
@@ -168,6 +177,7 @@ public class PedroTrajectoryActionBuilder {
         BezierCurve actualBezierCurve = new BezierCurve(bezierCurvePoints);
         currentPath.addPath(actualBezierCurve);
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = actualBezierCurve.getEndTangent().getTheta();
         Point endControlPoint = actualBezierCurve.getLastControlPoint();
         lastPose = new Pose(endControlPoint.getX(), endControlPoint.getY(), lastPose.getHeading());
@@ -194,6 +204,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(actualBezierCurve);
         currentPath.setConstantHeadingInterpolation(lastPose.getHeading());
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = actualBezierCurve.getEndTangent().getTheta();
         Point endControlPoint = actualBezierCurve.getLastControlPoint();
         lastPose = new Pose(endControlPoint.getX(), endControlPoint.getY(), lastPose.getHeading());
@@ -222,6 +233,7 @@ public class PedroTrajectoryActionBuilder {
         currentPath.addPath(actualBezierCurve);
         currentPath.setLinearHeadingInterpolation(lastPose.getHeading(), heading);
         currentPath.setReversed(isReversed);
+        currentPath.setPathEndTimeoutConstraint(1);
         lastTangent = actualBezierCurve.getEndTangent().getTheta();
         Point endControlPoint = actualBezierCurve.getLastControlPoint();
         lastPose = new Pose(endControlPoint.getX(), endControlPoint.getY(), heading);
@@ -328,7 +340,7 @@ public class PedroTrajectoryActionBuilder {
      * This end condition is true when Pedro has stopped following the path because it has finished
      * or been ended.
      */
-    public PedroTrajectoryActionBuilder endWhenDoneFollowing() { // this is part of the default end condition when no other condition is given
+    public PedroTrajectoryActionBuilder endWhenDoneFollowing() { // this is the default end condition when no other condition is given
         endConditions.add(() -> !follower.isBusy());
         return this;
     }
@@ -379,7 +391,7 @@ public class PedroTrajectoryActionBuilder {
      * This end condition makes it so the robot will stop following if it has been taking too long.
      * @param seconds length of time
      */
-    public PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) { // second part of default end condition
+    public PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) {
         endConditions.add(() -> follower.getTimeSincePathFinished() > seconds);
         return this;
     }
@@ -392,6 +404,14 @@ public class PedroTrajectoryActionBuilder {
     }
 
 
+    /**
+     * This returns the path constructed so far though it doesn't include the custom end conditions.
+     * This allows you to run one of these paths in TeleOp if you give this to the follower.
+     * @return PathChain
+     */
+    public PathChain getPath() {
+        return currentPath.setPathEndTimeoutConstraint(FollowerConstants.pathEndTimeoutConstraint).build();
+    }
 
     /**
      * This returns the pose of where the path ends
@@ -401,7 +421,6 @@ public class PedroTrajectoryActionBuilder {
         return functions.PedroToRRPose(lastPose);
     }
 
-
     public Action build() {
         if (endWhenWithinRangeOfFinishIsWaitingForThePathToBeCompleted) {
             endConditions.add(() -> (Math.abs(follower.getPose().getX() - lastPose.getX()) > distanceFromFinishThatPathIsEnded || Math.abs(follower.getPose().getY() - lastPose.getY()) > distanceFromFinishThatPathIsEnded));
@@ -409,9 +428,8 @@ public class PedroTrajectoryActionBuilder {
 
         if (endConditions.isEmpty()) {
             endWhenDoneFollowing(); // default end condition
-            endAfterTimeSincePathFinished(0.5);
         }
-        return follower.followPathAction(currentPath.build(), endConditions, OnlyRequireOneEndCondition);
+        return follower.followPathAction(currentPath.setPathEndTimeoutConstraint(FollowerConstants.pathEndTimeoutConstraint).build(), endConditions, OnlyRequireOneEndCondition);
     }
 
 

@@ -77,6 +77,8 @@ public class LeftPark extends CommandOpMode {
                 )
         );
 
+        SubsystemData.eligibleForAutoDriving = true;
+
         telemetry.addLine("Auton Ready");
         telemetry.update();
     }

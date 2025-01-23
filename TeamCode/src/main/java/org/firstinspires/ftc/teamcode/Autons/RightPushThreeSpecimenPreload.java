@@ -3,18 +3,13 @@ package org.firstinspires.ftc.teamcode.Autons;
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
 import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tiles;
 
-import com.acmerobotics.roadrunner.AngularVelConstraint;
-import com.acmerobotics.roadrunner.MinVelConstraint;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
-import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
-import com.acmerobotics.roadrunner.TranslationalVelConstraint;
 import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.VelConstraint;
 import com.arcrobotics.ftclib.command.CommandOpMode;
+import com.arcrobotics.ftclib.command.RunCommand;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-import org.firstinspires.ftc.teamcode.Roadrunner.DifferentialSwerveDrive;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.commands.ArmClawAutonCommand;
 import org.firstinspires.ftc.teamcode.commands.DriveAutonCommand;
@@ -24,13 +19,9 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
-import com.arcrobotics.ftclib.command.RunCommand;
 
-import java.util.Arrays;
-
-
-@Autonomous(name="RightPushThreeSpecimen")
-public class RightPushThreeSpecimen extends CommandOpMode {
+@Autonomous(name="RightPushThreeSpecimenPreload")
+public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
     @Override
     public void initialize() {
@@ -44,7 +35,7 @@ public class RightPushThreeSpecimen extends CommandOpMode {
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
-        // drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
+        drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
 
         // always running
         // drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));
@@ -61,68 +52,84 @@ public class RightPushThreeSpecimen extends CommandOpMode {
 
         // setup roadrunner trajectories
         PedroTrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
-                .strafeToConstantHeading(tileCoords(0.25, -1.3));
+                .strafeToConstantHeading(tileCoords(0.25, -1.33));
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart1 = drive.actionBuilder(DriveToChamber1.endPose())
-                .bezierToConstantHeading(tileCoords(1.95, -2.5), tileCoords(1.05, -0.4), tileCoords(2.1, -0.4));
+                .bezierToConstantHeading(tileCoords(1.8, -2.4), tileCoords(1.15, -0.8), tileCoords(2.1, -0.5))
+                .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart2 = drive.actionBuilder(PushPresetSamplesPart1.endPose())
-                .strafeToConstantHeading(tileCoords(2.05, -2.3));
+                .strafeToConstantHeading(tileCoords(2.05, -2.3))
+                .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart3 = drive.actionBuilder(PushPresetSamplesPart2.endPose())
-                .strafeToConstantHeading(tileCoords(2.05, -1))
-                .splineToConstantHeading(tileCoords(2.5, -0.5), Math.toRadians(0));
+                .strafeToConstantHeading(tileCoords(2.05, -1.1))
+                .splineToConstantHeading(tileCoords(2.7, -0.6), Math.toRadians(0))
+                .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart4 = drive.actionBuilder(PushPresetSamplesPart3.endPose())
-                .strafeToConstantHeading(tileCoords(2.5, -2.3));
+                .strafeToConstantHeading(tileCoords(2.6, -2.4))
+                .setPathEndTimeoutConstraint(50);
 
-        PedroTrajectoryActionBuilder PushPresetSamplesPart5 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
-                .strafeToConstantHeading(tileCoords(2.5, -1))
-                .splineToConstantHeading(tileCoords(2.8, -0.5), Math.toRadians(0));
-
-        PedroTrajectoryActionBuilder PushPresetSamplesPart6 = drive.actionBuilder(PushPresetSamplesPart5.endPose())
-                .strafeToConstantHeading(tileCoords(2.8, -2.4));
-
-        PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart6.endPose())
-                .strafeToConstantHeading(tileCoords(2.5, -2.4))
-                .strafeToConstantHeading(tileCoords(2, -2.7));
+        PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
+                .strafeToConstantHeading(tileCoords(2.4, -2.3))
+                .strafeToConstantHeading(tileCoords(2, -2.73));
 
         PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.18, -1.3), Math.toRadians(90));
+                .splineToConstantHeading(tileCoords(0.21, -1.3), Math.toRadians(90))
+                .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(DriveToChamber2.endPose())
                 .setTangent(Math.toRadians(360-55))
-                .splineToConstantHeading(tileCoords(1.7, -2.4), Math.toRadians(360-35))
-                .strafeToConstantHeading(tileCoords(2, -2.7));
+                .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
+                .strafeToConstantHeading(tileCoords(1.8, -2.73));
 
         PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.1, -1.3), Math.toRadians(90));
+                .splineToConstantHeading(tileCoords(0.11, -1.3), Math.toRadians(90))
+                .setPathEndTimeoutConstraint(300);
 
-        PedroTrajectoryActionBuilder DriveToPark = drive.actionBuilder(DriveToChamber3.endPose())
+        PedroTrajectoryActionBuilder DriveToHumanPlayer3 = drive.actionBuilder(DriveToChamber3.endPose())
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
+                .strafeToConstantHeading(tileCoords(1.8, -2.73));
+
+        PedroTrajectoryActionBuilder DriveToChamber4 = drive.actionBuilder(DriveToHumanPlayer3.endPose())
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.05, -1.3), Math.toRadians(90))
+                .setPathEndTimeoutConstraint(300);
+
+        PedroTrajectoryActionBuilder DriveToPark = drive.actionBuilder(DriveToChamber4.endPose())
                 .setTangent(Math.toRadians(360-60))
                 .splineToConstantHeading(tileCoords(2.1, -2.5), Math.toRadians(360-20));
 
 
         SequentialAction PlaceSpecimen1 = new SequentialAction(
-                armSystem.Wait(0.4),
+                armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.3),
+                armSystem.Wait(0.25),
                 armSystem.RunMethod("openClaw")
         );
 
         SequentialAction PlaceSpecimen2 = new SequentialAction(
-                armSystem.Wait(0.4),
+                armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.3),
+                armSystem.Wait(0.25),
                 armSystem.RunMethod("openClaw")
         );
 
         SequentialAction PlaceSpecimen3 = new SequentialAction(
-                armSystem.Wait(0.4),
+                armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.3),
+                armSystem.Wait(0.25),
+                armSystem.RunMethod("openClaw")
+        );
+
+        SequentialAction PlaceSpecimen4 = new SequentialAction(
+                armSystem.Wait(0.2),
+                armSystem.RunMethod("depositSpecimen"),
+                armSystem.Wait(0.25),
                 armSystem.RunMethod("openClaw")
         );
 
@@ -145,47 +152,53 @@ public class RightPushThreeSpecimen extends CommandOpMode {
                         armSystem.RunMethod("closeClaw"),
                         armSystem.RunMethod("setWristToStraight"),
                         armSystem.Wait(0.2),
-                        armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 205.0),
-                        armSystem.Wait(0.3),
+                        armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 185.0),
                         DriveToChamber1.build(),
                         armSystem.RunMethod("moveClawToTopRung"),
-                        armSystem.Wait(0.5),
                         PlaceSpecimen1,
                         armSystem.RunMethod("resetArm", 0.3),
                         PushPresetSamplesPart1.build(),
                         PushPresetSamplesPart2.build(),
                         PushPresetSamplesPart3.build(),
                         PushPresetSamplesPart4.build(),
-                        PushPresetSamplesPart5.build(),
-                        PushPresetSamplesPart6.build(),
                         armSystem.RunMethod("moveClawToHumanPickup"),
                         DriveToHumanPlayer1.build(),
-                        armSystem.Wait(0.2),
+                        armSystem.Wait(0.1),
                         armSystem.RunMethod("closeClaw"),
-                        armSystem.Wait(0.4),
+                        armSystem.Wait(0.25),
                         armSystem.RunMethod("setWristToStraight"),
-                        armSystem.RunMethod("moveArmDirectly", 0.5, 76.0, 205.0),
+                        armSystem.RunMethod("moveArmDirectly", 0.3, 76.0, 195.0),
                         DriveToChamber2.build(),
-                        armSystem.Wait(0.4),
                         armSystem.RunMethod("moveClawToTopRung"),
-                        armSystem.Wait(0.2),
                         PlaceSpecimen2,
-                        armSystem.RunMethod("moveClawToHumanPickup", 0.5),
+                        armSystem.RunMethod("moveClawToHumanPickup", 0.4),
+                        armSystem.Wait(0.1),
                         DriveToHumanPlayer2.build(),
-                        armSystem.Wait(0.5),
+                        armSystem.Wait(0.1),
                         armSystem.RunMethod("closeClaw"),
-                        armSystem.Wait(0.4),
+                        armSystem.Wait(0.25),
                         armSystem.RunMethod("setWristToStraight"),
-                        armSystem.RunMethod("moveArmDirectly", 0.5, 76.0, 205.0),
+                        armSystem.RunMethod("moveArmDirectly", 0.3, 76.0, 195.0),
                         DriveToChamber3.build(),
-                        armSystem.Wait(0.4),
                         armSystem.RunMethod("moveClawToTopRung"),
-                        armSystem.Wait(0.2),
                         PlaceSpecimen3,
+                        armSystem.RunMethod("moveClawToHumanPickup", 0.4),
+                        armSystem.Wait(0.1),
+                        DriveToHumanPlayer3.build(),
+                        armSystem.Wait(0.1),
+                        armSystem.RunMethod("closeClaw"),
+                        armSystem.Wait(0.25),
+                        armSystem.RunMethod("setWristToStraight"),
+                        armSystem.RunMethod("moveArmDirectly", 0.3, 76.0, 195.0),
+                        DriveToChamber4.build(),
+                        armSystem.RunMethod("moveClawToTopRung"),
+                        PlaceSpecimen4,
                         armSystem.RunMethod("resetArm", 0.3),
                         DriveToPark.build(),
                         armSystem.Wait(0.5)
         ));
+
+        SubsystemData.eligibleForAutoDriving = true;
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

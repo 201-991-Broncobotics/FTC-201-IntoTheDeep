@@ -1,6 +1,12 @@
 package org.firstinspires.ftc.teamcode.commands;
 
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.TelemetryLogger.log;
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tileCoords;
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tiles;
+
+import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandBase;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -11,7 +17,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Path;
+import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathChain;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
@@ -28,6 +37,11 @@ public class DriveCommand extends CommandBase {
     PoseVelocity2d RobotVelocity;
     double lastDriveVelocity = 0, lastTurnVelocity = 0;
 
+    private final PathChain PathToHumanPlayerTop, PathToHumanPlayerBottom,
+            PathToChamberRight, PathToChamberMiddle, PathToChamberLeft, PathToBasketTop, PathToBasketBottom,
+            PathToSubmersibleTop, PathToSubmersibleMiddle, PathToSubmersibleBottom;
+
+
     public DriveCommand(Follower pedroPathingDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
         addRequirements(pedroPathingDrive);
 
@@ -41,6 +55,7 @@ public class DriveCommand extends CommandBase {
         RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
         SubsystemData.RobotVelocity = RobotVelocity;
         SubsystemData.absoluteDriving = absoluteDrivingEnabled;
+        SubsystemData.AutoDriving = false;
         headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
 
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
@@ -48,6 +63,72 @@ public class DriveCommand extends CommandBase {
         sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
         SubsystemData.CurrentPedroPose = drive.getPose();
+
+
+        PathToHumanPlayerTop = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(0.8, 1.7))
+                .splineToConstantHeading(tileCoords(1.7, 0.8), Math.toRadians(270))
+                .strafeToConstantHeading(tileCoords(1.7, -1))
+                .splineToConstantHeading(tileCoords(1.8, -2.6), Math.toRadians(270))
+                .getPath();
+
+        PathToHumanPlayerBottom = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(-1.7, -0.8))
+                .splineToConstantHeading(tileCoords(-1, -1.6), Math.toRadians(360 + -11.30993247))
+                .strafeToConstantHeading(tileCoords(1, -2))
+                .splineToConstantHeading(tileCoords(1.8, -2.6), Math.toRadians(270))
+                .getPath();
+
+        PathToChamberRight = drive.actionBuilder(new Pose2d(tileCoords(0, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(0.8, 1.7))
+                .splineToConstantHeading(tileCoords(1.7, 0.8), Math.toRadians(270))
+                .strafeToConstantHeading(tileCoords(1.7, -1.3))
+                .splineToConstantHeading(tileCoords(0, -1.3), Math.toRadians(90))
+                .getPath();
+
+        PathToChamberMiddle = drive.actionBuilder(new Pose2d(tileCoords(0, -2.5), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(0, -1.3))
+                .getPath();
+
+        PathToChamberLeft = drive.actionBuilder(new Pose2d(tileCoords(0, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(-0.8, 1.7))
+                .splineToConstantHeading(tileCoords(-1.7, 0.8), Math.toRadians(270))
+                .strafeToConstantHeading(tileCoords(-1.7, -1.3))
+                .splineToConstantHeading(tileCoords(0, -1.3), Math.toRadians(90))
+                .getPath();
+
+        PathToBasketTop = drive.actionBuilder(new Pose2d(tileCoords(1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(-0.8, 1.7))
+                .splineToConstantHeading(tileCoords(-1.7, 0.8), Math.toRadians(270))
+                .strafeToConstantHeading(tileCoords(-1.7, -1))
+                .splineToLinearHeading(new Pose2d(tileCoords(-2.45, -2.4), Math.toRadians(225)), Math.toRadians(225))
+                .getPath();
+
+        PathToBasketBottom = drive.actionBuilder(new Pose2d(tileCoords(1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(1.7, -0.8))
+                .splineToConstantHeading(tileCoords(1, -1.6), Math.atan2(-1.75 - -1.6, -0.5 - 1))
+                .strafeToConstantHeading(tileCoords(-0.5, -1.75))
+                .splineToLinearHeading(new Pose2d(tileCoords(-2.45, -2.4), Math.toRadians(225)), Math.toRadians(225))
+                .getPath();
+
+        PathToSubmersibleTop = drive.actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(1.7, 0.8))
+                .splineToConstantHeading(tileCoords(0.8, 1.7), Math.toRadians(180))
+                .strafeToConstantHeading(tileCoords(-1.1, 1.7))
+                .splineToLinearHeading(new Pose2d(tileCoords(-1.05, 0), Math.toRadians(0)), Math.toRadians(0))
+                .getPath();
+
+        PathToSubmersibleMiddle = drive.actionBuilder(new Pose2d(tileCoords(-2.5, 0), Math.toRadians(0)))
+                .strafeToConstantHeading(tileCoords(-1.05, 0))
+                .getPath();
+
+        PathToSubmersibleBottom = drive.actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(1.7, -0.8))
+                .splineToConstantHeading(tileCoords(0.8, -1.7), Math.toRadians(180))
+                .strafeToConstantHeading(tileCoords(-1.1, -1.7))
+                .splineToLinearHeading(new Pose2d(tileCoords(-1.05, 0), Math.toRadians(0)), Math.toRadians(0))
+                .getPath();
+
 
         telemetry = inputTelemetry; // only here if I need it for debugging
     }
@@ -103,7 +184,10 @@ public class DriveCommand extends CommandBase {
 
         // Check if Imu had an ESD event and murdered itself
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
-            if (imuNotWorkingTimer.time() > 750) SubsystemData.IMUWorking = false;
+            if (imuNotWorkingTimer.time() > 750) {
+                SubsystemData.IMUWorking = false;
+                SubsystemData.eligibleForAutoDriving = false;
+            }
         } else {
             SubsystemData.IMUWorking = true;
             imuNotWorkingTimer.reset();
@@ -121,71 +205,140 @@ public class DriveCommand extends CommandBase {
         if (!SubsystemData.absoluteDriving) telemetry.addLine("Absolute Driving is off");
 
 
-        /*
-        // Auto Aiming
-        if (SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.05 && Math.abs(forward) < Constants.controllerDeadZone && Math.abs(strafe) < Constants.controllerDeadZone) {
-            if (SubsystemData.CameraTargetPixelsY > 100) { // validates target
-                if (SubsystemData.AutoAimingForWall) {
-                    forward = -1 * SubsystemData.AutoAimForwardGain * (SubsystemData.CameraTargetsPixelsWidth - ) / 160;
-                    strafe = SubsystemData.AutoAimStrafeGain * SubsystemData.CameraTargetPixelsX / 160;
+
+        // Auto Driving
+        if (SubsystemData.eligibleForAutoDriving && functions.inUse(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) && !functions.inUse(forward) && !functions.inUse(strafe) && !functions.inUse(turn)) {
+
+            if (!SubsystemData.AutoDriving) {
+                // drive.breakFollowing();
+                switch (SubsystemData.CurrentPathSetting) {
+                    case 0: // Submersible
+                        if (SubsystemData.CurrentRobotPose.position.x < tiles(-0.75) && SubsystemData.CurrentRobotPose.position.y > tiles(-1) && SubsystemData.CurrentRobotPose.position.y < tiles(1)) {
+                            drive.followPath(PathToSubmersibleMiddle, true);
+                            log("Auto Driving Path: SubMiddle");
+                        } else if (SubsystemData.CurrentRobotPose.position.y > tiles(1)) {
+                            drive.followPath(PathToSubmersibleTop, true);
+                            log("Auto Driving Path: SubTop");
+                        } else {
+                            drive.followPath(PathToSubmersibleBottom, true);
+                            log("Auto Driving Path: SubBottom");
+                        }
+                    case 1: // Human Player
+                        if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(1, -1), new Vector2d(-1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
+                            drive.followPath(PathToHumanPlayerTop, true);
+                            log("Auto Driving Path: HumanTop");
+                        } else {
+                            drive.followPath(PathToHumanPlayerBottom, true);
+                            log("Auto Driving Path: HumanBottom");
+                        }
+                    case 2: // Chamber
+                        if (SubsystemData.CurrentRobotPose.position.y < tiles(-1) && SubsystemData.CurrentRobotPose.position.x > tiles(-0.6) && SubsystemData.CurrentRobotPose.position.x < tiles(0.6)) {
+                            drive.followPath(PathToChamberMiddle, true);
+                            log("Auto Driving Path: ChamberMiddle");
+                        } else if (SubsystemData.CurrentRobotPose.position.x < tiles(-0.6)) {
+                            drive.followPath(PathToChamberLeft, true);
+                            log("Auto Driving Path: ChamberLeft");
+                        } else {
+                            drive.followPath(PathToChamberRight, true);
+                            log("Auto Driving Path: ChamberRight");
+                        }
+                    case 3: // Basket
+                        if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(-1, -1), new Vector2d(1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
+                            drive.followPath(PathToBasketTop, true);
+                            log("Auto Driving Path: BasketTop");
+                        } else {
+                            drive.followPath(PathToBasketBottom, true);
+                            log("Auto Driving Path: BasketBottom");
+                        }
                 }
             }
-        }
-         */
 
-        // convert to vector and normalize values to make it easier for the driver to control
-        double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
-        double joystickMagnitude = Math.hypot(strafe, forward);
-        double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude; //  Math.pow(joystickMagnitude, 3)
+            SubsystemData.AutoDriving = true;
+            headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
+            SubsystemData.OverrideDrivetrainRotation = false;
+            SubsystemData.HoldClawFieldPos = false;
+
+            SubsystemData.AutoDrivingPower = functions.deadZoneNormalized(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER), 0.1);
+
+        } else { // Not Auto Driving
+            if (SubsystemData.AutoDriving) drive.startTeleopDrive();
+            SubsystemData.AutoDriving = false;
 
 
-        if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;
+            // convert to vector and normalize values to make it easier for the driver to control
+            double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
+            double joystickMagnitude = Math.hypot(strafe, forward);
+            double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude; //  Math.pow(joystickMagnitude, 3)
 
 
-        if (!functions.inUse(turn) && !SubsystemData.NeedToRealignHeadingHold) { // hold robot orientation or point at claw target when driver isn't driving
-            if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
+            if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;
+
+
+            if (!functions.inUse(turn) && !SubsystemData.NeedToRealignHeadingHold) { // hold robot orientation or point at claw target when driver isn't driving
+                if (functions.inUse(SubsystemData.OperatorTurningPower) && !functions.inUse(forward) && !functions.inUse(strafe)) {
+                    sinceLastTurnInputTimer.reset();
+                    turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
+                    headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
+                    SubsystemData.HoldClawFieldPos = false;
+
+                } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 500 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
+                    // otherwise hold current heading if no driver input for some time and imu is working
+                    // auto aim
+                    //if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
+                    if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
+
+                    // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
+                    if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) HeadingTargetPID.minDifference = 3;
+                    else HeadingTargetPID.minDifference = 0.5;
+
+                    turn = -1 * HeadingTargetPID.getPowerWrapped(headingHold, 360);
+
+                } else headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
+
+            } else {
                 sinceLastTurnInputTimer.reset();
-                turn = SubsystemData.OperatorTurningPower; // operator can turn robot if driver isn't currently
+                SubsystemData.OverrideDrivetrainRotation = false;
+                turn = turn * throttleControl;
                 headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
                 SubsystemData.HoldClawFieldPos = false;
+            }
 
-            } else if (SubsystemData.IMUWorking && sinceLastTurnInputTimer.time() > 500 && SubsystemData.absoluteDriving) { // also disables heading correction with absolute driving
-                // otherwise hold current heading if no driver input for some time and imu is working
-                // auto aim
-                //if (SubsystemData.OverrideDrivetrainRotation) headingHold = headingHold - SubsystemData.AutoAimHeading;
-                if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
+            SubsystemData.HeadHoldTarget = headingHold;
 
-                // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
-                if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) HeadingTargetPID.minDifference = 3;
-                else HeadingTargetPID.minDifference = 0.5;
+            driveDirection = functions.angleDifference(0, driveDirection - heading + 90, 360);
 
-                turn = -1 * HeadingTargetPID.getPowerWrapped(headingHold, 360);
+            double strafeControl = -1 * Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl;
 
-            } else headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble()); // keep heading hold updating while robot finishes rotating from manual control
+            // convert vector to x and y and multiple by throttle (i think i switched forward and strafe by accident like 20 years ago)
+            drive.setTeleOpMovementVectors(
+                    Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
+                    strafeControl,
+                    turn /* + strafeControl * Constants.strafeRotationGain */ );
 
-        } else {
-            sinceLastTurnInputTimer.reset();
-            SubsystemData.OverrideDrivetrainRotation = false;
-            turn = turn * throttleControl;
-            headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
-            SubsystemData.HoldClawFieldPos = false;
+
         }
-
-        SubsystemData.HeadHoldTarget = headingHold;
-
-        driveDirection = functions.angleDifference(0, driveDirection - heading + 90, 360);
-
-        double strafeControl = -1 * Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl;
-
-        // convert vector to x and y and multiple by throttle (i think i switched forward and strafe by accident like 20 years ago)
-        drive.setTeleOpMovementVectors(
-                Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
-                strafeControl,
-                turn /* + strafeControl * Constants.strafeRotationGain */ );
 
         drive.update();
 
         SubsystemData.DrivetrainLoopTime = DifferentialSwerveTimer.time(); // logs time it took to run from top to bottom
+    }
+
+
+    public static void setAutoPathToSubmersible() {
+        SubsystemData.CurrentPathSetting = 0;
+        SubsystemData.AutoDriving = false;
+    }
+    public static void setAutoPathToHumanPlayer() {
+        SubsystemData.CurrentPathSetting = 1;
+        SubsystemData.AutoDriving = false;
+    }
+    public static void setAutoPathToChamber() {
+        SubsystemData.CurrentPathSetting = 2;
+        SubsystemData.AutoDriving = false;
+    }
+    public static void setAutoPathToBasket() {
+        SubsystemData.CurrentPathSetting = 3;
+        SubsystemData.AutoDriving = false;
     }
 
 }

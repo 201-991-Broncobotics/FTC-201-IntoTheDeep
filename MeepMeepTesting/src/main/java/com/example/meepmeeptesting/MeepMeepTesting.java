@@ -54,6 +54,17 @@ public class MeepMeepTesting {
         AccelConstraint SlowDownAccelConstraint = new ProfileAccelConstraint(-30.0, 30.0);
 
 
+        myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(1.7, -0.8))
+                .splineToConstantHeading(tileCoords(0.8, -1.7), Math.toRadians(180))
+                .strafeToConstantHeading(tileCoords(-1.1, -1.7))
+                .splineToLinearHeading(new Pose2d(tileCoords(-1.1, 0), Math.toRadians(0)), Math.toRadians(0))
+
+
+                .build());
+
+
+        /*
 
         myBot.runAction(myBot.getDrive().actionBuilder(startPose1)
                 .strafeToConstantHeading(tileCoords(0.25, -1.3))
@@ -90,6 +101,8 @@ public class MeepMeepTesting {
                 .build());
 
 
+
+         */
 
 
 

@@ -316,7 +316,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
             powers = new PoseVelocity2d(powers.linearVel, 0);
         }
 
-        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, functions.capValue(powers.angVel, Settings.maxDrivetrainTurnPower), 1);
+        diffySwerve.driveDifferentialSwerve(powers.linearVel.y, powers.linearVel.x, functions.capValue(powers.angVel, Settings.maxDrivetrainTurnPower), SubsystemData.AutoDrivingPower);
     }
 
     public final class FollowTrajectoryAction implements Action {

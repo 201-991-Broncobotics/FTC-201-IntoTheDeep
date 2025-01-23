@@ -5,8 +5,8 @@ import com.acmerobotics.dashboard.config.Config;
 @Config
 public class Settings {
 
-    public static double maxDrivetrainMotorPower = 0.85;
-    public static double maxDrivetrainTurnPower = 0.8;
+    public static double maxDrivetrainMotorPower = 0.85; // percent
+    public static double maxDrivetrainTurnPower = 0.7;
     public static double controllerDeadZone = 0.025;
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
     public static double SwerveMinimumPower = 0.05;
@@ -14,21 +14,21 @@ public class Settings {
     public static double HuskyLensTargetX = 160;
     public static double HuskyLensTargetY = 70; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
-    public static double DriveExtensionDriveReduction = 0.25;
+    public static double DriveExtensionDriveReduction = 0.2;
     public static double DriveExtensionTurnReduction = 0;
 
     @Config
     public static class ArmSystemSettings {
 
         public static double minimumPivotSpeedPercent = 0.4; // for when extension is fully extended
-        public static double pivotMaxAngle = 90; // degrees
+        public static double pivotMaxAngle = 100; // degrees
         public static double maxManualClawSpeedVertical = 700;
         public static double maxManualClawSpeedHorizontal = 600; // mm per second
         public static double maxManualExtensionSpeed = 750;
         public static double maxManualPivotSpeed = 70;
-        public static double maxCameraTargetingSpeed = 300;
+        public static double maxCameraTargetingSpeed = 250;
         public static double maxCameraTargetingSpeedSquared = 0;
-        public static double maxCameraTargetingTurnSpeed = 0.7; // mm, percent
+        public static double maxCameraTargetingTurnSpeed = 0.5; // mm, percent
         public static double pivotRetractedGravityPower = 0.156;
         public static double pivotExtendedGravityPower = 0.3;
         public static double extensionGravityPower = 0.166;
@@ -39,12 +39,12 @@ public class Settings {
         public static double WristServoOffset = 0;
         public static double WristFloorAngle = 220;
         public static boolean WristServoReversed = true;
-        public static double OperatorTurnOverridePower = 0.5;
+        public static double OperatorTurnOverridePower = 0.2;
         public static double ClawServoRatio = 1.4;
         public static double ClawOpenPosition = 150; // degrees (0.5)
         public static double ClawClosedPosition = ClawOpenPosition + 220; // degrees (0.85)
         public static double ChamberPresetPivotAngle = 67.5;
-        public static double ChamberPresetExtensionLength = 190;
+        public static double ChamberPresetExtensionLength = 200;
         public static double PivotBacklashMaxAngle = 82;
         public static double loosenClawAngle = 10;
         public static double HumanPlayerPresetPivotAngle = 72;

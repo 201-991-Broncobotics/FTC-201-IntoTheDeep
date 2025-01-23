@@ -61,6 +61,15 @@ public class TelemetryLogger {
                 telemetry.addData("Log " + (i + 1) + ":" + (Math.round(loggedTimes.get(i)) / 1000) + " - ", loggedMessages.get(i));
             }
         }
+    }
+
+    public static void addLogsToTelemetryAndReset(Telemetry telemetry) {
+        if (loggedTimes.isEmpty()) telemetry.addLine("Nothing logged");
+        else {
+            for (int i = 0; i < loggedTimes.size(); i++) {
+                telemetry.addData("Log " + (i + 1) + ":" + (Math.round(loggedTimes.get(i)) / 1000) + " - ", loggedMessages.get(i));
+            }
+        }
         logReset();
     }
 }

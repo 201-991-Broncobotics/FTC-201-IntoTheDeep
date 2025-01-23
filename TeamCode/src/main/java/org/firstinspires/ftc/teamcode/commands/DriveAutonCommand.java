@@ -39,6 +39,7 @@ public class DriveAutonCommand extends CommandBase {
 
         SubsystemData.repeatForwardBack = false; // make sure this is off if not specifically needed
         SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
+        SubsystemData.AutoDrivingPower = 1;
     }
 
 
@@ -50,6 +51,7 @@ public class DriveAutonCommand extends CommandBase {
         TelemetryPacket packet = new TelemetryPacket();
 
         SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
+        SubsystemData.AutoDrivingPower = 1;
 
         // update running actions
         List<Action> newActions = new ArrayList<>();

@@ -243,6 +243,8 @@ public class RightPickupSpecimen extends CommandOpMode {
                         armSystem.Wait(0.5)
                 ));
 
+        SubsystemData.eligibleForAutoDriving = true;
+
         telemetry.addLine("Auton Ready");
         telemetry.update();
     }
