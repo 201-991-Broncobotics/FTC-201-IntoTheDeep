@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.config.Config;
 
+import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSettingsReference;
+
 @Config
 public class Settings {
 
@@ -16,6 +18,8 @@ public class Settings {
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
     public static double DriveExtensionDriveReduction = 0.2;
     public static double DriveExtensionTurnReduction = 0;
+    public static double PhotonCacheTolerance = 0.01;
+    public static long PhotonRefreshRate = Math.round(1000 / 30.0);
 
     @Config
     public static class ArmSystemSettings {
@@ -48,21 +52,44 @@ public class Settings {
         public static double PivotBacklashMaxAngle = 82;
         public static double loosenClawAngle = 10;
         public static double HumanPlayerPresetPivotAngle = 72;
+
+        public static PIDControllerSettingsReference ExtensionReference = new PIDControllerSettingsReference(
+                0.018,
+                0,
+                0.0005,
+                0,
+                Constants.extensionMaxLength,
+                0,
+                1,
+                0,
+                0,
+                696,
+                15,
+                0,
+                0,
+                true,
+                false);
+
+        public static PIDControllerSettingsReference PivotReference = new PIDControllerSettingsReference(
+                0.06,
+                0,
+                0,
+                0,
+                ArmSystemSettings.pivotMaxAngle,
+                0,
+                1,
+                0,
+                0,
+                180,
+                3,
+                0,
+                0,
+                true,
+                true);
     }
 
-    @Config
-    public static class ExtensionPIDVariables{
-        public static double kP = 0.018;
-        public static double kI = 0;
-        public static double kD = 0.0005;
-    }
-    @Config
-    public static class PivotPIDVariables{
-        public static double kP = 0.06;
-        public static double kI = 0;
-        public static double kD = 0;
-        public static double maxSpeed = 180;
-    }
+
+
     @Config
     public static class HeadingPIDVariables{
         public static double kP = 0.008;

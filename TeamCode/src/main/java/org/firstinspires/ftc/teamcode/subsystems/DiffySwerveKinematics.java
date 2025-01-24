@@ -6,6 +6,7 @@ import com.acmerobotics.roadrunner.PoseVelocity2dDual;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonAdvancedDcMotor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
@@ -44,6 +45,12 @@ public class DiffySwerveKinematics extends SubsystemBase {
         telemetry.update();
 
         driveCommand = new PoseVelocity2d(new Vector2d(0, 0), 0);
+    }
+
+
+    public void switchToPhotonAdvancedDcMotors(PhotonAdvancedDcMotor newLeftTopPhoton, PhotonAdvancedDcMotor newLeftBottomPhoton, PhotonAdvancedDcMotor newRightBottomPhoton, PhotonAdvancedDcMotor newRightTopPhoton) {
+        rightModule.usePhotonAdvancedDcMotors(newRightTopPhoton, newRightBottomPhoton);
+        leftModule.usePhotonAdvancedDcMotors(newLeftTopPhoton, newLeftBottomPhoton);
     }
 
 

@@ -41,9 +41,9 @@ public class ResetSwerveWheelsOpMode extends CommandOpMode {
         telemetry.addLine("Swerve Wheels and Wrist have been reset successfully");
         telemetry.update();
 
-        functions.Sleep(500);
+        // functions.Sleep(500);
 
-        requestOpModeStop();
+        // requestOpModeStop();
 
         waitForStart();
 

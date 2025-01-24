@@ -64,15 +64,15 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart3 = drive.actionBuilder(PushPresetSamplesPart2.endPose())
                 .strafeToConstantHeading(tileCoords(2.05, -1.1))
-                .splineToConstantHeading(tileCoords(2.7, -0.6), Math.toRadians(0))
+                .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(0))
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart4 = drive.actionBuilder(PushPresetSamplesPart3.endPose())
-                .strafeToConstantHeading(tileCoords(2.6, -2.4))
+                .strafeToConstantHeading(tileCoords(2.5, -2.4))
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
-                .strafeToConstantHeading(tileCoords(2.4, -2.3))
+                .strafeToConstantHeading(tileCoords(2.3, -2.3))
                 .strafeToConstantHeading(tileCoords(2, -2.73));
 
         PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())

@@ -210,7 +210,6 @@ public class DriveCommand extends CommandBase {
         if (SubsystemData.eligibleForAutoDriving && functions.inUse(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) && !functions.inUse(forward) && !functions.inUse(strafe) && !functions.inUse(turn)) {
 
             if (!SubsystemData.AutoDriving) {
-                // drive.breakFollowing();
                 switch (SubsystemData.CurrentPathSetting) {
                     case 0: // Submersible
                         if (SubsystemData.CurrentRobotPose.position.x < tiles(-0.75) && SubsystemData.CurrentRobotPose.position.y > tiles(-1) && SubsystemData.CurrentRobotPose.position.y < tiles(1)) {
@@ -223,6 +222,7 @@ public class DriveCommand extends CommandBase {
                             drive.followPath(PathToSubmersibleBottom, true);
                             log("Auto Driving Path: SubBottom");
                         }
+                        break;
                     case 1: // Human Player
                         if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(1, -1), new Vector2d(-1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
                             drive.followPath(PathToHumanPlayerTop, true);
@@ -231,6 +231,7 @@ public class DriveCommand extends CommandBase {
                             drive.followPath(PathToHumanPlayerBottom, true);
                             log("Auto Driving Path: HumanBottom");
                         }
+                        break;
                     case 2: // Chamber
                         if (SubsystemData.CurrentRobotPose.position.y < tiles(-1) && SubsystemData.CurrentRobotPose.position.x > tiles(-0.6) && SubsystemData.CurrentRobotPose.position.x < tiles(0.6)) {
                             drive.followPath(PathToChamberMiddle, true);
@@ -242,6 +243,7 @@ public class DriveCommand extends CommandBase {
                             drive.followPath(PathToChamberRight, true);
                             log("Auto Driving Path: ChamberRight");
                         }
+                        break;
                     case 3: // Basket
                         if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(-1, -1), new Vector2d(1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
                             drive.followPath(PathToBasketTop, true);
@@ -250,6 +252,7 @@ public class DriveCommand extends CommandBase {
                             drive.followPath(PathToBasketBottom, true);
                             log("Auto Driving Path: BasketBottom");
                         }
+                        break;
                 }
             }
 

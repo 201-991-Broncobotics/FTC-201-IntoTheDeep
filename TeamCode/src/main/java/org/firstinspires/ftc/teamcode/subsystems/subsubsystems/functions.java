@@ -143,8 +143,8 @@ public class functions {
 
 
     public static boolean isPointAboveLine(Vector2d point, Vector2d linePoint1, Vector2d linePoint2) {
-        return ((linePoint2.y - linePoint1.y) / (linePoint2.x - linePoint1.x)
-                * (point.x - linePoint1.x) + linePoint1.y) <= 0;
+        return (((linePoint2.y - linePoint1.y) / (linePoint2.x - linePoint1.x)
+                * (point.x - linePoint1.x) + linePoint1.y) - point.y) <= 0;
     }
 
 }

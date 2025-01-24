@@ -4,6 +4,7 @@ import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonAdvancedDcMotor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
@@ -17,9 +18,13 @@ public class SwerveModule {
 
     private final DcMotorEx topMotor, bottomMotor;
 
+    private PhotonAdvancedDcMotor topMotorAdv, bottomMotorAdv;
+
     private double ModuleZeroAngle;
 
     private double targetAngle;
+
+    private boolean usePhoton = false;
 
 
     public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle) { // initialize the module
@@ -30,6 +35,13 @@ public class SwerveModule {
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
         modulePID = new PIDController(0, 0, 0, topMotorEncoder);
         modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
+    }
+
+
+    public void usePhotonAdvancedDcMotors(PhotonAdvancedDcMotor newTopMotorAdv, PhotonAdvancedDcMotor newBottomMotorAdv) {
+        topMotorAdv = newTopMotorAdv;
+        bottomMotorAdv = newBottomMotorAdv;
+        usePhoton = true;
     }
 
 
@@ -59,14 +71,25 @@ public class SwerveModule {
         double R2Power = -1 * speed + rotation;
         double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
 
-        topMotor.setPower(-1 * R1Power / divider);
-        bottomMotor.setPower(-1 * R2Power / divider);
+        if (usePhoton) {
+            topMotorAdv.setPower(-1 * R1Power / divider);
+            bottomMotorAdv.setPower(-1 * R2Power / divider);
+        } else {
+            topMotor.setPower(-1 * R1Power / divider);
+            bottomMotor.setPower(-1 * R2Power / divider);
+        }
+
     }
 
 
     public void fullStopModule() {
-        topMotor.setPower(0);
-        bottomMotor.setPower(0);
+        if (usePhoton) {
+            topMotorAdv.setPower(0);
+            bottomMotorAdv.setPower(0);
+        } else {
+            topMotor.setPower(0);
+            bottomMotor.setPower(0);
+        }
     }
 
 

@@ -33,10 +33,6 @@ public class ResetWristServoOpMode extends CommandOpMode {
         telemetry.addLine("Wrist have been reset successfully");
         telemetry.update();
 
-        functions.Sleep(500);
-
-        requestOpModeStop();
-
         waitForStart();
 
         requestOpModeStop();

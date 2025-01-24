@@ -9,6 +9,8 @@ import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonAdvancedDcMotor;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -62,7 +64,8 @@ ArmSystem is setup in a few sections:
  */
 public class ArmSystem extends SubsystemBase {
 
-    private DcMotorEx Pivot, ExtensionF, ExtensionB, PivotEncoder; // for some reason wants final?
+    private PhotonDcMotor Pivot, ExtensionF, ExtensionB, PivotEncoder; // for some reason wants final?
+    private PhotonAdvancedDcMotor PivotAdv, ExtensionFAdv, ExtensionBAdv;
     private final Servo Wrist, Claw;
     private final PIDController PivotPID, ExtensionPID;
 
@@ -113,20 +116,32 @@ public class ArmSystem extends SubsystemBase {
 
 
     public ArmSystem(HardwareMap map, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
-        Pivot = map.get(DcMotorEx.class, "Pivot");
-        ExtensionF = map.get(DcMotorEx.class, "ExtensionF");
-        ExtensionB = map.get(DcMotorEx.class, "ExtensionB");
-        PivotEncoder = map.get(DcMotorEx.class, "PivotEncoder");
+        Pivot = (PhotonDcMotor) map.get(DcMotorEx.class, "Pivot");
+        ExtensionF = (PhotonDcMotor) map.get(DcMotorEx.class, "ExtensionF");
+        ExtensionB = (PhotonDcMotor) map.get(DcMotorEx.class, "ExtensionB");
+        PivotEncoder = (PhotonDcMotor) map.get(DcMotorEx.class, "PivotEncoder");
+
         ExtensionF.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         ExtensionF.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         Pivot.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         Pivot.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         PivotEncoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         PivotEncoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        PivotAdv = new PhotonAdvancedDcMotor(Pivot); // Photon thing that optimises writes to make the code faster
+        ExtensionFAdv = new PhotonAdvancedDcMotor(ExtensionF);
+        ExtensionBAdv = new PhotonAdvancedDcMotor(ExtensionB);
+        PivotAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        ExtensionFAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        ExtensionBAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        PivotAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+        ExtensionFAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+        ExtensionBAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
         ClawTargetPosition = Settings.ArmSystemSettings.ClawOpenPosition; // open claw
-        WristTargetAngle = 0; // claw can't point straight up when arm is down anymore because of the hook
+        WristTargetAngle = 0;
         lastWristAngle = WristTargetAngle;
 
         SubsystemData.HoldClawFieldPos = false; // makes sure this is off on startup
@@ -147,26 +162,30 @@ public class ArmSystem extends SubsystemBase {
 
         telemetry = inputTelemetry;
 
-        PivotPID = new PIDController(Settings.PivotPIDVariables.kP, Settings.PivotPIDVariables.kI, Settings.PivotPIDVariables.kD,
-                0, Settings.ArmSystemSettings.pivotMaxAngle, 0, 1, 0, 0,
-                Settings.PivotPIDVariables.maxSpeed, 3, true, true, CurrentPivotAngle);
-        ExtensionPID = new PIDController(Settings.ExtensionPIDVariables.kP, Settings.ExtensionPIDVariables.kI,
-                Settings.ExtensionPIDVariables.kD, 1, Constants.extensionMaxLength, 0,
-                1, 0, 0, 0, 15, true, false,
-                CurrentExtensionLength);
+        PivotPID = new PIDController(Settings.ArmSystemSettings.PivotReference.kP, Settings.ArmSystemSettings.PivotReference.kI, Settings.ArmSystemSettings.PivotReference.kD, CurrentPivotAngle);
+                //.setPositionLimiter(0, Settings.ArmSystemSettings.pivotMaxAngle)
+                //.setSpeedLimiter(Settings.PivotPIDVariables.maxSpeed, 0, 0)
+                //.setTolerance(3);
+
+        ExtensionPID = new PIDController(Settings.ArmSystemSettings.ExtensionReference.kP, Settings.ArmSystemSettings.ExtensionReference.kI, Settings.ArmSystemSettings.ExtensionReference.kD, CurrentExtensionLength);
+                //.setPositionLimiter(0, Constants.extensionMaxLength)
+                //.setTolerance(15);
+
+        PivotPID.setSettingsTheSameAs(Settings.ArmSystemSettings.PivotReference);
+        ExtensionPID.setSettingsTheSameAs(Settings.ArmSystemSettings.ExtensionReference);
     }
 
 
     public void resetAndPrepareArm() {
         if (!SubsystemData.alreadyAlignedArm) { // avoids resetting zeros if that has already happened while the robot was on
             // reset Extension and Pivot to make sure the backlash doesn't get in the way
-            ExtensionF.setPower(-0.3);
-            ExtensionB.setPower(-0.3);
-            Pivot.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
+            ExtensionFAdv.setPower(-0.3);
+            ExtensionBAdv.setPower(-0.3);
+            PivotAdv.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
             functions.Sleep(700);
-            ExtensionF.setPower(0);
-            ExtensionB.setPower(0);
-            Pivot.setPower(0);
+            ExtensionFAdv.setPower(0);
+            ExtensionBAdv.setPower(0);
+            PivotAdv.setPower(0);
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
@@ -276,13 +295,8 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addData("Schrödinger's Encoder", SubsystemData.brokenDiffyEncoder.getCurrentPosition());
 
         // Makes sure any changes to pid variables get applied to the actual pids
-        ExtensionPID.kP = Settings.ExtensionPIDVariables.kP;
-        ExtensionPID.kI = Settings.ExtensionPIDVariables.kI;
-        ExtensionPID.kD = Settings.ExtensionPIDVariables.kD;
-        PivotPID.kP = Settings.PivotPIDVariables.kP;
-        PivotPID.kI = Settings.PivotPIDVariables.kI;
-        PivotPID.kD = Settings.PivotPIDVariables.kD;
-        PivotPID.maxSpeed = Settings.PivotPIDVariables.maxSpeed;
+        PivotPID.setSettingsTheSameAs(Settings.ArmSystemSettings.PivotReference);
+        ExtensionPID.setSettingsTheSameAs(Settings.ArmSystemSettings.ExtensionReference);
 
 
         // this speeds up the code a lot by only checking sensors once per update
@@ -431,7 +445,7 @@ public class ArmSystem extends SubsystemBase {
             PivotPower = 0;
         }
 
-        Pivot.setPower(PivotPower);
+        PivotAdv.setPower(PivotPower);
 
 
 
@@ -447,23 +461,23 @@ public class ArmSystem extends SubsystemBase {
         }
 
         if (activeExtensionReset) { // reset extension length
-            ExtensionF.setPower(-0.3);
-            ExtensionB.setPower(-0.3);
-            Pivot.setPower(-0.4);
+            ExtensionFAdv.setPower(-0.3);
+            ExtensionBAdv.setPower(-0.3);
+            PivotAdv.setPower(-0.4);
             PivotTargetAngle = 0;
             ExtensionTargetLength = -2;
             readyToResetArm = true;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
-            ExtensionF.setPower(0.25);
-            ExtensionB.setPower(0.25);
+            ExtensionFAdv.setPower(0.25);
+            ExtensionBAdv.setPower(0.25);
         } else if (readyToResetArm) {
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             readyToResetArm = false;
         } else {
-            ExtensionF.setPower(ExtensionPower);
-            ExtensionB.setPower(ExtensionPower);
+            ExtensionFAdv.setPower(ExtensionPower);
+            ExtensionBAdv.setPower(ExtensionPower);
         }
 
 
@@ -597,14 +611,14 @@ public class ArmSystem extends SubsystemBase {
 
             switch (PIDVar) {
                 case 0: break; // prevents checking the entire list if not editing PIDs
-                case 1: Settings.ExtensionPIDVariables.kP = functions.round(Settings.ExtensionPIDVariables.kP + PIDChangeIncrement, 4); break;
-                case 2: Settings.ExtensionPIDVariables.kI = functions.round(Settings.ExtensionPIDVariables.kI + PIDChangeIncrement, 4); break;
-                case 3: Settings.ExtensionPIDVariables.kD = functions.round(Settings.ExtensionPIDVariables.kD + PIDChangeIncrement, 4); break;
+                case 1: Settings.ArmSystemSettings.ExtensionReference.kP = functions.round(Settings.ArmSystemSettings.ExtensionReference.kP + PIDChangeIncrement, 4); break;
+                case 2: Settings.ArmSystemSettings.ExtensionReference.kI = functions.round(Settings.ArmSystemSettings.ExtensionReference.kI + PIDChangeIncrement, 4); break;
+                case 3: Settings.ArmSystemSettings.ExtensionReference.kD = functions.round(Settings.ArmSystemSettings.ExtensionReference.kD + PIDChangeIncrement, 4); break;
                 case 4: Settings.ArmSystemSettings.extensionGravityPower = functions.round(Settings.ArmSystemSettings.extensionGravityPower + PIDChangeIncrement * 10, 3); break;
-                case 5: Settings.PivotPIDVariables.kP = functions.round(Settings.PivotPIDVariables.kP + PIDChangeIncrement, 4); break;
-                case 6: Settings.PivotPIDVariables.kI = functions.round(Settings.PivotPIDVariables.kI + PIDChangeIncrement, 4); break;
-                case 7: Settings.PivotPIDVariables.kD = functions.round(Settings.PivotPIDVariables.kD + PIDChangeIncrement, 4); break;
-                case 8: Settings.PivotPIDVariables.maxSpeed = functions.round(Settings.PivotPIDVariables.maxSpeed + PIDChangeIncrement * 1000, 1); break;
+                case 5: Settings.ArmSystemSettings.PivotReference.kP = functions.round(Settings.ArmSystemSettings.PivotReference.kP + PIDChangeIncrement, 4); break;
+                case 6: Settings.ArmSystemSettings.PivotReference.kI = functions.round(Settings.ArmSystemSettings.PivotReference.kI + PIDChangeIncrement, 4); break;
+                case 7: Settings.ArmSystemSettings.PivotReference.kD = functions.round(Settings.ArmSystemSettings.PivotReference.kD + PIDChangeIncrement, 4); break;
+                case 8: Settings.ArmSystemSettings.PivotReference.maxSpeed = functions.round(Settings.ArmSystemSettings.PivotReference.maxSpeed + PIDChangeIncrement * 1000, 1); break;
                 case 9: Settings.ArmSystemSettings.pivotRetractedGravityPower = functions.round(Settings.ArmSystemSettings.pivotRetractedGravityPower + PIDChangeIncrement * 10, 3); break;
                 case 10: Settings.ArmSystemSettings.pivotExtendedGravityPower = functions.round(Settings.ArmSystemSettings.pivotExtendedGravityPower + PIDChangeIncrement * 10, 3); break;
                 case 11: Settings.HeadingPIDVariables.kP = functions.round(Settings.HeadingPIDVariables.kP + PIDChangeIncrement / 10, 5); break;
@@ -634,14 +648,14 @@ public class ArmSystem extends SubsystemBase {
         }
         switch (PIDVar) {
             case 0: telemetry.addLine("Not Editing PIDs"); break;
-            case 1: telemetry.addData("Editing: Extension Kp -", Settings.ExtensionPIDVariables.kP); break;
-            case 2: telemetry.addData("Editing: Extension Ki -", Settings.ExtensionPIDVariables.kI); break;
-            case 3: telemetry.addData("Editing: Extension Kd -", Settings.ExtensionPIDVariables.kD); break;
+            case 1: telemetry.addData("Editing: Extension Kp -", Settings.ArmSystemSettings.ExtensionReference.kP); break;
+            case 2: telemetry.addData("Editing: Extension Ki -", Settings.ArmSystemSettings.ExtensionReference.kI); break;
+            case 3: telemetry.addData("Editing: Extension Kd -", Settings.ArmSystemSettings.ExtensionReference.kD); break;
             case 4: telemetry.addData("Editing: Extension Gravity -", Settings.ArmSystemSettings.extensionGravityPower); break;
-            case 5: telemetry.addData("Editing: Pivot Kp -", Settings.PivotPIDVariables.kP); break;
-            case 6: telemetry.addData("Editing: Pivot Ki -", Settings.PivotPIDVariables.kI); break;
-            case 7: telemetry.addData("Editing: Pivot Kd -", Settings.PivotPIDVariables.kD); break;
-            case 8: telemetry.addData("Editing: Pivot maxSpeed -", Settings.PivotPIDVariables.maxSpeed); break;
+            case 5: telemetry.addData("Editing: Pivot Kp -", Settings.ArmSystemSettings.PivotReference.kP); break;
+            case 6: telemetry.addData("Editing: Pivot Ki -", Settings.ArmSystemSettings.PivotReference.kI); break;
+            case 7: telemetry.addData("Editing: Pivot Kd -", Settings.ArmSystemSettings.PivotReference.kD); break;
+            case 8: telemetry.addData("Editing: Pivot maxSpeed -", Settings.ArmSystemSettings.PivotReference.maxSpeed); break;
             case 9: telemetry.addData("Editing: Pivot Retracted Gravity -", Settings.ArmSystemSettings.pivotRetractedGravityPower); break;
             case 10: telemetry.addData("Editing: Pivot Extended Gravity -", Settings.ArmSystemSettings.pivotExtendedGravityPower); break;
             case 11: telemetry.addData("Editing: Heading Kp (*10) -", Settings.HeadingPIDVariables.kP * 10); break; // addData only prints doubles up to 4 decimal places

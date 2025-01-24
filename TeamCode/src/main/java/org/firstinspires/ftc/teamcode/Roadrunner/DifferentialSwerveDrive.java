@@ -40,6 +40,8 @@ import com.acmerobotics.roadrunner.ftc.OverflowEncoder;
 import com.acmerobotics.roadrunner.ftc.PositionVelocityPair;
 import com.acmerobotics.roadrunner.ftc.RawEncoder;
 import com.arcrobotics.ftclib.command.SubsystemBase;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonAdvancedDcMotor;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -128,7 +130,9 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
     public final AccelConstraint defaultAccelConstraint =
             new ProfileAccelConstraint(PARAMS.minProfileAccel, PARAMS.maxProfileAccel);
 
-    public final DcMotorEx leftFront, leftBack, rightBack, rightFront;
+    public final PhotonDcMotor leftFront, leftBack, rightBack, rightFront;
+
+    public PhotonAdvancedDcMotor leftFrontAdv, leftBackAdv, rightBackAdv, rightFrontAdv;
 
     public final VoltageSensor voltageSensor;
 
@@ -241,10 +245,10 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
 
         // TODO: make sure your config has motors with these names (or change them)
         //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
-        leftFront = hardwareMap.get(DcMotorEx.class, "R3");
-        leftBack = hardwareMap.get(DcMotorEx.class, "R4");
-        rightBack = hardwareMap.get(DcMotorEx.class, "R1");
-        rightFront = hardwareMap.get(DcMotorEx.class, "R2");
+        leftFront = (PhotonDcMotor) hardwareMap.get(DcMotorEx.class, "R3");
+        leftBack = (PhotonDcMotor) hardwareMap.get(DcMotorEx.class, "R4");
+        rightBack = (PhotonDcMotor) hardwareMap.get(DcMotorEx.class, "R1");
+        rightFront = (PhotonDcMotor) hardwareMap.get(DcMotorEx.class, "R2");
 
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -266,6 +270,19 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         //rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
+        leftFrontAdv = new PhotonAdvancedDcMotor(leftFront); // Photon stuff
+        leftBackAdv = new PhotonAdvancedDcMotor(leftBack);
+        rightBackAdv = new PhotonAdvancedDcMotor(rightBack);
+        rightFrontAdv = new PhotonAdvancedDcMotor(rightFront);
+        leftFrontAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        leftBackAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        rightBackAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        rightFrontAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
+        leftFrontAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+        leftBackAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+        rightBackAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+        rightFrontAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+
 
         SubsystemData.IMUWorking = true;
 
@@ -274,6 +291,7 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         // secretly initializing diffy alongside mecanum...
 
         diffySwerve = new DiffySwerveKinematics(leftFront, leftBack, rightBack, rightFront, Settings.maxDrivetrainMotorPower, telemetry);
+        diffySwerve.switchToPhotonAdvancedDcMotors(leftFrontAdv, leftBackAdv, rightBackAdv, rightFrontAdv);
 
         // TODO: reverse motor directions if needed
         //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
