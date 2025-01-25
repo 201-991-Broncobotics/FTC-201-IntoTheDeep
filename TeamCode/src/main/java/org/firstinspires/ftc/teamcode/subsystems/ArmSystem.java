@@ -9,8 +9,6 @@ import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
-import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonAdvancedDcMotor;
-import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -64,8 +62,8 @@ ArmSystem is setup in a few sections:
  */
 public class ArmSystem extends SubsystemBase {
 
-    private PhotonDcMotor Pivot, ExtensionF, ExtensionB, PivotEncoder; // for some reason wants final?
-    private PhotonAdvancedDcMotor PivotAdv, ExtensionFAdv, ExtensionBAdv;
+    private DcMotorEx Pivot, ExtensionF, ExtensionB, PivotEncoder; // for some reason wants final?
+    // private PhotonAdvancedDcMotor PivotAdv, ExtensionFAdv, ExtensionBAdv;
     private final Servo Wrist, Claw;
     private final PIDController PivotPID, ExtensionPID;
 
@@ -98,7 +96,7 @@ public class ArmSystem extends SubsystemBase {
 
     private double lastWristAngle;
     private double lastServoTravel = 0;
-    private boolean LoosenClaw = false, cameraToggle, activeExtensionReset = false, ClawWasLastOpen = true, readyToResetArm = false;
+    private boolean LoosenClaw = false, cameraToggle, activeExtensionReset = false, readyToResetArm = false;
 
     private int CurrentlyReadyPreset = 0; // allows pressing a preset button twice to complete the second part of its action
 
@@ -116,10 +114,10 @@ public class ArmSystem extends SubsystemBase {
 
 
     public ArmSystem(HardwareMap map, Telemetry inputTelemetry) { // Pivot, Extension, Claw, and Wrist initialization
-        Pivot = (PhotonDcMotor) map.get(DcMotorEx.class, "Pivot");
-        ExtensionF = (PhotonDcMotor) map.get(DcMotorEx.class, "ExtensionF");
-        ExtensionB = (PhotonDcMotor) map.get(DcMotorEx.class, "ExtensionB");
-        PivotEncoder = (PhotonDcMotor) map.get(DcMotorEx.class, "PivotEncoder");
+        Pivot = map.get(DcMotorEx.class, "Pivot");
+        ExtensionF = map.get(DcMotorEx.class, "ExtensionF");
+        ExtensionB = map.get(DcMotorEx.class, "ExtensionB");
+        PivotEncoder = map.get(DcMotorEx.class, "PivotEncoder");
 
         ExtensionF.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         ExtensionF.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -128,6 +126,7 @@ public class ArmSystem extends SubsystemBase {
         PivotEncoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         PivotEncoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
+        /*
         PivotAdv = new PhotonAdvancedDcMotor(Pivot); // Photon thing that optimises writes to make the code faster
         ExtensionFAdv = new PhotonAdvancedDcMotor(ExtensionF);
         ExtensionBAdv = new PhotonAdvancedDcMotor(ExtensionB);
@@ -137,6 +136,8 @@ public class ArmSystem extends SubsystemBase {
         PivotAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
         ExtensionFAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
         ExtensionBAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
+
+         */
 
         Claw = map.get(Servo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
@@ -179,13 +180,13 @@ public class ArmSystem extends SubsystemBase {
     public void resetAndPrepareArm() {
         if (!SubsystemData.alreadyAlignedArm) { // avoids resetting zeros if that has already happened while the robot was on
             // reset Extension and Pivot to make sure the backlash doesn't get in the way
-            ExtensionFAdv.setPower(-0.3);
-            ExtensionBAdv.setPower(-0.3);
-            PivotAdv.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
+            ExtensionF.setPower(-0.3);
+            ExtensionB.setPower(-0.3);
+            Pivot.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
             functions.Sleep(700);
-            ExtensionFAdv.setPower(0);
-            ExtensionBAdv.setPower(0);
-            PivotAdv.setPower(0);
+            ExtensionF.setPower(0);
+            ExtensionB.setPower(0);
+            Pivot.setPower(0);
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
@@ -283,7 +284,9 @@ public class ArmSystem extends SubsystemBase {
         SubsystemData.FrameRate = FrameRate;
         CommandFrameTime.reset();
         if (!SubsystemData.IMUWorking) telemetry.addLine("IMU HAS STOPPED RESPONDING");
-        if (!SubsystemData.eligibleForAutoDriving) telemetry.addLine("Auto Driving is not locked in");
+        if (!SubsystemData.LocalizationCoordsAligned[0] && !SubsystemData.LocalizationCoordsAligned[1]) telemetry.addLine("Auto Driving is not locked in");
+        else if (!SubsystemData.LocalizationCoordsAligned[0]) telemetry.addLine("Auto Driving: X needs to be aligned");
+        else if (!SubsystemData.LocalizationCoordsAligned[1]) telemetry.addLine("Auto Driving: Y needs to be aligned");
         telemetry.addData("Code FrameRate", FrameRate);
         telemetry.addData("Code Loop Time", 1 / FrameRate);
         //telemetry.addData("Arm System Loop Time", ArmLoopTime);
@@ -346,12 +349,12 @@ public class ArmSystem extends SubsystemBase {
 
                 double ExtensionInput = (SubsystemData.CameraTargetPixelsY / 120) / FrameRate;
                 double ExtensionPower = -1 * (Settings.ArmSystemSettings.maxCameraTargetingSpeed * ExtensionInput + Settings.ArmSystemSettings.maxCameraTargetingSpeedSquared * Math.abs(ExtensionInput) * ExtensionInput);
-                moveArmDirectly(PivotTargetAngle, ExtensionTargetLength + ExtensionPower);
+                moveArmDirectly(0, ExtensionTargetLength + ExtensionPower);
 
                 // slows down camera auto aim turn speed the further extension is extended
                 double CameraTargetingTurnThrottle = (Constants.pivotAxleOffset + Constants.retractedExtensionLength) / (Constants.pivotAxleOffset + Constants.retractedExtensionLength + CurrentExtensionLengthInst);
                 double AutoAimHeadingChange = CameraTargetingTurnThrottle * (SubsystemData.CameraTargetPixelsX / 160);
-                SubsystemData.OperatorTurningPower = 0.45 * AutoAimHeadingChange;
+                SubsystemData.OperatorTurningPower = Settings.ArmSystemSettings.OperatorDriveTurnPower * AutoAimHeadingChange;
             }
 
         } else if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
@@ -445,7 +448,7 @@ public class ArmSystem extends SubsystemBase {
             PivotPower = 0;
         }
 
-        PivotAdv.setPower(PivotPower);
+        Pivot.setPower(PivotPower);
 
 
 
@@ -461,23 +464,23 @@ public class ArmSystem extends SubsystemBase {
         }
 
         if (activeExtensionReset) { // reset extension length
-            ExtensionFAdv.setPower(-0.3);
-            ExtensionBAdv.setPower(-0.3);
-            PivotAdv.setPower(-0.4);
+            ExtensionF.setPower(-0.3);
+            ExtensionB.setPower(-0.3);
+            Pivot.setPower(-0.4);
             PivotTargetAngle = 0;
             ExtensionTargetLength = -2;
             readyToResetArm = true;
         } else if (PushForMaxExtension && CurrentExtensionLengthInst > 630 && CurrentPivotAngleInst > 75) {
-            ExtensionFAdv.setPower(0.25);
-            ExtensionBAdv.setPower(0.25);
+            ExtensionF.setPower(0.25);
+            ExtensionB.setPower(0.25);
         } else if (readyToResetArm) {
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
             CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             readyToResetArm = false;
         } else {
-            ExtensionFAdv.setPower(ExtensionPower);
-            ExtensionBAdv.setPower(ExtensionPower);
+            ExtensionF.setPower(ExtensionPower);
+            ExtensionB.setPower(ExtensionPower);
         }
 
 
@@ -819,6 +822,18 @@ public class ArmSystem extends SubsystemBase {
         }
     }
 
+    public void moveClawToTopRungAuto(double pivotModifier, double extensionModifier) {
+        SubsystemData.HoldClawFieldPos = false;
+        PushForMaxExtension = false;
+        OrthogonalMode = false;
+        backPedalExtension = true;
+        delayPivotMovement = false;
+        PivotTargetAngle = Settings.ArmSystemSettings.ChamberPresetPivotAngle + pivotModifier;
+        ExtensionTargetLength = Settings.ArmSystemSettings.ChamberPresetExtensionLength + extensionModifier;
+        WristTargetAngle = 180;
+        CurrentlyReadyPreset = 2;
+    }
+
 
     public void depositSpecimen() { // onto a rung - this is separate so it is easier to code auton
         ExtensionTargetLength = CurrentExtensionLengthInst + 130;
@@ -895,14 +910,14 @@ public class ArmSystem extends SubsystemBase {
     public void setClaw(double Angle) { Claw.setPosition((Angle / 360) * Settings.ArmSystemSettings.ClawServoRatio); }
     public void openClaw() {
         ClawTargetPosition = Settings.ArmSystemSettings.ClawOpenPosition;
-        ClawWasLastOpen = true;
+        SubsystemData.ClawWasLastOpen = true;
     }
     public void closeClaw() {
         ClawTargetPosition = Settings.ArmSystemSettings.ClawClosedPosition;
-        ClawWasLastOpen = false;
+        SubsystemData.ClawWasLastOpen = false;
     }
     public void toggleClaw() {
-        if (ClawWasLastOpen) closeClaw();
+        if (SubsystemData.ClawWasLastOpen) closeClaw();
         else openClaw();
     }
     public void enableLoosenClaw() { LoosenClaw = true; }
@@ -1015,7 +1030,11 @@ public class ArmSystem extends SubsystemBase {
                             PivotTargetAngle = (double) params.get(0);
                             break;
                         case "setServo":
-
+                            setClaw((double) params.get(0));
+                            break;
+                        case "moveClawToTopRungAuto":
+                            moveClawToTopRungAuto((double) params.get(0), (double) params.get(1));
+                            break;
                     }
                 } else {
                     NewAwaitingMethodCallingTimes.add(AwaitingMethodCallingTimes.get(i));

@@ -63,7 +63,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart3 = drive.actionBuilder(PushPresetSamplesPart2.endPose())
-                .strafeToConstantHeading(tileCoords(2.05, -1.1))
+                .strafeToConstantHeading(tileCoords(2.05, -1.2))
                 .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(0))
                 .setPathEndTimeoutConstraint(50);
 
@@ -152,9 +152,9 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("closeClaw"),
                         armSystem.RunMethod("setWristToStraight"),
                         armSystem.Wait(0.2),
-                        armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 185.0),
+                        armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 180.0),
                         DriveToChamber1.build(),
-                        armSystem.RunMethod("moveClawToTopRung"),
+                        armSystem.RunMethod("moveClawToTopRungAuto", 0.0, 0.0, -15.0),
                         PlaceSpecimen1,
                         armSystem.RunMethod("resetArm", 0.3),
                         PushPresetSamplesPart1.build(),
@@ -198,7 +198,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.Wait(0.5)
         ));
 
-        SubsystemData.eligibleForAutoDriving = true;
+        SubsystemData.LocalizationCoordsAligned = new boolean[]{true, true};
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

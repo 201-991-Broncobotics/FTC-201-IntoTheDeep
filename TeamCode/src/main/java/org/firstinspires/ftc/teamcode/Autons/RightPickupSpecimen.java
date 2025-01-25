@@ -33,6 +33,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import java.util.Arrays;
 
 
+@Disabled
 @Autonomous(name="RightPickupSpecimen")
 public class RightPickupSpecimen extends CommandOpMode {
 
@@ -243,7 +244,7 @@ public class RightPickupSpecimen extends CommandOpMode {
                         armSystem.Wait(0.5)
                 ));
 
-        SubsystemData.eligibleForAutoDriving = true;
+        SubsystemData.LocalizationCoordsAligned = new boolean[]{true, true};
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

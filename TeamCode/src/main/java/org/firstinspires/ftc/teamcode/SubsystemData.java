@@ -73,5 +73,6 @@ public class SubsystemData {
 
     public static double AutoDrivingPower = 1;
 
-    public static boolean eligibleForAutoDriving = false;
+    public static boolean[] LocalizationCoordsAligned = new boolean[] {false, false};
+    public static boolean ClawWasLastOpen = true;
 }

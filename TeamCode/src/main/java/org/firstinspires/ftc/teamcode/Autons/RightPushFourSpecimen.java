@@ -185,7 +185,7 @@ public class RightPushFourSpecimen extends CommandOpMode {
                         armSystem.Wait(0.5)
         ));
 
-        SubsystemData.eligibleForAutoDriving = true;
+        SubsystemData.LocalizationCoordsAligned = new boolean[]{true, true};
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

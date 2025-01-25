@@ -429,8 +429,8 @@ public class PedroTrajectoryActionBuilder {
         if (endConditions.isEmpty()) {
             endWhenDoneFollowing(); // default end condition
         }
-        return follower.followPathAction(currentPath.setPathEndTimeoutConstraint(FollowerConstants.pathEndTimeoutConstraint).build(), endConditions, OnlyRequireOneEndCondition);
-    }
+        return follower.followPathAction(currentPath.build(), endConditions, OnlyRequireOneEndCondition);
+    } // setPathEndTimeoutConstraint(FollowerConstants.pathEndTimeoutConstraint)
 
 
 }

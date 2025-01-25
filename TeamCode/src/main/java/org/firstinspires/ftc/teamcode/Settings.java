@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions.tiles;
+
 import com.acmerobotics.dashboard.config.Config;
 
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSettingsReference;
@@ -7,7 +9,7 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSett
 @Config
 public class Settings {
 
-    public static double maxDrivetrainMotorPower = 0.85; // percent
+    public static double maxDrivetrainMotorPower = 0.9; // percent
     public static double maxDrivetrainTurnPower = 0.7;
     public static double controllerDeadZone = 0.025;
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
@@ -18,8 +20,10 @@ public class Settings {
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
     public static double DriveExtensionDriveReduction = 0.2;
     public static double DriveExtensionTurnReduction = 0;
-    public static double PhotonCacheTolerance = 0.01;
-    public static long PhotonRefreshRate = Math.round(1000 / 30.0);
+    //public static double PhotonCacheTolerance = 0.01;
+    //public static long PhotonRefreshRate = Math.round(1000 / 30.0);
+    public static double DriverLocalizationCorrectionHoldTime = 1000; // ms
+    public static double LocalizationChamberResetY = tiles(-1.3), LocalizationRightResetX = tiles(2.75), LocalizationBottomResetY = tiles(-3) + 4.0, LocalizationLeftResetX = tiles(-2.75);
 
     @Config
     public static class ArmSystemSettings {
@@ -46,12 +50,13 @@ public class Settings {
         public static double OperatorTurnOverridePower = 0.2;
         public static double ClawServoRatio = 1.4;
         public static double ClawOpenPosition = 150; // degrees (0.5)
-        public static double ClawClosedPosition = ClawOpenPosition + 220; // degrees (0.85)
+        public static double ClawClosedPosition = 220; // degrees (0.85)
         public static double ChamberPresetPivotAngle = 67.5;
         public static double ChamberPresetExtensionLength = 200;
         public static double PivotBacklashMaxAngle = 82;
         public static double loosenClawAngle = 10;
         public static double HumanPlayerPresetPivotAngle = 72;
+        public static double OperatorDriveTurnPower = 0.35;
 
         public static PIDControllerSettingsReference ExtensionReference = new PIDControllerSettingsReference(
                 0.018,
@@ -68,7 +73,7 @@ public class Settings {
                 0,
                 0,
                 true,
-                false);
+                true);
 
         public static PIDControllerSettingsReference PivotReference = new PIDControllerSettingsReference(
                 0.06,
@@ -83,7 +88,7 @@ public class Settings {
                 180,
                 3,
                 0,
-                0,
+                -250,
                 true,
                 true);
     }
@@ -97,4 +102,16 @@ public class Settings {
         public static double kD = 0.0004;
         public static double minDifference = 0.25;
     }
+
+    @Config
+    public static class DriverAutoTargetCoords{
+        public static double BasketX = -2.45, BasketY = -2.4;
+
+        public static double HumanPickupX = 2.1, HumanPickupY = -2.5;
+        public static double HumanDropOffX = 2.1, HumanDropOffY = -2.2, HumanDropOffHeading = 315;
+
+        public static double SubmersibleX = -1.05, SubmersibleY = 0;
+
+    }
+
 }

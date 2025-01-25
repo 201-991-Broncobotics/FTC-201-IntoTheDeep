@@ -22,20 +22,26 @@ public class SwerveModule {
 
     private double ModuleZeroAngle;
 
-    private double targetAngle;
-
     private boolean usePhoton = false;
 
 
     public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle) { // initialize the module
         ModuleZeroAngle = startingAngle;
-        targetAngle = startingAngle;
         topMotor = newTopMotor;
         bottomMotor = newBottomMotor;
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
         modulePID = new PIDController(0, 0, 0, topMotorEncoder);
         modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
     }
+
+
+    public void zeroSwerveModule() {
+        topMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        topMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        ModuleZeroAngle = (topMotor.getCurrentPosition() / Constants.encoderResolution * 360);
+        modulePID.replaceDoubleSupplier(topMotorEncoder);
+    }
+
 
 
     public void usePhotonAdvancedDcMotors(PhotonAdvancedDcMotor newTopMotorAdv, PhotonAdvancedDcMotor newBottomMotorAdv) {
@@ -54,7 +60,6 @@ public class SwerveModule {
 
 
     public void setModule(double angle, double speed, double maxPowerLimit) {
-        targetAngle = angle;
         modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
         if (Settings.SwerveModuleDriveSharpness < 1) Settings.SwerveModuleDriveSharpness = 1;
 

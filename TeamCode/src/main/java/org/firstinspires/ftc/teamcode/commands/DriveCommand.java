@@ -17,10 +17,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
-import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.Path;
+import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathChain;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
-import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 public class DriveCommand extends CommandBase {
@@ -30,16 +29,17 @@ public class DriveCommand extends CommandBase {
 
     Follower drive; // now the implementation for pedro pathing driving
 
-    ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer, sinceLastTurnInputTimer;
+    ElapsedTime DifferentialSwerveTimer, imuNotWorkingTimer, sinceLastTurnInputTimer, LocalizationCorrectionTimer;
 
     Telemetry telemetry;
 
     PoseVelocity2d RobotVelocity;
-    double lastDriveVelocity = 0, lastTurnVelocity = 0;
 
-    private final PathChain PathToHumanPlayerTop, PathToHumanPlayerBottom,
-            PathToChamberRight, PathToChamberMiddle, PathToChamberLeft, PathToBasketTop, PathToBasketBottom,
-            PathToSubmersibleTop, PathToSubmersibleMiddle, PathToSubmersibleBottom;
+    private double DpadUpTime = 0, DpadRightTime = 0, DpadDownTime = 0, DpadLeftTime = 0;
+
+    private final PathChain PathToHumanPlayerTopPickup, PathToHumanPlayerBottomPickup, PathToHumanPlayerTopDropOff,
+            PathToHumanPlayerBottomDropOff, PathToChamberRight, PathToChamberMiddle, PathToChamberLeft,
+            PathToBasketTop, PathToBasketBottom, PathToSubmersibleTop, PathToSubmersibleMiddle, PathToSubmersibleBottom;
 
 
     public DriveCommand(Follower pedroPathingDrive, Telemetry inputTelemetry, boolean absoluteDrivingEnabled) {
@@ -61,22 +61,37 @@ public class DriveCommand extends CommandBase {
         DifferentialSwerveTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         imuNotWorkingTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
         sinceLastTurnInputTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+        LocalizationCorrectionTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
         SubsystemData.CurrentPedroPose = drive.getPose();
 
 
-        PathToHumanPlayerTop = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+        PathToHumanPlayerTopPickup = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
                 .strafeToConstantHeading(tileCoords(0.8, 1.7))
                 .splineToConstantHeading(tileCoords(1.7, 0.8), Math.toRadians(270))
                 .strafeToConstantHeading(tileCoords(1.7, -1))
-                .splineToConstantHeading(tileCoords(1.8, -2.6), Math.toRadians(270))
+                .splineToConstantHeading(tileCoords(Settings.DriverAutoTargetCoords.HumanPickupX, Settings.DriverAutoTargetCoords.HumanPickupY), Math.toRadians(270))
                 .getPath();
 
-        PathToHumanPlayerBottom = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+        PathToHumanPlayerBottomPickup = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
                 .strafeToConstantHeading(tileCoords(-1.7, -0.8))
                 .splineToConstantHeading(tileCoords(-1, -1.6), Math.toRadians(360 + -11.30993247))
                 .strafeToConstantHeading(tileCoords(1, -2))
-                .splineToConstantHeading(tileCoords(1.8, -2.6), Math.toRadians(270))
+                .splineToConstantHeading(tileCoords(Settings.DriverAutoTargetCoords.HumanPickupX, Settings.DriverAutoTargetCoords.HumanPickupY), Math.toRadians(270))
+                .getPath();
+
+        PathToHumanPlayerTopDropOff = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(0.8, 1.7))
+                .splineToConstantHeading(tileCoords(1.7, 0.8), Math.toRadians(270))
+                .strafeToConstantHeading(tileCoords(1.7, -1))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.HumanDropOffX, Settings.DriverAutoTargetCoords.HumanDropOffY), Math.toRadians(Settings.DriverAutoTargetCoords.HumanDropOffHeading)), Math.toRadians(Settings.DriverAutoTargetCoords.HumanDropOffHeading))
+                .getPath();
+
+        PathToHumanPlayerBottomDropOff = drive.actionBuilder(new Pose2d(tileCoords(-1.7, 1.7), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(-1.7, -0.8))
+                .splineToConstantHeading(tileCoords(-1, -1.6), Math.toRadians(360 + -11.30993247))
+                .strafeToConstantHeading(tileCoords(1, -2))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.HumanDropOffX, Settings.DriverAutoTargetCoords.HumanDropOffY), Math.toRadians(Settings.DriverAutoTargetCoords.HumanDropOffHeading)), Math.toRadians(Settings.DriverAutoTargetCoords.HumanDropOffHeading))
                 .getPath();
 
         PathToChamberRight = drive.actionBuilder(new Pose2d(tileCoords(0, 1.7), Math.toRadians(90)))
@@ -101,32 +116,32 @@ public class DriveCommand extends CommandBase {
                 .strafeToConstantHeading(tileCoords(-0.8, 1.7))
                 .splineToConstantHeading(tileCoords(-1.7, 0.8), Math.toRadians(270))
                 .strafeToConstantHeading(tileCoords(-1.7, -1))
-                .splineToLinearHeading(new Pose2d(tileCoords(-2.45, -2.4), Math.toRadians(225)), Math.toRadians(225))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.BasketX, Settings.DriverAutoTargetCoords.BasketY), Math.toRadians(225)), Math.toRadians(225))
                 .getPath();
 
         PathToBasketBottom = drive.actionBuilder(new Pose2d(tileCoords(1.7, 1.7), Math.toRadians(90)))
                 .strafeToConstantHeading(tileCoords(1.7, -0.8))
                 .splineToConstantHeading(tileCoords(1, -1.6), Math.atan2(-1.75 - -1.6, -0.5 - 1))
                 .strafeToConstantHeading(tileCoords(-0.5, -1.75))
-                .splineToLinearHeading(new Pose2d(tileCoords(-2.45, -2.4), Math.toRadians(225)), Math.toRadians(225))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.BasketX, Settings.DriverAutoTargetCoords.BasketY), Math.toRadians(225)), Math.toRadians(225))
                 .getPath();
 
         PathToSubmersibleTop = drive.actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
                 .strafeToConstantHeading(tileCoords(1.7, 0.8))
                 .splineToConstantHeading(tileCoords(0.8, 1.7), Math.toRadians(180))
                 .strafeToConstantHeading(tileCoords(-1.1, 1.7))
-                .splineToLinearHeading(new Pose2d(tileCoords(-1.05, 0), Math.toRadians(0)), Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.SubmersibleX, Settings.DriverAutoTargetCoords.SubmersibleY), Math.toRadians(0)), Math.toRadians(0))
                 .getPath();
 
         PathToSubmersibleMiddle = drive.actionBuilder(new Pose2d(tileCoords(-2.5, 0), Math.toRadians(0)))
-                .strafeToConstantHeading(tileCoords(-1.05, 0))
+                .strafeToConstantHeading(tileCoords(Settings.DriverAutoTargetCoords.SubmersibleX, Settings.DriverAutoTargetCoords.SubmersibleY))
                 .getPath();
 
         PathToSubmersibleBottom = drive.actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
                 .strafeToConstantHeading(tileCoords(1.7, -0.8))
                 .splineToConstantHeading(tileCoords(0.8, -1.7), Math.toRadians(180))
                 .strafeToConstantHeading(tileCoords(-1.1, -1.7))
-                .splineToLinearHeading(new Pose2d(tileCoords(-1.05, 0), Math.toRadians(0)), Math.toRadians(0))
+                .splineToLinearHeading(new Pose2d(tileCoords(Settings.DriverAutoTargetCoords.SubmersibleX, Settings.DriverAutoTargetCoords.SubmersibleY), Math.toRadians(0)), Math.toRadians(0))
                 .getPath();
 
 
@@ -162,6 +177,41 @@ public class DriveCommand extends CommandBase {
         HeadingTargetPID.minDifference = Settings.HeadingPIDVariables.minDifference;
 
 
+        // This will realign the current pose with one of the walls depending on which dpad is being pressed after being held for more than 1 second
+        // The timers are all tracked separately so that you can realign x and y at the same time while in a corner
+        if (!functions.inUse(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER))) {
+            double currentTime = LocalizationCorrectionTimer.time();
+
+            if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_UP)) {
+                if (currentTime - DpadUpTime > Settings.DriverLocalizationCorrectionHoldTime) {
+                    drive.setPoseY(Settings.LocalizationChamberResetY);
+                    SubsystemData.LocalizationCoordsAligned[1] = true;
+                }
+            } else DpadUpTime = LocalizationCorrectionTimer.time();
+
+            if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_RIGHT)) {
+                if (currentTime - DpadRightTime > Settings.DriverLocalizationCorrectionHoldTime) {
+                    drive.setPoseX(Settings.LocalizationRightResetX);
+                    SubsystemData.LocalizationCoordsAligned[0] = true;
+                }
+            } else DpadRightTime = LocalizationCorrectionTimer.time();
+
+            if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_DOWN)) {
+                if (currentTime - DpadDownTime > Settings.DriverLocalizationCorrectionHoldTime) {
+                    drive.setPoseY(Settings.LocalizationBottomResetY);
+                    SubsystemData.LocalizationCoordsAligned[1] = true;
+                }
+            } else DpadDownTime = LocalizationCorrectionTimer.time();
+
+            if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_LEFT)) {
+                if (currentTime - DpadLeftTime > Settings.DriverLocalizationCorrectionHoldTime) {
+                    drive.setPoseX(Settings.LocalizationLeftResetX);
+                    SubsystemData.LocalizationCoordsAligned[0] = true;
+                }
+            } else DpadLeftTime = LocalizationCorrectionTimer.time();
+        }
+
+
         // drive.update(); // update localization
 
         /*
@@ -186,7 +236,7 @@ public class DriveCommand extends CommandBase {
         if (robotOrientation.getYaw(AngleUnit.DEGREES) == 0 && robotOrientation.getPitch(AngleUnit.DEGREES) == 0 && robotOrientation.getRoll(AngleUnit.DEGREES) == 0) {
             if (imuNotWorkingTimer.time() > 750) {
                 SubsystemData.IMUWorking = false;
-                SubsystemData.eligibleForAutoDriving = false;
+                SubsystemData.LocalizationCoordsAligned = new boolean[]{false, false};
             }
         } else {
             SubsystemData.IMUWorking = true;
@@ -207,50 +257,44 @@ public class DriveCommand extends CommandBase {
 
 
         // Auto Driving
-        if (SubsystemData.eligibleForAutoDriving && functions.inUse(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) && !functions.inUse(forward) && !functions.inUse(strafe) && !functions.inUse(turn)) {
+        if (SubsystemData.LocalizationCoordsAligned[0] && SubsystemData.LocalizationCoordsAligned[1] && functions.inUse(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) && !functions.inUse(forward) && !functions.inUse(strafe) && !functions.inUse(turn)) {
 
             if (!SubsystemData.AutoDriving) {
                 switch (SubsystemData.CurrentPathSetting) {
                     case 0: // Submersible
                         if (SubsystemData.CurrentRobotPose.position.x < tiles(-0.75) && SubsystemData.CurrentRobotPose.position.y > tiles(-1) && SubsystemData.CurrentRobotPose.position.y < tiles(1)) {
                             drive.followPath(PathToSubmersibleMiddle, true);
-                            log("Auto Driving Path: SubMiddle");
                         } else if (SubsystemData.CurrentRobotPose.position.y > tiles(1)) {
                             drive.followPath(PathToSubmersibleTop, true);
-                            log("Auto Driving Path: SubTop");
                         } else {
                             drive.followPath(PathToSubmersibleBottom, true);
-                            log("Auto Driving Path: SubBottom");
                         }
                         break;
                     case 1: // Human Player
+
                         if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(1, -1), new Vector2d(-1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
-                            drive.followPath(PathToHumanPlayerTop, true);
-                            log("Auto Driving Path: HumanTop");
+                            if (SubsystemData.ClawWasLastOpen) drive.followPath(PathToHumanPlayerTopPickup, true);
+                            else drive.followPath(PathToHumanPlayerTopDropOff, true);
                         } else {
-                            drive.followPath(PathToHumanPlayerBottom, true);
-                            log("Auto Driving Path: HumanBottom");
+                            if (SubsystemData.ClawWasLastOpen) drive.followPath(PathToHumanPlayerBottomPickup, true);
+                            else drive.followPath(PathToHumanPlayerBottomDropOff, true);
+
                         }
                         break;
                     case 2: // Chamber
                         if (SubsystemData.CurrentRobotPose.position.y < tiles(-1) && SubsystemData.CurrentRobotPose.position.x > tiles(-0.6) && SubsystemData.CurrentRobotPose.position.x < tiles(0.6)) {
                             drive.followPath(PathToChamberMiddle, true);
-                            log("Auto Driving Path: ChamberMiddle");
                         } else if (SubsystemData.CurrentRobotPose.position.x < tiles(-0.6)) {
                             drive.followPath(PathToChamberLeft, true);
-                            log("Auto Driving Path: ChamberLeft");
                         } else {
                             drive.followPath(PathToChamberRight, true);
-                            log("Auto Driving Path: ChamberRight");
                         }
                         break;
                     case 3: // Basket
                         if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(-1, -1), new Vector2d(1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
                             drive.followPath(PathToBasketTop, true);
-                            log("Auto Driving Path: BasketTop");
                         } else {
                             drive.followPath(PathToBasketBottom, true);
-                            log("Auto Driving Path: BasketBottom");
                         }
                         break;
                 }

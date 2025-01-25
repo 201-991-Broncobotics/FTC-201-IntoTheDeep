@@ -302,6 +302,10 @@ public class Follower extends SubsystemBase {
         poseUpdater.setStartingPose(pose);
     }
 
+
+    public void setPoseX(double X) { poseUpdater.setPose(new Pose(X, poseUpdater.getPose().getY(), poseUpdater.getPose().getHeading())); }
+    public void setPoseY(double Y) { poseUpdater.setPose(new Pose(poseUpdater.getPose().getX(), Y, poseUpdater.getPose().getHeading())); }
+
     /**
      * This sets the current pose, using offsets so no reset time delay. This is better than the
      * Road Runner reset, in general. Think of using offsets as setting trim in an aircraft. This can

@@ -26,10 +26,12 @@ import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
 import com.arcrobotics.ftclib.command.RunCommand;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 import java.util.Arrays;
 
 
+@Disabled
 @Autonomous(name="LeftSpecimen3BasketAuto")
 public class LeftSpecimen3BasketAuto extends CommandOpMode {
 
@@ -208,7 +210,7 @@ public class LeftSpecimen3BasketAuto extends CommandOpMode {
 
                 ));
 
-        SubsystemData.eligibleForAutoDriving = true;
+        SubsystemData.LocalizationCoordsAligned = new boolean[]{true, true};
 
         telemetry.addLine("Auton Ready");
         telemetry.update();

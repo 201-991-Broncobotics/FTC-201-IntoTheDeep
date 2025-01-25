@@ -21,11 +21,11 @@ import java.util.function.DoubleSupplier;
  */
 public class PIDController {
 
-    public double kP, kI, kD, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, minDifference;
+    private double minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
+    private boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
-    public boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
-
-    public final DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble() or changing it
+    public DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble() or changing it
 
     private double integral, previousTime, targetPosition, movingTargetPosition, lastError, currentTargetSpeed;
     private double percentMaxSpeed = 1, PIDFrameRate = 0;
@@ -68,6 +68,11 @@ public class PIDController {
         correctValues();
 
         reset();
+    }
+
+
+    public void replaceDoubleSupplier(DoubleSupplier newEncoderPosition) {
+        encoderPosition = newEncoderPosition;
     }
 
 

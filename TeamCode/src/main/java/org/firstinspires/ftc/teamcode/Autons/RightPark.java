@@ -76,7 +76,7 @@ public class RightPark extends CommandOpMode {
                 )
         );
 
-        SubsystemData.eligibleForAutoDriving = true;
+        SubsystemData.LocalizationCoordsAligned = new boolean[]{true, true};
 
         telemetry.addLine("Auton Ready \n");
         telemetry.update();

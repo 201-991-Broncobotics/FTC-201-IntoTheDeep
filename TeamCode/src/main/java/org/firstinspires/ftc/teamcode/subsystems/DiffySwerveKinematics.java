@@ -114,6 +114,13 @@ public class DiffySwerveKinematics extends SubsystemBase {
         leftModule.setMotorZeroBehavior(mode);
     }
 
+    public void zeroSwerveModules() {
+        rightModule.zeroSwerveModule();
+        leftModule.zeroSwerveModule();
+        lastRightAngle = 0;
+        lastLeftAngle = 0;
+    }
+
 
     /*
 

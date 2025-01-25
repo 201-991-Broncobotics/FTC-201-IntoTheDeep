@@ -46,9 +46,9 @@ public class AdvancedTeleOp extends CommandOpMode {
 
         // Auto Driving Path Selection
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_DOWN).whenPressed(new InstantCommand(DriveCommand::setAutoPathToSubmersible));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_LEFT).whenPressed(new InstantCommand(DriveCommand::setAutoPathToChamber));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_LEFT).whenPressed(new InstantCommand(DriveCommand::setAutoPathToBasket));
         SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_RIGHT).whenPressed(new InstantCommand(DriveCommand::setAutoPathToHumanPlayer));
-        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_UP).whenPressed(new InstantCommand(DriveCommand::setAutoPathToBasket));
+        SubsystemData.driver.getGamepadButton(GamepadKeys.Button.DPAD_UP).whenPressed(new InstantCommand(DriveCommand::setAutoPathToChamber));
 
         // Operator controls
         SubsystemData.operator.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER).whenPressed(new InstantCommand(armSystem::openClaw));
