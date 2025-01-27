@@ -55,7 +55,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                 .strafeToConstantHeading(tileCoords(0.25, -1.33));
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart1 = drive.actionBuilder(DriveToChamber1.endPose())
-                .bezierToConstantHeading(tileCoords(1.8, -2.4), tileCoords(1.15, -0.8), tileCoords(2.1, -0.5))
+                .bezierToConstantHeading(tileCoords(1.7, -2.4), tileCoords(1.15, -0.8), tileCoords(2.1, -0.5))
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart2 = drive.actionBuilder(PushPresetSamplesPart1.endPose())
@@ -72,8 +72,11 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
-                .strafeToConstantHeading(tileCoords(2.3, -2.3))
-                .strafeToConstantHeading(tileCoords(2, -2.73));
+                .strafeToConstantHeading(tileCoords(2.3, -2.4))
+                .setPathEndTimeoutConstraint(200);
+
+        PedroTrajectoryActionBuilder DriveToHumanPlayer1half = drive.actionBuilder(DriveToHumanPlayer1.endPose())
+                .strafeToConstantHeading(tileCoords(2, -2.735));
 
         PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
                 .setTangent(Math.toRadians(135))
@@ -83,7 +86,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
         PedroTrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(DriveToChamber2.endPose())
                 .setTangent(Math.toRadians(360-55))
                 .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
-                .strafeToConstantHeading(tileCoords(1.8, -2.73));
+                .strafeToConstantHeading(tileCoords(1.8, -2.735));
 
         PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 .setTangent(Math.toRadians(135))
@@ -93,7 +96,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
         PedroTrajectoryActionBuilder DriveToHumanPlayer3 = drive.actionBuilder(DriveToChamber3.endPose())
                 .setTangent(Math.toRadians(360-55))
                 .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
-                .strafeToConstantHeading(tileCoords(1.8, -2.73));
+                .strafeToConstantHeading(tileCoords(1.8, -2.735));
 
         PedroTrajectoryActionBuilder DriveToChamber4 = drive.actionBuilder(DriveToHumanPlayer3.endPose())
                 .setTangent(Math.toRadians(135))
@@ -106,7 +109,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
 
         SequentialAction PlaceSpecimen1 = new SequentialAction(
-                armSystem.Wait(0.2),
+                armSystem.Wait(0.5),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
                 armSystem.RunMethod("openClaw")
@@ -153,6 +156,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("setWristToStraight"),
                         armSystem.Wait(0.2),
                         armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 180.0),
+                        armSystem.Wait(0.3),
                         DriveToChamber1.build(),
                         armSystem.RunMethod("moveClawToTopRungAuto", 0.0, 0.0, -15.0),
                         PlaceSpecimen1,
@@ -164,6 +168,8 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("moveClawToHumanPickup"),
                         DriveToHumanPlayer1.build(),
                         armSystem.Wait(0.1),
+                        DriveToHumanPlayer1half.build(),
+                        armSystem.Wait(0.25),
                         armSystem.RunMethod("closeClaw"),
                         armSystem.Wait(0.25),
                         armSystem.RunMethod("setWristToStraight"),
@@ -174,7 +180,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("moveClawToHumanPickup", 0.4),
                         armSystem.Wait(0.1),
                         DriveToHumanPlayer2.build(),
-                        armSystem.Wait(0.1),
+                        armSystem.Wait(0.2),
                         armSystem.RunMethod("closeClaw"),
                         armSystem.Wait(0.25),
                         armSystem.RunMethod("setWristToStraight"),
@@ -185,7 +191,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("moveClawToHumanPickup", 0.4),
                         armSystem.Wait(0.1),
                         DriveToHumanPlayer3.build(),
-                        armSystem.Wait(0.1),
+                        armSystem.Wait(0.2),
                         armSystem.RunMethod("closeClaw"),
                         armSystem.Wait(0.25),
                         armSystem.RunMethod("setWristToStraight"),

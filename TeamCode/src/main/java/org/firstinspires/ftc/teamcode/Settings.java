@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSett
 @Config
 public class Settings {
 
-    public static double maxDrivetrainMotorPower = 0.9; // percent
+    public static double maxDrivetrainMotorPower = 0.85; // percent
     public static double maxDrivetrainTurnPower = 0.7;
     public static double controllerDeadZone = 0.025;
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
@@ -45,9 +45,9 @@ public class Settings {
         public static double WristServoMSPerDegree = 0; // time is takes for the servo to move 1 degree
         public static double WristServoRatio = 1.5; //1.7 axon // og 1.35
         public static double WristServoOffset = 0;
-        public static double WristFloorAngle = 220;
+        public static double WristFloorAngle = 245;
         public static boolean WristServoReversed = true;
-        public static double OperatorTurnOverridePower = 0.2;
+        public static double OperatorTurnOverridePower = 0; // permanently 0
         public static double ClawServoRatio = 1.4;
         public static double ClawOpenPosition = 150; // degrees (0.5)
         public static double ClawClosedPosition = 220; // degrees (0.85)
@@ -97,7 +97,7 @@ public class Settings {
 
     @Config
     public static class HeadingPIDVariables{
-        public static double kP = 0.008;
+        public static double kP = 0.007;
         public static double kI = 0;
         public static double kD = 0.0004;
         public static double minDifference = 0.25;
