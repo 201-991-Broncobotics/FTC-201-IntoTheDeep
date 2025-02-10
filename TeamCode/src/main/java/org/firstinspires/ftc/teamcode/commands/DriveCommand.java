@@ -49,8 +49,13 @@ public class DriveCommand extends CommandBase {
         drive.startTeleopDrive();
         drive.update();
 
-        HeadingTargetPID = new PIDController(Settings.HeadingPIDVariables.kP, Settings.HeadingPIDVariables.kI, Settings.HeadingPIDVariables.kD, () -> Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
-        HeadingTargetPID.minDifference = Settings.HeadingPIDVariables.minDifference; // this is also actively changed in DriveCommand
+        SubsystemData.lastXDriveVelocity = 0;
+        SubsystemData.lastYDriveVelocity = 0;
+        SubsystemData.CurrentForwardAcceleration = 0;
+
+        HeadingTargetPID = new PIDController(Settings.HeadingReference.kP, Settings.HeadingReference.kI, Settings.HeadingReference.kD, () -> Math.toDegrees(SubsystemData.CurrentRobotPose.heading.toDouble()));
+        HeadingTargetPID.minDifference = Settings.HeadingReference.minDifference; // this is also actively changed in DriveCommand
+        HeadingTargetPID.setSettingsTheSameAs(Settings.HeadingReference);
 
         RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
         SubsystemData.RobotVelocity = RobotVelocity;
@@ -161,20 +166,10 @@ public class DriveCommand extends CommandBase {
                 SubsystemData.NeedToRealignHeadingHold = false;
             }
 
-            /*
-            SubsystemData.HighDriveVel = 0; // also reset the high drive/turn vel/accel counts
-            SubsystemData.HighDriveAccel = 0;
-            SubsystemData.LowDriveAccel = 0;
-            SubsystemData.HighAngVel = 0;
-            SubsystemData.HighAngAccel = 0;
-             */
         }
 
         // Makes sure any changes to pid variables get applied to the actual pids
-        HeadingTargetPID.kP = Settings.HeadingPIDVariables.kP;
-        HeadingTargetPID.kI = Settings.HeadingPIDVariables.kI;
-        HeadingTargetPID.kD = Settings.HeadingPIDVariables.kD;
-        HeadingTargetPID.minDifference = Settings.HeadingPIDVariables.minDifference;
+        HeadingTargetPID.setSettingsTheSameAs(Settings.HeadingReference);
 
 
         // This will realign the current pose with one of the walls depending on which dpad is being pressed after being held for more than 1 second
@@ -184,28 +179,28 @@ public class DriveCommand extends CommandBase {
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_UP)) {
                 if (currentTime - DpadUpTime > Settings.DriverLocalizationCorrectionHoldTime) {
-                    drive.setPoseY(Settings.LocalizationChamberResetY);
+                    drive.setPoseRRY(Settings.LocalizationChamberResetY);
                     SubsystemData.LocalizationCoordsAligned[1] = true;
                 }
             } else DpadUpTime = LocalizationCorrectionTimer.time();
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_RIGHT)) {
                 if (currentTime - DpadRightTime > Settings.DriverLocalizationCorrectionHoldTime) {
-                    drive.setPoseX(Settings.LocalizationRightResetX);
+                    drive.setPoseRRX(Settings.LocalizationRightResetX);
                     SubsystemData.LocalizationCoordsAligned[0] = true;
                 }
             } else DpadRightTime = LocalizationCorrectionTimer.time();
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_DOWN)) {
                 if (currentTime - DpadDownTime > Settings.DriverLocalizationCorrectionHoldTime) {
-                    drive.setPoseY(Settings.LocalizationBottomResetY);
+                    drive.setPoseRRY(Settings.LocalizationBottomResetY);
                     SubsystemData.LocalizationCoordsAligned[1] = true;
                 }
             } else DpadDownTime = LocalizationCorrectionTimer.time();
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_LEFT)) {
                 if (currentTime - DpadLeftTime > Settings.DriverLocalizationCorrectionHoldTime) {
-                    drive.setPoseX(Settings.LocalizationLeftResetX);
+                    drive.setPoseRRX(Settings.LocalizationLeftResetX);
                     SubsystemData.LocalizationCoordsAligned[0] = true;
                 }
             } else DpadLeftTime = LocalizationCorrectionTimer.time();
@@ -214,20 +209,12 @@ public class DriveCommand extends CommandBase {
 
         // drive.update(); // update localization
 
-        /*
-        RobotVelocity = SubsystemData.RobotVelocity;
 
-        double DriveVelocity = Math.hypot(RobotVelocity.linearVel.x, RobotVelocity.linearVel.y);
-        if (DriveVelocity > SubsystemData.HighDriveVel) SubsystemData.HighDriveVel = DriveVelocity;
-        if (Math.abs(RobotVelocity.angVel) > SubsystemData.HighAngVel) SubsystemData.HighAngVel = Math.abs(RobotVelocity.angVel);
-        double DriveAcceleration = (DriveVelocity - lastDriveVelocity) * SubsystemData.FrameRate;
-        lastDriveVelocity = DriveVelocity;
-        double TurnAcceleration = (RobotVelocity.angVel - lastTurnVelocity) * SubsystemData.FrameRate;
-        lastTurnVelocity = RobotVelocity.angVel;
-        if (DriveAcceleration > SubsystemData.HighDriveAccel) SubsystemData.HighDriveAccel = DriveAcceleration;
-        if (DriveAcceleration < SubsystemData.LowDriveAccel) SubsystemData.LowDriveAccel = DriveAcceleration;
-        if (Math.abs(TurnAcceleration) > SubsystemData.HighAngAccel) SubsystemData.HighAngAccel = Math.abs(TurnAcceleration);
-         */
+        double DriveXAcceleration = (SubsystemData.RobotVelocity.linearVel.x - SubsystemData.lastXDriveVelocity) * SubsystemData.FrameRate;
+        double DriveYAcceleration = (SubsystemData.RobotVelocity.linearVel.y - SubsystemData.lastYDriveVelocity) * SubsystemData.FrameRate;
+        SubsystemData.lastXDriveVelocity = SubsystemData.RobotVelocity.linearVel.x;
+        SubsystemData.lastYDriveVelocity = SubsystemData.RobotVelocity.linearVel.y;
+        SubsystemData.CurrentForwardAcceleration = DriveYAcceleration * Math.sin(SubsystemData.CurrentRobotPose.heading.toDouble()) + DriveXAcceleration * Math.cos(SubsystemData.CurrentRobotPose.heading.toDouble());
 
 
         YawPitchRollAngles robotOrientation = SubsystemData.IMUAngles;
@@ -335,8 +322,7 @@ public class DriveCommand extends CommandBase {
                     if (SubsystemData.OverrideDrivetrainRotation) headingHold = SubsystemData.OverrideDrivetrainTargetHeading;
 
                     // This stops the headingPID from turning while at low drive powers because otherwise it causes the swerve modules to go crazy
-                    if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) HeadingTargetPID.minDifference = 3;
-                    else HeadingTargetPID.minDifference = 0.5;
+                    if (Math.abs(drivePower) < 0.1 && !(drivePower == 0)) HeadingTargetPID.minDifference = Settings.slowMovingHeadingPIDMinDifference;
 
                     turn = -1 * HeadingTargetPID.getPowerWrapped(headingHold, 360);
 
@@ -356,12 +342,10 @@ public class DriveCommand extends CommandBase {
 
             double strafeControl = -1 * Math.cos(Math.toRadians(driveDirection)) * drivePower * throttleControl;
 
-            // convert vector to x and y and multiple by throttle (i think i switched forward and strafe by accident like 20 years ago)
             drive.setTeleOpMovementVectors(
                     Math.sin(Math.toRadians(driveDirection)) * drivePower * throttleControl,
                     strafeControl,
-                    turn /* + strafeControl * Constants.strafeRotationGain */ );
-
+                    turn /* + strafeControl * Constants.strafeRotationGain */);
 
         }
 

@@ -37,6 +37,10 @@ public class DriveAutonCommand extends CommandBase {
         this.telemetry = telemetry;
         AutonUpdateSpeedTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
+        SubsystemData.lastXDriveVelocity = 0;
+        SubsystemData.lastYDriveVelocity = 0;
+        SubsystemData.CurrentForwardAcceleration = 0;
+
         SubsystemData.repeatForwardBack = false; // make sure this is off if not specifically needed
         SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
         SubsystemData.AutoDrivingPower = 1;
@@ -52,6 +56,13 @@ public class DriveAutonCommand extends CommandBase {
 
         SubsystemData.inTeleOp = false; // TODO: move this once I add auto driving in TeleOp if needed
         SubsystemData.AutoDrivingPower = 1;
+
+        // Acceleration Dampening for Arm
+        double DriveXAcceleration = (SubsystemData.RobotVelocity.linearVel.x - SubsystemData.lastXDriveVelocity) * SubsystemData.FrameRate;
+        double DriveYAcceleration = (SubsystemData.RobotVelocity.linearVel.y - SubsystemData.lastYDriveVelocity) * SubsystemData.FrameRate;
+        SubsystemData.lastXDriveVelocity = SubsystemData.RobotVelocity.linearVel.x;
+        SubsystemData.lastYDriveVelocity = SubsystemData.RobotVelocity.linearVel.y;
+        SubsystemData.CurrentForwardAcceleration = DriveYAcceleration * Math.sin(SubsystemData.CurrentRobotPose.heading.toDouble()) + DriveXAcceleration * Math.cos(SubsystemData.CurrentRobotPose.heading.toDouble());
 
         // update running actions
         List<Action> newActions = new ArrayList<>();

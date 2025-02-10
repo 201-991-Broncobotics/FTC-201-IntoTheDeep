@@ -75,4 +75,9 @@ public class SubsystemData {
 
     public static boolean[] LocalizationCoordsAligned = new boolean[] {false, false};
     public static boolean ClawWasLastOpen = true;
+
+    public static double lastXDriveVelocity = 0;
+    public static double lastYDriveVelocity = 0;
+    public static double CurrentForwardAcceleration = 0;
+
 }

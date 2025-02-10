@@ -107,21 +107,24 @@ public class RightPushFourSpecimen extends CommandOpMode {
                 armSystem.Wait(0.25),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
         SequentialAction PlaceSpecimen2 = new SequentialAction(
                 armSystem.Wait(0.25),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
         SequentialAction PlaceSpecimen3 = new SequentialAction(
                 armSystem.Wait(0.25),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
 

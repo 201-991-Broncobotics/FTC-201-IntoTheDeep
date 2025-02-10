@@ -305,6 +305,8 @@ public class Follower extends SubsystemBase {
 
     public void setPoseX(double X) { poseUpdater.setPose(new Pose(X, poseUpdater.getPose().getY(), poseUpdater.getPose().getHeading())); }
     public void setPoseY(double Y) { poseUpdater.setPose(new Pose(poseUpdater.getPose().getX(), Y, poseUpdater.getPose().getHeading())); }
+    public void setPoseRRX(double X) { poseUpdater.setPose(new Pose(poseUpdater.getPose().getX(), -X, poseUpdater.getPose().getHeading())); }
+    public void setPoseRRY(double Y) { poseUpdater.setPose(new Pose(Y, poseUpdater.getPose().getY(), poseUpdater.getPose().getHeading())); }
 
     /**
      * This sets the current pose, using offsets so no reset time delay. This is better than the

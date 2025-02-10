@@ -21,7 +21,7 @@ import java.util.function.DoubleSupplier;
  */
 public class PIDController {
 
-    public double kP, kI, kD, minDifference;
+    public double kP, kI, kD, minDifference, kPPower;
     private double minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
     private boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
@@ -43,6 +43,7 @@ public class PIDController {
         this.encoderPosition = encoderPosition;
 
         // DEFAULT VALUES:
+        kPPower = 1; // takes P to the power of this which can make the PID faster when further away and slower when closer or vice versa if needed
         minPosition = 0; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         maxPosition = 0; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         minPower = 0; // can be used as the initial power needed to start moving
@@ -113,6 +114,11 @@ public class PIDController {
         return this;
     }
 
+
+    public PIDController setPPower(double kPPower) {
+        this.kPPower = kPPower;
+        return this;
+    }
 
 
     public void setTarget(double newTargetPosition) {
@@ -200,7 +206,7 @@ public class PIDController {
         if (Math.abs(integral) > maxIntegral * (maxPower / kI)) integral = Math.signum(integral) * (maxIntegral * (maxPower / kI)); // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
-        power = (Error * kP) + (integral * kI) + (Derivative * kD); // calculate the result
+        power = ((Math.signum(Error) * Math.pow(Math.abs(Error), kPPower)) * kP) + (integral * kI) + (Derivative * kD); // calculate the result
 
         power = (Math.abs(power) * (1 - initialPower) + initialPower) * Math.signum(power); // normalizes to start at initial power
 
@@ -228,6 +234,7 @@ public class PIDController {
         if (kP < 0) kP = 0;
         if (kI < 0) kI = 0;
         if (kD < 0) kD = 0;
+        if (kPPower < 0) kPPower = 0; // when this is negative the PID tries to avoid the target instead of going towards it
         if (minPosition > maxPosition) minPosition = maxPosition;
         if (minPower < 0) minPower = 0;
         if (maxPower > 1) maxPower = 1;
@@ -277,6 +284,7 @@ public class PIDController {
         kP = referencePID.kP;
         kI = referencePID.kI;
         kD = referencePID.kD;
+        kPPower = referencePID.kPPower;
         minPosition = referencePID.minPosition;
         maxPosition = referencePID.maxPosition;
         minPower = referencePID.minPower;
@@ -296,6 +304,7 @@ public class PIDController {
         kP = referenceSettings.kP;
         kI = referenceSettings.kI;
         kD = referenceSettings.kD;
+        kPPower = referenceSettings.kPPower;
         minPosition = referenceSettings.minPosition;
         maxPosition = referenceSettings.maxPosition;
         minPower = referenceSettings.minPower;

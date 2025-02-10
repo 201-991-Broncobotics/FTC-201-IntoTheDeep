@@ -112,28 +112,32 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                 armSystem.Wait(0.5),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
         SequentialAction PlaceSpecimen2 = new SequentialAction(
                 armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
         SequentialAction PlaceSpecimen3 = new SequentialAction(
                 armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
         SequentialAction PlaceSpecimen4 = new SequentialAction(
                 armSystem.Wait(0.2),
                 armSystem.RunMethod("depositSpecimen"),
                 armSystem.Wait(0.25),
-                armSystem.RunMethod("openClaw")
+                armSystem.RunMethod("openClaw"),
+                armSystem.RunMethod("stopClaw", 0.5)
         );
 
 

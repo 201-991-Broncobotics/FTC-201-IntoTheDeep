@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Roadrunner;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.DualNum;
+import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Rotation2d;
 import com.acmerobotics.roadrunner.Time;
 import com.acmerobotics.roadrunner.Twist2dDual;
@@ -66,6 +67,7 @@ public final class TwoDeadWheelLocalizer implements Localizer {
 
         if (SubsystemData.needToResetIMU) {
             imu.resetYaw();
+            lastHeading = (new Pose2d(0, 0, Math.toRadians(90))).heading;
             SubsystemData.needToResetIMU = false;
         }
 
