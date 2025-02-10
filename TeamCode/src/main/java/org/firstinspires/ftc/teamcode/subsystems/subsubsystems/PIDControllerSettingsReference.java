@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems.subsubsystems;
 
 public class PIDControllerSettingsReference {
 
-    public double kP, kI, kD, kPPower, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxAcceleration, maxDeceleration;
+    public double kP, kI, kD, kP2, minPosition, maxPosition, minPower, maxPower, initialPower, minDifference, maxSpeed, tolerance, maxAcceleration, maxDeceleration;
 
     public boolean positionLimitingEnabled, speedLimitingEnabled;
 
@@ -25,11 +25,11 @@ public class PIDControllerSettingsReference {
      * @param positionLimitingEnabled
      * @param speedLimitingEnabled
      */
-    public PIDControllerSettingsReference(double aP, double aI, double aD, double kPPower, double minPosition, double maxPosition, double minPower, double maxPower, double initialPower, double minDifference, double maxSpeed, double tolerance, double maxAcceleration, double maxDeceleration, boolean positionLimitingEnabled, boolean speedLimitingEnabled) {
+    public PIDControllerSettingsReference(double aP, double aI, double aD, double aP2, double minPosition, double maxPosition, double minPower, double maxPower, double initialPower, double minDifference, double maxSpeed, double tolerance, double maxAcceleration, double maxDeceleration, boolean positionLimitingEnabled, boolean speedLimitingEnabled) {
         kP = aP;
         kI = aI;
         kD = aD;
-        this.kPPower = kPPower;
+        this.kP2 = aP2;
         this.minPosition = minPosition;
         this.maxPosition = maxPosition;
         this.minPower = minPower;

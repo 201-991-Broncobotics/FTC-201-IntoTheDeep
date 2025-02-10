@@ -21,7 +21,7 @@ import java.util.function.DoubleSupplier;
  */
 public class PIDController {
 
-    public double kP, kI, kD, minDifference, kPPower;
+    public double kP, kI, kD, minDifference, kP2;
     private double minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
     private boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
@@ -42,8 +42,9 @@ public class PIDController {
         this.kD = kD;
         this.encoderPosition = encoderPosition;
 
+        kP2 = 0; // Basically P but squared which allows for moving faster when further away from the target
+
         // DEFAULT VALUES:
-        kPPower = 1; // takes P to the power of this which can make the PID faster when further away and slower when closer or vice versa if needed
         minPosition = 0; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         maxPosition = 0; // doesn't matter what this is if position limiting is false, same units as the doubleSupplier
         minPower = 0; // can be used as the initial power needed to start moving
@@ -115,8 +116,8 @@ public class PIDController {
     }
 
 
-    public PIDController setPPower(double kPPower) {
-        this.kPPower = kPPower;
+    public PIDController setP2(double kP2) {
+        this.kP2 = kP2;
         return this;
     }
 
@@ -206,7 +207,7 @@ public class PIDController {
         if (Math.abs(integral) > maxIntegral * (maxPower / kI)) integral = Math.signum(integral) * (maxIntegral * (maxPower / kI)); // stabilize integral
         double Derivative = (Error - lastError) / timeSince;
         lastError = Error;
-        power = ((Math.signum(Error) * Math.pow(Math.abs(Error), kPPower)) * kP) + (integral * kI) + (Derivative * kD); // calculate the result
+        power = (Error * kP) + (Error * Math.abs(Error) * kP2) + (integral * kI) + (Derivative * kD); // calculate the result
 
         power = (Math.abs(power) * (1 - initialPower) + initialPower) * Math.signum(power); // normalizes to start at initial power
 
@@ -234,7 +235,7 @@ public class PIDController {
         if (kP < 0) kP = 0;
         if (kI < 0) kI = 0;
         if (kD < 0) kD = 0;
-        if (kPPower < 0) kPPower = 0; // when this is negative the PID tries to avoid the target instead of going towards it
+        if (kP2 < 0) kP2 = 0;
         if (minPosition > maxPosition) minPosition = maxPosition;
         if (minPower < 0) minPower = 0;
         if (maxPower > 1) maxPower = 1;
@@ -284,7 +285,7 @@ public class PIDController {
         kP = referencePID.kP;
         kI = referencePID.kI;
         kD = referencePID.kD;
-        kPPower = referencePID.kPPower;
+        kP2 = referencePID.kP2;
         minPosition = referencePID.minPosition;
         maxPosition = referencePID.maxPosition;
         minPower = referencePID.minPower;
@@ -304,7 +305,7 @@ public class PIDController {
         kP = referenceSettings.kP;
         kI = referenceSettings.kI;
         kD = referenceSettings.kD;
-        kPPower = referenceSettings.kPPower;
+        kP2 = referenceSettings.kP2;
         minPosition = referenceSettings.minPosition;
         maxPosition = referenceSettings.maxPosition;
         minPower = referenceSettings.minPower;
