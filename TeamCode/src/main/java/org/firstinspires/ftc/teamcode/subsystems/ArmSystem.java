@@ -571,11 +571,6 @@ public class ArmSystem extends SubsystemBase {
 
          */
 
-        /*
-        telemetry.addLine("Robot Pose (tiles) X: " +
-                functions.round(SubsystemData.CurrentRobotPose.position.x / Constants.tileLength, 3) + " Y: " +
-                functions.round(SubsystemData.CurrentRobotPose.position.y / Constants.tileLength, 3));
-         */
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
