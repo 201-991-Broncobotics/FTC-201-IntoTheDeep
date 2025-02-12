@@ -77,7 +77,7 @@ public class ArmSystem extends SubsystemBase {
 
     private double CurrentPivotAngleZero = 0, CurrentExtensionLengthZero = 0, CurrentPivotAngleDirectZero = 0;
     public DoubleSupplier CurrentPivotAngle = () -> Pivot.getCurrentPosition() / 5281.1 * 360 - CurrentPivotAngleZero; // only using encoder of pivot motor
-    public DoubleSupplier CurrentPivotAngleDirect = () -> -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - CurrentPivotAngleDirectZero; // rev encoder directly on pivot axle
+    public DoubleSupplier CurrentPivotAngleDirect = () -> PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - CurrentPivotAngleDirectZero; // rev encoder directly on pivot axle
     public DoubleSupplier CurrentExtensionLength = () -> ((ExtensionF.getCurrentPosition() / 384.5) * 360 + CurrentPivotAngleDirect.getAsDouble()) / Constants.SpoolDegreesToMaxExtension * 696 - CurrentExtensionLengthZero;
     private boolean backPedalExtension = false; // whether or not to move extension backwards and then re-extend when pivot is moving
     private boolean delayPivotMovement = false; // allows the pivot to move a small amount after the extension has reached target: it is to prevent the chamber preset from going underneath the bar if too close
@@ -102,7 +102,6 @@ public class ArmSystem extends SubsystemBase {
 
     private double lastWristAngle;
     private double lastServoTravel = 0, ClawServoPower = 0;
-    private int ClawServoState = 0; // 0 = stopped, -1 = closing, 1 = forward, 2 = slowclosing;
     private boolean keepClawSpinning = false, cameraToggle, activeExtensionReset = false, readyToResetArm = false;
 
     private int CurrentlyReadyPreset = 0; // allows pressing a preset button twice to complete the second part of its action
@@ -138,18 +137,6 @@ public class ArmSystem extends SubsystemBase {
         PivotEncoder.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         PivotEncoder.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        /*
-        PivotAdv = new PhotonAdvancedDcMotor(Pivot); // Photon thing that optimises writes to make the code faster
-        ExtensionFAdv = new PhotonAdvancedDcMotor(ExtensionF);
-        ExtensionBAdv = new PhotonAdvancedDcMotor(ExtensionB);
-        PivotAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
-        ExtensionFAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
-        ExtensionBAdv.setCacheTolerance(Settings.PhotonCacheTolerance);
-        PivotAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
-        ExtensionFAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
-        ExtensionBAdv.setMotorSetRefreshRate(Settings.PhotonRefreshRate);
-
-         */
 
         Claw = map.get(CRServo.class, "Claw");
         Wrist = map.get(Servo.class, "Wrist");
@@ -208,7 +195,7 @@ public class ArmSystem extends SubsystemBase {
             ExtensionB.setPower(0);
             Pivot.setPower(0);
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
-            CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
+            CurrentPivotAngleDirectZero = PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             StartPivotZero = CurrentPivotAngleZero;
             StartPivotDirectZero = CurrentPivotAngleDirectZero;
@@ -540,7 +527,7 @@ public class ArmSystem extends SubsystemBase {
             ExtensionB.setPower(0.25);
         } else if (readyToResetArm) {
             CurrentPivotAngleZero = Pivot.getCurrentPosition() / 5281.1 * 360 - Constants.PivotDownAngle + Settings.ArmSystemSettings.pivotMotorBacklash;
-            CurrentPivotAngleDirectZero = -1 * PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
+            CurrentPivotAngleDirectZero = PivotEncoder.getCurrentPosition() / Constants.encoderResolution * 360 - Constants.PivotDownAngle;
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             readyToResetArm = false;
         } else {
@@ -591,6 +578,11 @@ public class ArmSystem extends SubsystemBase {
          */
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
+            telemetry.addLine(" ");
+            telemetry.addData("Robot X Velocity", SubsystemData.CorrectedRobotVelocity.linearVel.x);
+            telemetry.addData("Robot Y Velocity", SubsystemData.CorrectedRobotVelocity.linearVel.y);
+            telemetry.addData("Robot A Velocity", SubsystemData.CorrectedRobotVelocity.angVel);
+            telemetry.addData("Forward Acceleration", SubsystemData.CurrentForwardAcceleration);
             telemetry.addLine(" ");
             telemetry.addData("FrameRate Stabilization Enabled", frameRateStabilizer.isEnabled());
             telemetry.addData("FrameRate Stabilization average FrameRate", frameRateStabilizer.getAverageTime());
@@ -832,7 +824,7 @@ public class ArmSystem extends SubsystemBase {
 
     public void holdClawAtFieldCoordinate(Vector2d TargetClawPos, double TargetHeight) { // needs to be called constantly while in use, HEIGHT IS FROM FIELD TILES
         Pose2d CurrentPose = SubsystemData.CurrentRobotPose;
-        Vector2d DeltaPose = TargetClawPos.minus(CurrentPose.position).plus(SubsystemData.RobotVelocity.linearVel); // Vector of where the arm needs to go relative to the robot with the robot's velocity in mind
+        Vector2d DeltaPose = TargetClawPos.minus((CurrentPose.position).plus(new Vector2d(Settings.ArmSystemSettings.FieldCentricArmVelocityCompensation * SubsystemData.CorrectedRobotVelocity.linearVel.x, Settings.ArmSystemSettings.FieldCentricArmVelocityCompensation * SubsystemData.CorrectedRobotVelocity.linearVel.y))); // Vector of where the arm needs to go relative to the robot with the robot's velocity in mind
 
         double NeededExtensionLength = 25.4 * Math.hypot(DeltaPose.x, DeltaPose.y) - Constants.pivotAxleOffset - Constants.wristLength - 50; // mm
 
@@ -920,7 +912,7 @@ public class ArmSystem extends SubsystemBase {
 
 
     public void depositSpecimen() { // onto a rung - this is separate so it is easier to code auton
-        ExtensionTargetLength = CurrentExtensionLengthInst + 130;
+        ExtensionTargetLength = CurrentExtensionLengthInst + 160;
     }
 
 

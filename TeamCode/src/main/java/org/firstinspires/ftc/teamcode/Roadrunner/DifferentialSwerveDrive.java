@@ -536,6 +536,11 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         SubsystemData.CurrentRobotPose = pose;
 
         SubsystemData.RobotVelocity = twist.velocity().value();
+        // PoseVelocity2d NotWeirdVelocity = new PoseVelocity2d(new Vector2d(SubsystemData.RobotVelocity.linearVel.y, -1 * SubsystemData.RobotVelocity.linearVel.x), SubsystemData.RobotVelocity.angVel);
+        double angle = Math.atan2(SubsystemData.RobotVelocity.linearVel.y, SubsystemData.RobotVelocity.linearVel.x) + SubsystemData.CurrentRobotPose.heading.toDouble();
+        double magnitude = Math.hypot(SubsystemData.RobotVelocity.linearVel.y, SubsystemData.RobotVelocity.linearVel.x);
+        Vector2d FieldCentricVelocity = new Vector2d(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
+        SubsystemData.CorrectedRobotVelocity = new PoseVelocity2d(FieldCentricVelocity, SubsystemData.RobotVelocity.angVel);
         return twist.velocity().value();
     }
 

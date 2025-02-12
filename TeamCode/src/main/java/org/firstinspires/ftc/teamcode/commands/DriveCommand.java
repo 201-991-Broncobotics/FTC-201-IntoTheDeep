@@ -58,7 +58,7 @@ public class DriveCommand extends CommandBase {
         HeadingTargetPID.setSettingsTheSameAs(Settings.HeadingReference);
 
         RobotVelocity = drive.getRRDrive().updatePoseEstimate(); // update localization
-        SubsystemData.RobotVelocity = RobotVelocity;
+        // SubsystemData.RobotVelocity = RobotVelocity;
         SubsystemData.absoluteDriving = absoluteDrivingEnabled;
         SubsystemData.AutoDriving = false;
         headingHold = Math.toDegrees(drive.getRRDrive().pose.heading.toDouble());
@@ -171,6 +171,10 @@ public class DriveCommand extends CommandBase {
         // Makes sure any changes to pid variables get applied to the actual pids
         HeadingTargetPID.setSettingsTheSameAs(Settings.HeadingReference);
 
+        SubsystemData.SwerveModuleReferencePID.kP = Settings.SwerveKP;
+        SubsystemData.SwerveModuleReferencePID.kI = Settings.SwerveKI;
+        SubsystemData.SwerveModuleReferencePID.kD = Settings.SwerveKD;
+
 
         // This will realign the current pose with one of the walls depending on which dpad is being pressed after being held for more than 1 second
         // The timers are all tracked separately so that you can realign x and y at the same time while in a corner
@@ -210,10 +214,10 @@ public class DriveCommand extends CommandBase {
         // drive.update(); // update localization
 
 
-        double DriveXAcceleration = (SubsystemData.RobotVelocity.linearVel.x - SubsystemData.lastXDriveVelocity) * SubsystemData.FrameRate;
-        double DriveYAcceleration = (SubsystemData.RobotVelocity.linearVel.y - SubsystemData.lastYDriveVelocity) * SubsystemData.FrameRate;
-        SubsystemData.lastXDriveVelocity = SubsystemData.RobotVelocity.linearVel.x;
-        SubsystemData.lastYDriveVelocity = SubsystemData.RobotVelocity.linearVel.y;
+        double DriveXAcceleration = (SubsystemData.CorrectedRobotVelocity.linearVel.x - SubsystemData.lastXDriveVelocity) * SubsystemData.FrameRate;
+        double DriveYAcceleration = (SubsystemData.CorrectedRobotVelocity.linearVel.y - SubsystemData.lastYDriveVelocity) * SubsystemData.FrameRate;
+        SubsystemData.lastXDriveVelocity = SubsystemData.CorrectedRobotVelocity.linearVel.x;
+        SubsystemData.lastYDriveVelocity = SubsystemData.CorrectedRobotVelocity.linearVel.y;
         SubsystemData.CurrentForwardAcceleration = DriveYAcceleration * Math.sin(SubsystemData.CurrentRobotPose.heading.toDouble()) + DriveXAcceleration * Math.cos(SubsystemData.CurrentRobotPose.heading.toDouble());
 
 

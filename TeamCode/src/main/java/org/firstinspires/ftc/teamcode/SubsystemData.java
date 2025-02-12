@@ -63,6 +63,7 @@ public class SubsystemData {
     public static double HighDriveVel = 0, HighAngVel = 0, HighDriveAccel = 0, LowDriveAccel = 0, HighAngAccel = 0;
     public static boolean alreadyAlignedArm = false;
     public static PoseVelocity2d RobotVelocity; // constantly updates with localizer instead of requiring updating localizer an extra time
+    public static PoseVelocity2d CorrectedRobotVelocity; // matched to the field in RR coords
 
     public static double DriveCurrentExtensionLengthPercent = 0;
 

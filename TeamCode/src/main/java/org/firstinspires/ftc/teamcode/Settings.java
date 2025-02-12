@@ -10,9 +10,10 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSett
 public class Settings {
 
     public static double maxDrivetrainMotorPower = 0.9; // percent
-    public static double maxDrivetrainTurnPower = 0.7;
+    public static double maxDrivetrainTurnPower = 0.8;
     public static double controllerDeadZone = 0.025;
     public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
+    public static boolean tuneDriveFeedBackStaticPower = false;
     public static double SwerveMinimumPower = 0.05;
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
     public static double HuskyLensTargetX = 160;
@@ -41,15 +42,15 @@ public class Settings {
         public static double maxManualClawSpeedVertical = 700;
         public static double maxManualClawSpeedHorizontal = 600; // mm per second
         public static double maxManualExtensionSpeed = 750;
-        public static double maxManualPivotSpeed = 70;
+        public static double maxManualPivotSpeed = 80;
         public static double maxCameraTargetingSpeed = 250;
         public static double maxCameraTargetingSpeedSquared = 0;
         public static double maxCameraTargetingTurnSpeed = 0.5; // mm, percent
-        public static double pivotRetractedGravityPower = 0.156;
-        public static double pivotExtendedGravityPower = 0.3;
-        public static double extensionGravityPower = 0.166;
-        public static double pivotMotorBacklash = 13; // degrees
-        public static double LinearSlideBend = -8; // degrees that the linear slide bends when horizontal and at max extension
+        public static double pivotRetractedGravityPower = 0.19;
+        public static double pivotExtendedGravityPower = 0.5;
+        public static double extensionGravityPower = 0.16;
+        public static double pivotMotorBacklash = 12; // degrees
+        public static double LinearSlideBend = -5; // degrees that the linear slide bends when horizontal and at max extension
         public static double WristServoMSPerDegree = 0; // time is takes for the servo to move 1 degree
         public static double WristServoRatio = 1.38; //1.7 axon // og 1.35
         public static double WristServoOffset = 0;
@@ -59,24 +60,25 @@ public class Settings {
         public static double ClawClosingSlowPower = -0.2;
         public static double ClawOpeningPower = 1; // degrees (0.5)
         public static double ClawClosingPower = -1; // degrees (0.85)
-        public static double ChamberPresetPivotAngle = 67.5;
-        public static double ChamberPresetExtensionLength = 200;
+        public static double ChamberPresetPivotAngle = 71.0;
+        public static double ChamberPresetExtensionLength = 220;
         public static double PivotBacklashMaxAngle = 82;
         public static double HumanPlayerPresetPivotAngle = 72;
         public static double OperatorDriveTurnPower = 0.35;
-        public static double ExtensionNormalMaxAcceleration = 0;
-        public static double ExtensionNormalMaxDeceleration = -696;
+        public static double ExtensionNormalMaxAcceleration = 1600;
+        public static double ExtensionNormalMaxDeceleration = -1200;
         public static double ExtensionSubMaxAcceleration = 0;
-        public static double ExtensionSubMaxDeceleration = -696;
+        public static double ExtensionSubMaxDeceleration = 0;
         public static double EmergencyExtensionPowerReleaseTimeout = 30000; // ms
         public static double EmergencyExtensionPowerReleaseSpeed = 0.1; // power that is decreased every second after timeout
-        public static double PivotAccelerationDampeningPower = 0;
+        public static double PivotAccelerationDampeningPower = 0; // tends to cause extreme oscillations even at very small numbers
+        public static double FieldCentricArmVelocityCompensation = 0.25;
 
         public static PIDControllerSettingsReference ExtensionReference = new PIDControllerSettingsReference(
-                0.018,
+                0.01,
                 0,
                 0.0005,
-                1,
+                0,
                 0,
                 Constants.extensionMaxLength,
                 0,
@@ -93,8 +95,8 @@ public class Settings {
         public static PIDControllerSettingsReference PivotReference = new PIDControllerSettingsReference(
                 0.06,
                 0,
+                0.0005,
                 0,
-                1,
                 0,
                 ArmSystemSettings.pivotMaxAngle,
                 0,
@@ -112,10 +114,10 @@ public class Settings {
     public static double slowMovingHeadingPIDMinDifference = 3;
 
     public static PIDControllerSettingsReference HeadingReference = new PIDControllerSettingsReference(
-            0.007,
+            0.005,
             0,
-            0.0004,
-            1,
+            0.0007,
+            0,
             0,
             0,
             0,
@@ -140,5 +142,9 @@ public class Settings {
         public static double SubmersibleX = -1.05, SubmersibleY = 0;
 
     }
+
+    public static double SwerveKP = 0.008;
+    public static double SwerveKI = 0.0;
+    public static double SwerveKD = 0.00005;
 
 }

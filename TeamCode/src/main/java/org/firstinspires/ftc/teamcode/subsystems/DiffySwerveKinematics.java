@@ -62,8 +62,14 @@ public class DiffySwerveKinematics extends SubsystemBase {
         double LeftPower = Math.hypot(strafe, B);
 
         // This applies the base amount of power needed to start moving the robot to the modules when needed
-        if (Math.abs(RightPower) > 0) RightPower = (1 - Settings.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Settings.driveFeedBackStaticPower;
-        if (Math.abs(LeftPower) > 0) LeftPower = (1 - Settings.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Settings.driveFeedBackStaticPower;
+        if (Settings.tuneDriveFeedBackStaticPower) {
+            RightPower += Settings.driveFeedBackStaticPower;
+            LeftPower += Settings.driveFeedBackStaticPower;
+        } else {
+            if (Math.abs(RightPower) > 0) RightPower = (1 - Settings.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Settings.driveFeedBackStaticPower;
+            if (Math.abs(LeftPower) > 0) LeftPower = (1 - Settings.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Settings.driveFeedBackStaticPower;
+        }
+
 
         double max_power = Math.max(1, Math.max(RightPower, LeftPower)); // keeps all motor powers under 1
         RightPower = (RightPower / max_power) * throttle; // target motor speeds

@@ -61,7 +61,7 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
     @Override
     public Pose getVelocity() {
         PoseVelocity2d poseVel = SubsystemData.RobotVelocity;
-        return new Pose(poseVel.linearVel.x, poseVel.linearVel.y, poseVel.angVel);
+        return new Pose(poseVel.linearVel.y, poseVel.linearVel.x, poseVel.angVel);
     }
 
     /**
