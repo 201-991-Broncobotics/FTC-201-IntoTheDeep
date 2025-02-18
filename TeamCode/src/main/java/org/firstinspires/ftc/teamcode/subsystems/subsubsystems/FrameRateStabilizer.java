@@ -30,10 +30,10 @@ public class FrameRateStabilizer {
         if (periodCache.size() > maxFramesToAverage) periodCache.remove(0);
 
         if (periodCache.size() >= minimumFramesToAverage) { // enough data to start averaging
-            currentAverageTime = periodCache.stream().mapToDouble(a -> a).average().orElse(1.0);
+            currentAverageTime = periodCache.stream().mapToDouble(a -> a).average().orElse(0.0);
             minMaxTimeDifference = Collections.max(periodCache) - Collections.min(periodCache);
 
-            if (Enabled && 1 / currentAverageTime > minimumFrameRate && currentTime < currentAverageTime) { // above minimum framerate and is below average framerate time
+            if (Enabled && 1000 / currentAverageTime > minimumFrameRate && currentTime < currentAverageTime) { // above minimum framerate and is below average framerate time
                 lastWaitTime = Math.round(lowerFrameRateRatio * (currentAverageTime - currentTime));
                 if (lastWaitTime > maxWait && maxWait > 0) lastWaitTime = maxWait;
 
@@ -71,6 +71,7 @@ public class FrameRateStabilizer {
     public void disable() { Enabled = false; }
     public boolean isEnabled() { return Enabled; }
     public double getAverageTime() { return currentAverageTime; }
+    public double getAverageFrameRate() { return 1000 / currentAverageTime; }
     public double getCurrentWaitTime() { return lastWaitTime; } // milliseconds
     public double getMinMaxTimeDifference() { return minMaxTimeDifference; } // milliseconds
     public int getCacheSize() { return periodCache.size(); }

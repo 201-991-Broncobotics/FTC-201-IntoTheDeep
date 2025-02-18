@@ -67,7 +67,7 @@ public final class TwoDeadWheelLocalizer implements Localizer {
 
         if (SubsystemData.needToResetIMU) {
             imu.resetYaw();
-            lastHeading = (new Pose2d(0, 0, Math.toRadians(90))).heading;
+            lastHeading = (new Pose2d(0, 0, Math.toRadians(0))).heading;
             SubsystemData.needToResetIMU = false;
         }
 

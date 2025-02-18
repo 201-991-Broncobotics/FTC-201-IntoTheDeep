@@ -1100,8 +1100,12 @@ public class Follower extends SubsystemBase {
     /**
      * This resets the IMU, if applicable.
      */
-    private void resetIMU() throws InterruptedException {
-        poseUpdater.resetIMU();
+    public void resetIMU() {
+        try {
+            poseUpdater.resetIMU();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

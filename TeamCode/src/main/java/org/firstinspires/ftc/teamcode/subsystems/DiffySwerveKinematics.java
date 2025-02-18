@@ -32,6 +32,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
     private static final ArrayList<PoseVelocity2dDual<Time>> LastCommands = new ArrayList<PoseVelocity2dDual<Time>>();
 
+    private static boolean AlignSwerveModulesToZero = false;
+
 
     public DiffySwerveKinematics(DcMotorEx newLeftTop, DcMotorEx newLeftBottom, DcMotorEx newRightBottom, DcMotorEx newRightTop, double maxPowerLimit, Telemetry newTelemetry) {
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
@@ -61,6 +63,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         double RightPower = Math.hypot(strafe, A);
         double LeftPower = Math.hypot(strafe, B);
 
+        maxPower = Settings.maxDrivetrainMotorPower;
+
         // This applies the base amount of power needed to start moving the robot to the modules when needed
         if (Settings.tuneDriveFeedBackStaticPower) {
             RightPower += Settings.driveFeedBackStaticPower;
@@ -84,11 +88,16 @@ public class DiffySwerveKinematics extends SubsystemBase {
             leftModule.setModule(LeftAngle, LeftPower, maxPower);
             lastRightAngle = RightAngle;
             lastLeftAngle = LeftAngle;
+            AlignSwerveModulesToZero = false;
+        } else if (AlignSwerveModulesToZero) {
+            rightModule.turnToZero(maxPower);
+            leftModule.turnToZero(maxPower);
+            lastRightAngle = 0;
+            lastLeftAngle = 0;
         } else { // when no controller input, stop moving wheels
             rightModule.setModule(lastRightAngle, RightPower, maxPower);
             leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
         }
-
     }
 
 
@@ -125,6 +134,10 @@ public class DiffySwerveKinematics extends SubsystemBase {
         leftModule.zeroSwerveModule();
         lastRightAngle = 0;
         lastLeftAngle = 0;
+    }
+
+    public void alignSwerveModulesToZero() {
+        AlignSwerveModulesToZero = true;
     }
 
 

@@ -36,7 +36,7 @@ public class RightPushFourSpecimen extends CommandOpMode {
         ArmSystem armSystem = new ArmSystem(hardwareMap, telemetry);
         HuskyLensCamera HuskyLensSystem = new HuskyLensCamera(hardwareMap);
 
-        drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
+        // drive.getRRDrive().resetSwerveWheelAngles(); // reset swerve wheels
 
         // always running
         // drive.setDefaultCommand(new DriveAutonCommand(drive, telemetry));

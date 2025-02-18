@@ -21,8 +21,8 @@ import java.util.function.DoubleSupplier;
  */
 public class PIDController {
 
-    public double kP, kI, kD, minDifference, kP2;
-    private double minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
+    public double kP, kI, kD, kP2;
+    public double minDifference, minPosition, maxPosition, minPower, maxPower, initialPower, maxSpeed, tolerance, maxIntegral, maxAcceleration, maxDeceleration; // all of these variables can be changed elsewhere in the code
     private boolean positionLimitingEnabled = false, speedLimitingEnabled = false, speedLimitingOverride = false, doVariableCorrection = true;
 
     public DoubleSupplier encoderPosition; // also allows getting the mechanism's current position with .encoderPosition.getAsDouble() or changing it
@@ -140,6 +140,17 @@ public class PIDController {
         }
         if (!(targetPosition == newTargetPosition)) integral = 0; // reset integral so it doesn't go crazy
         targetPosition = newTargetPosition;
+    }
+
+    public void jumpSetTarget(double newTargetPosition) { // sets target but ignores any acceleration/speed limiters
+        speedLimitingOverride = false; // if target is set without specifying speed limiter override, reset to off
+        if (positionLimitingEnabled) { // makes sure target is always between max and min limits if enabled
+            if (newTargetPosition > maxPosition) newTargetPosition = maxPosition;
+            else if (newTargetPosition < minPosition) newTargetPosition = minPosition;
+        }
+        if (!(targetPosition == newTargetPosition)) integral = 0;
+        targetPosition = newTargetPosition;
+        movingTargetPosition = newTargetPosition;
     }
 
 

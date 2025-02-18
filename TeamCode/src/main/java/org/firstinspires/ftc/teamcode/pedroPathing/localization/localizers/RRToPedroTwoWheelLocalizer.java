@@ -163,8 +163,8 @@ public class RRToPedroTwoWheelLocalizer extends Localizer {
     /**
      * This resets the IMU of the localizer, if applicable.
      */
-    @Override
-    public void resetIMU() throws InterruptedException {
+
+    public void resetIMU() {
         drive.realignHeading();
-    };
+    }
 }

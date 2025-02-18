@@ -54,11 +54,50 @@ public class MeepMeepTesting {
         AccelConstraint SlowDownAccelConstraint = new ProfileAccelConstraint(-30.0, 30.0);
 
 
-        myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(tileCoords(1.7, 0), Math.toRadians(90)))
-                .strafeToConstantHeading(tileCoords(1.7, -0.8))
-                .splineToConstantHeading(tileCoords(0.8, -1.7), Math.toRadians(180))
-                .strafeToConstantHeading(tileCoords(-1.1, -1.7))
-                .splineToLinearHeading(new Pose2d(tileCoords(-1.1, 0), Math.toRadians(0)), Math.toRadians(0))
+        myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(new Vector2d(tiles(0.5), tiles(-3) + 2.0), Math.toRadians(90)))
+                .strafeToConstantHeading(tileCoords(0.25, -1.33))
+
+                .setTangent(Math.toRadians(360-45))
+                .splineToConstantHeading(tileCoords(2.05, -1.8), Math.toRadians(0))
+
+                .strafeToConstantHeading(tileCoords(2.05, -2.3))
+                .strafeToConstantHeading(tileCoords(2.5, -1.8))
+
+                .strafeToConstantHeading(tileCoords(2.5, -2.3))
+                .strafeToLinearHeading(tileCoords(2.5, -1.8), Math.toRadians(45))
+
+                .strafeToLinearHeading(tileCoords(2.5, -2.3), Math.toRadians(90))
+
+                .strafeToConstantHeading(tileCoords(2.1, -2.4))
+
+                .strafeToConstantHeading(tileCoords(2, -2.715))
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.21, -1.3), Math.toRadians(110))
+
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
+                .strafeToConstantHeading(tileCoords(1.8, -2.73))
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.11, -1.3), Math.toRadians(110))
+
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
+                .strafeToConstantHeading(tileCoords(1.8, -2.73))
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.07, -1.3), Math.toRadians(110))
+
+                .setTangent(Math.toRadians(360-55))
+                .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
+                .strafeToConstantHeading(tileCoords(1.8, -2.73))
+
+                .setTangent(Math.toRadians(135))
+                .splineToConstantHeading(tileCoords(0.0, -1.3), Math.toRadians(110))
+
+                .setTangent(Math.toRadians(360-60))
+                .splineToConstantHeading(tileCoords(2.1, -2.5), Math.toRadians(360-20))
 
 
                 .build());

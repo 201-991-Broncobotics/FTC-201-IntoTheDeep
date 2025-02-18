@@ -17,7 +17,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.SubsystemData;
 import org.firstinspires.ftc.teamcode.pedroPathing.follower.Follower;
-import org.firstinspires.ftc.teamcode.pedroPathing.localization.Pose;
 import org.firstinspires.ftc.teamcode.pedroPathing.pathGeneration.PathChain;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDController;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
@@ -171,10 +170,9 @@ public class DriveCommand extends CommandBase {
         // Makes sure any changes to pid variables get applied to the actual pids
         HeadingTargetPID.setSettingsTheSameAs(Settings.HeadingReference);
 
-        SubsystemData.SwerveModuleReferencePID.kP = Settings.SwerveKP;
-        SubsystemData.SwerveModuleReferencePID.kI = Settings.SwerveKI;
-        SubsystemData.SwerveModuleReferencePID.kD = Settings.SwerveKD;
-
+        if (SubsystemData.driver.getButton(GamepadKeys.Button.RIGHT_BUMPER)) {
+            drive.getRRDrive().alignModulesToZero();
+        }
 
         // This will realign the current pose with one of the walls depending on which dpad is being pressed after being held for more than 1 second
         // The timers are all tracked separately so that you can realign x and y at the same time while in a corner
@@ -235,8 +233,8 @@ public class DriveCommand extends CommandBase {
         }
 
         double throttleMagnitude = functions.deadZone(SubsystemData.driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
-        double throttleControl = 0.4 + 0.6 * throttleMagnitude - Settings.DriveExtensionDriveReduction * SubsystemData.DriveCurrentExtensionLengthPercent;
-        double turnThrottleControl = 0.6 + 0.4 * throttleMagnitude - Settings.DriveExtensionTurnReduction * SubsystemData.DriveCurrentExtensionLengthPercent;
+        double throttleControl = functions.minMaxValue(0, 1, 0.4 + 0.6 * throttleMagnitude - Settings.DriveExtensionDriveReduction * SubsystemData.DriveCurrentExtensionLengthPercent);
+        double turnThrottleControl = functions.minMaxValue(0, 1, 0.6 + 0.4 * throttleMagnitude + Settings.DriveExtensionTurnBoost * SubsystemData.DriveCurrentExtensionLengthPercent);
         double forward = -1 * functions.deadZone(SubsystemData.driver.getRightY()); // normalized later using magnitude
         double strafe = functions.deadZone(SubsystemData.driver.getRightX());
         double turn = -turnThrottleControl * Math.pow(SubsystemData.driver.getLeftX(), 3); // normalized for easier driving

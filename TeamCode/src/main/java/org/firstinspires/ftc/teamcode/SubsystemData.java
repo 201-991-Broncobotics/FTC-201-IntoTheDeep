@@ -53,8 +53,6 @@ public class SubsystemData {
     public static YawPitchRollAngles IMUAngles;
 
 
-    // This doesn't doing anything but lets me change this ones variables in PID Tuner and both swerve modules will copy the same settings from this one
-    public static PIDController SwerveModuleReferencePID = new PIDController(0.01, 0.0, 0.0003, () -> 0);
     public static boolean HoldClawFieldPos = false;
     public static double OperatorTurningPower = 0;
     public static double HeadHoldTarget = 0;

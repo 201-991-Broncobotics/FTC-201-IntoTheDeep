@@ -583,6 +583,11 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         SubsystemData.needToResetIMU = true;
         SubsystemData.imuInstance.resetYaw(); // idk if my various copies of the imu also need to be individually reset
         SubsystemData.NeedToRealignHeadingHold = true;
+        pose = new Pose2d(pose.position, Math.toRadians(90));
+    }
+
+    public void alignModulesToZero() {
+        diffySwerve.alignSwerveModulesToZero();
     }
 
 
@@ -619,30 +624,6 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         diffySwerve.zeroSwerveModules();
     }
-
-
-    // This would actually be useful for auto aiming while moving though I want to use it to prevent the robot from circling the target point in auton
-    public Pose2dDual<Time> OffsetTargetPositionWithVel(Pose2dDual<Time> TargetPose, PoseVelocity2d VelocityPose, double Percent) {
-        if (TargetPose.position.x.value() - pose.position.x == 0) {
-            telemetry.addLine("Offset X: " + Percent * VelocityPose.linearVel.x + " Y: " + 0);
-            return new Pose2dDual<>(
-                    new Vector2dDual<>(
-                            new DualNum<>(new double[] {pose.position.x + Percent * VelocityPose.linearVel.x, TargetPose.position.x.get(1)}),
-                            TargetPose.position.y),
-                    TargetPose.heading);
-        } else {
-            double slope = (TargetPose.position.y.value() - pose.position.y) / (TargetPose.position.x.value() - pose.position.x);
-            double TargetOffsetX = (VelocityPose.linearVel.x * slope * slope + pose.position.x * slope * slope - VelocityPose.linearVel.y * slope + pose.position.x) / (1 + slope * slope);
-            double TargetOffsetY = (-1 * (1 / slope)) * (TargetOffsetX - pose.position.x) + pose.position.y;
-            telemetry.addLine("Offset X: " +  -1 * Percent * (TargetOffsetX - pose.position.x) + " Y: " +  -1 * Percent * (TargetOffsetY - pose.position.y));
-            return new Pose2dDual<>(
-                    new Vector2dDual<>(
-                            new DualNum<>(new double[] {TargetPose.position.x.value() - Percent * (TargetOffsetX - pose.position.x), TargetPose.position.x.get(1)}),
-                            new DualNum<>(new double[] {TargetPose.position.y.value() - Percent * (TargetOffsetY - pose.position.y), TargetPose.position.y.get(1)})),
-                    TargetPose.heading);
-        }
-    }
-
 
 
     public void updateFeedBackParameters(double AxialGain, double LateralGain, double HeadingGain, double AxialVelocityGain, double LateralVelocityGain, double HeadingVelocityGain) {

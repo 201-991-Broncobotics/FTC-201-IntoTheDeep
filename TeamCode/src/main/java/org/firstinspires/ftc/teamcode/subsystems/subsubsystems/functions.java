@@ -147,4 +147,10 @@ public class functions {
                 * (point.x - linePoint1.x) + linePoint1.y) - point.y) <= 0;
     }
 
+
+    public static double minMaxValue(double min, double max, double value) {
+        if (value > max) return max;
+        else return Math.max(value, min);
+    }
+
 }

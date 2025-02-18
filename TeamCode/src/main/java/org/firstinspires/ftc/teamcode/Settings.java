@@ -11,8 +11,8 @@ public class Settings {
 
     public static double maxDrivetrainMotorPower = 0.9; // percent
     public static double maxDrivetrainTurnPower = 0.8;
-    public static double controllerDeadZone = 0.025;
-    public static double driveFeedBackStaticPower = 0.065; // power required in order to start moving the robot
+    public static double controllerDeadZone = 0.01;
+    public static double driveFeedBackStaticPower = 0.013; // power required in order to start moving the robot
     public static boolean tuneDriveFeedBackStaticPower = false;
     public static double SwerveMinimumPower = 0.05;
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
@@ -20,10 +20,11 @@ public class Settings {
     public static double HuskyLensTargetY = 70; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
     public static int SwerveModuleDriveSharpness = 1; // 1 is normal, a value higher than 1 would make the module have much less power when not at the correct angle
     public static double DriveExtensionDriveReduction = 0.2;
-    public static double DriveExtensionTurnReduction = 0;
+    public static double DriveExtensionTurnBoost = 0;
     public static double DriverLocalizationCorrectionHoldTime = 1000; // ms
     public static double LocalizationChamberResetY = tiles(-1.3), LocalizationRightResetX = tiles(2.75), LocalizationBottomResetY = tiles(-3) + 4.0, LocalizationLeftResetX = tiles(-2.75);
 
+    // -1.3, 2.75, -3 + 4.0, -2.75
     @Config
     public static class FrameRateStabilizerEditor {
 
@@ -58,9 +59,10 @@ public class Settings {
         public static boolean WristServoReversed = true;
         public static double OperatorTurnOverridePower = 0; // permanently 0
         public static double ClawClosingSlowPower = -0.2;
+        public static double ClawClosingReallySlowPower = -0.15;
         public static double ClawOpeningPower = 1; // degrees (0.5)
         public static double ClawClosingPower = -1; // degrees (0.85)
-        public static double ChamberPresetPivotAngle = 71.0;
+        public static double ChamberPresetPivotAngle = 70.0;
         public static double ChamberPresetExtensionLength = 220;
         public static double PivotBacklashMaxAngle = 82;
         public static double HumanPlayerPresetPivotAngle = 72;
@@ -69,10 +71,11 @@ public class Settings {
         public static double ExtensionNormalMaxDeceleration = -1200;
         public static double ExtensionSubMaxAcceleration = 0;
         public static double ExtensionSubMaxDeceleration = 0;
-        public static double EmergencyExtensionPowerReleaseTimeout = 30000; // ms
+        public static double EmergencyExtensionPowerReleaseTimeout = 20000; // ms
         public static double EmergencyExtensionPowerReleaseSpeed = 0.1; // power that is decreased every second after timeout
         public static double PivotAccelerationDampeningPower = 0; // tends to cause extreme oscillations even at very small numbers
         public static double FieldCentricArmVelocityCompensation = 0.25;
+        public static boolean ObeyHorizontalLimit = true;
 
         public static PIDControllerSettingsReference ExtensionReference = new PIDControllerSettingsReference(
                 0.01,
@@ -114,10 +117,10 @@ public class Settings {
     public static double slowMovingHeadingPIDMinDifference = 3;
 
     public static PIDControllerSettingsReference HeadingReference = new PIDControllerSettingsReference(
-            0.005,
+            0.0038,
             0,
-            0.0007,
-            0,
+            0.0008,
+            0.00008,
             0,
             0,
             0,
@@ -143,8 +146,24 @@ public class Settings {
 
     }
 
-    public static double SwerveKP = 0.008;
-    public static double SwerveKI = 0.0;
-    public static double SwerveKD = 0.00005;
+    public static PIDControllerSettingsReference SwerveReference = new PIDControllerSettingsReference(
+            0.008,
+            0,
+            0.00005,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            false,
+            false);
+
+    public static double SwerveAlignmentKI = 0.0;
 
 }

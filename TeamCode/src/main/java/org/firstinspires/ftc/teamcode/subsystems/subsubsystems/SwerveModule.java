@@ -31,7 +31,7 @@ public class SwerveModule {
         bottomMotor = newBottomMotor;
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
         modulePID = new PIDController(0, 0, 0, topMotorEncoder);
-        modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
+        modulePID.setSettingsTheSameAs(Settings.SwerveReference);
     }
 
 
@@ -40,6 +40,25 @@ public class SwerveModule {
         topMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         ModuleZeroAngle = (topMotor.getCurrentPosition() / Constants.encoderResolution * 360);
         modulePID.replaceDoubleSupplier(topMotorEncoder);
+    }
+
+
+    public void turnToZero(double maxPowerLimit) {
+        modulePID.setSettingsTheSameAs(Settings.SwerveReference);
+        modulePID.kI = Settings.SwerveAlignmentKI;
+
+        double rotation = modulePID.getPowerWrapped(0, 360);
+
+        // maintain the correct motor speed balance
+        double divider = Math.max(1, Math.abs(rotation / maxPowerLimit));
+
+        if (usePhoton) {
+            topMotorAdv.setPower(-1 * rotation / divider);
+            bottomMotorAdv.setPower(-1 * rotation / divider);
+        } else {
+            topMotor.setPower(-1 * rotation / divider);
+            bottomMotor.setPower(-1 * rotation / divider);
+        }
     }
 
 
@@ -60,7 +79,7 @@ public class SwerveModule {
 
 
     public void setModule(double angle, double speed, double maxPowerLimit) {
-        modulePID.setSettingsTheSameAs(SubsystemData.SwerveModuleReferencePID);
+        modulePID.setSettingsTheSameAs(Settings.SwerveReference);
         if (Settings.SwerveModuleDriveSharpness < 1) Settings.SwerveModuleDriveSharpness = 1;
 
         double rotation = modulePID.getPowerWrapped(angle, 180);

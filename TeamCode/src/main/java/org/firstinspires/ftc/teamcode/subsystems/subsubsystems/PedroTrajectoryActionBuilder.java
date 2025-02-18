@@ -31,7 +31,7 @@ public class PedroTrajectoryActionBuilder {
 
     private double lastTangent;
 
-    private boolean isReversed = false, OnlyRequireOneEndCondition = false;
+    private boolean isReversed = false, OnlyRequireOneEndCondition = true;
 
 
     public PedroTrajectoryActionBuilder(PathBuilder pathConstructor, Pose2d startPose, Follower followerInput) {
@@ -398,8 +398,8 @@ public class PedroTrajectoryActionBuilder {
 
 
 
-    public PedroTrajectoryActionBuilder onlyRequireOneEndCondition() {
-        OnlyRequireOneEndCondition = true;
+    public PedroTrajectoryActionBuilder requireAllEndConditions() {
+        OnlyRequireOneEndCondition = false;
         return this;
     }
 
