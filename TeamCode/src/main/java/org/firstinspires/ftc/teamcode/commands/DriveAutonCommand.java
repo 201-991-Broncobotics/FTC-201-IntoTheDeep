@@ -50,7 +50,9 @@ public class DriveAutonCommand extends CommandBase {
     @Override
     public void execute() {
         telemetry.addLine("Pedro Target " + functions.TilePoseAsString(functions.PedroToRRPose(SubsystemData.TargetPedroPose)));
-        telemetry.addLine("Auton Time:" + AutonTime);
+        telemetry.addData("Auton Time",  AutonTime);
+        telemetry.addLine("Current Path Percent Completion: " + (drive.getCurrentTValue() * 100) + " %");
+        telemetry.addData("Time Running Path (seconds)", drive.getFollowingRuntime());
         AutonUpdateSpeedTimer.reset();
         TelemetryPacket packet = new TelemetryPacket();
 

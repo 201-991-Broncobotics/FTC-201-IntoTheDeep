@@ -309,6 +309,16 @@ public class Path {
     }
 
     /**
+     * This returns if the robot is past this percentage of the Path, according to the parametric t-value.
+     *
+     * @return returns if past t-value
+     */
+    public boolean isPastParametricPoint(double tValue) {
+        if (closestPointTValue >= tValue) return true;
+        return false;
+    }
+
+    /**
      * Returns the ArrayList of control points for this BezierCurve.
      *
      * @return This returns the control points.

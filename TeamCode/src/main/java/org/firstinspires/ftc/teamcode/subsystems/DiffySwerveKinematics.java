@@ -56,7 +56,7 @@ public class DiffySwerveKinematics extends SubsystemBase {
     }
 
 
-    // only use one of these diffy serve methods at one time as some of the values are shared
+    // only use one of these diffy swerve methods at one time as some of the values are shared
     public void driveDifferentialSwerve(double forward, double strafe, double turn, double throttle) {
         double A = -forward + turn; // diffy swerve drive math
         double B = -forward - turn;
@@ -65,25 +65,20 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
         maxPower = Settings.maxDrivetrainMotorPower;
 
-        // This applies the base amount of power needed to start moving the robot to the modules when needed
-        if (Settings.tuneDriveFeedBackStaticPower) {
-            RightPower += Settings.driveFeedBackStaticPower;
-            LeftPower += Settings.driveFeedBackStaticPower;
-        } else {
-            if (Math.abs(RightPower) > 0) RightPower = (1 - Settings.driveFeedBackStaticPower) * RightPower + Math.signum(RightPower) * Settings.driveFeedBackStaticPower;
-            if (Math.abs(LeftPower) > 0) LeftPower = (1 - Settings.driveFeedBackStaticPower) * LeftPower + Math.signum(LeftPower) * Settings.driveFeedBackStaticPower;
-        }
-
-
         double max_power = Math.max(1, Math.max(RightPower, LeftPower)); // keeps all motor powers under 1
         RightPower = (RightPower / max_power) * throttle; // target motor speeds
         LeftPower = (LeftPower / max_power) * throttle;
         double RightAngle = Math.toDegrees(Math.atan2(strafe, A)); // Target wheel angles
         double LeftAngle = Math.toDegrees(Math.atan2(strafe, B));
 
-
         // actually tell the pod to go to the angle at the power
-        if (Math.abs(strafe) > 0 || Math.abs(forward) > 0 || Math.abs(turn) > 0) {
+        if (Settings.tuneDriveFeedBackStaticPower) {
+            rightModule.tuneDriveStaticPower(maxPower);
+            leftModule.tuneDriveStaticPower(maxPower);
+            lastRightAngle = 0;
+            lastLeftAngle = 0;
+            AlignSwerveModulesToZero = false;
+        } else if (Math.abs(strafe) > 0 || Math.abs(forward) > 0 || Math.abs(turn) > 0) {
             rightModule.setModule(RightAngle, RightPower, maxPower);
             leftModule.setModule(LeftAngle, LeftPower, maxPower);
             lastRightAngle = RightAngle;
@@ -94,6 +89,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
             leftModule.turnToZero(maxPower);
             lastRightAngle = 0;
             lastLeftAngle = 0;
+            telemetry.addData("Current right Diffy Angle:", rightModule.getCurrentAngle());
+            telemetry.addData("Current left Diffy Angle:", leftModule.getCurrentAngle());
         } else { // when no controller input, stop moving wheels
             rightModule.setModule(lastRightAngle, RightPower, maxPower);
             leftModule.setModule(lastLeftAngle, LeftPower, maxPower);

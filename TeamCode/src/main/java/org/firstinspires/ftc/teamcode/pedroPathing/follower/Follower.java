@@ -940,6 +940,24 @@ public class Follower extends SubsystemBase {
     }
 
     /**
+     * This returns whether the follower is past the specified parametric point of its current Path.
+     * The parametric point is determined by if the closest Point t-value is greater than the specified
+     * t-value.
+     * If running a PathChain, this returns true only if past the parametric point of last Path in the PathChain.
+     *
+     * @param percent value between 0 and 1: 0.995 is the default at parametric end value and 0.005 is
+     *                the default past parametric start value
+     * @return returns whether the Follower is at the parametric end of its Path.
+     */
+    public boolean pastParametricPoint(double percent) {
+        if (followingPathChain) {
+            if (chainIndex == currentPathChain.size() - 1) return currentPath.isPastParametricPoint(percent);
+            return false;
+        }
+        return currentPath.isPastParametricPoint(percent);
+    }
+
+    /**
      * This returns the amount of time since the follower was given the path.
      * @return time in seconds
      */
@@ -1116,18 +1134,24 @@ public class Follower extends SubsystemBase {
 
     public class RRFollowPath implements Action {
 
-        boolean alreadyScheduledPath = false, UseOrStatements;
+        boolean alreadyScheduledPath = false, UseOrStatements, checkTimeOut;
         PathChain PathToFollow;
+        double TimeOutSeconds;
         ArrayList<BooleanSupplier> pathEndConditionList;
-        public RRFollowPath(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean useOrStatements) {
+        ElapsedTime TimeOutTimer;
+        public RRFollowPath(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean useOrStatements, double timeOutSeconds) {
             PathToFollow = path;
             pathEndConditionList = endConditions;
             UseOrStatements = useOrStatements;
+            TimeOutSeconds = timeOutSeconds;
+            TimeOutTimer = new ElapsedTime(ElapsedTime.Resolution.SECONDS);
+            checkTimeOut = timeOutSeconds > 0.0;
         }
         @Override
         public boolean run(@NonNull TelemetryPacket telemetryPacket) {
             if (!alreadyScheduledPath) {
                 followPath(PathToFollow, true);
+                TimeOutTimer.reset();
                 alreadyScheduledPath = true;
             }
             boolean shouldEndPath = false;
@@ -1138,6 +1162,9 @@ public class Follower extends SubsystemBase {
                         break;
                     }
                 }
+                if (TimeOutTimer.time() > TimeOutSeconds && checkTimeOut) {
+                    shouldEndPath = true;
+                }
             } else {
                 for (BooleanSupplier condition : pathEndConditionList) {
                     if (!condition.getAsBoolean()) {
@@ -1147,6 +1174,9 @@ public class Follower extends SubsystemBase {
                         shouldEndPath = true;
                     }
                 }
+                if (TimeOutTimer.time() < TimeOutSeconds || !checkTimeOut) {
+                    shouldEndPath = false;
+                }
             }
 
             return !shouldEndPath;
@@ -1154,11 +1184,15 @@ public class Follower extends SubsystemBase {
     }
 
     public Action followPathAction(PathChain path, ArrayList<BooleanSupplier> endConditions) {
-        return new RRFollowPath(path, endConditions, false);
+        return new RRFollowPath(path, endConditions, false, 0);
     }
 
     public Action followPathAction(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean OnlyRequireOneCondition) {
-        return new RRFollowPath(path, endConditions, OnlyRequireOneCondition);
+        return new RRFollowPath(path, endConditions, OnlyRequireOneCondition, 0);
+    }
+
+    public Action followPathAction(PathChain path, ArrayList<BooleanSupplier> endConditions, boolean OnlyRequireOneCondition, double TimeOutSeconds) {
+        return new RRFollowPath(path, endConditions, OnlyRequireOneCondition, TimeOutSeconds);
     }
 
 }

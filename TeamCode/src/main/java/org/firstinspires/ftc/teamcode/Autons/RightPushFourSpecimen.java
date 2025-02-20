@@ -19,8 +19,10 @@ import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
 import com.arcrobotics.ftclib.command.RunCommand;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 
+@Disabled
 @Autonomous(name="RightPushFourSpecimen")
 public class RightPushFourSpecimen extends CommandOpMode {
 

@@ -29,15 +29,19 @@ public class PedroTrajectoryActionBuilder {
 
     private ArrayList<BooleanSupplier> endConditions = new ArrayList<BooleanSupplier>();
 
+    private double timeOutSeconds;
+
     private double lastTangent;
 
-    private boolean isReversed = false, OnlyRequireOneEndCondition = true;
+    private boolean isReversed = false, OnlyRequireOneEndCondition;
 
 
     public PedroTrajectoryActionBuilder(PathBuilder pathConstructor, Pose2d startPose, Follower followerInput) {
         this.currentPath = pathConstructor;
         this.lastPose = functions.RRToPedroPose(startPose);
         this.follower = followerInput;
+        OnlyRequireOneEndCondition = true;
+        timeOutSeconds = 0;
     }
 
 
@@ -368,6 +372,14 @@ public class PedroTrajectoryActionBuilder {
         return this;
     }
     /**
+     * This end condition makes it so the robot path will end only once the robot is moving at less
+     * than 1 inch per second and has past the half way point through the path.
+     */
+    public PedroTrajectoryActionBuilder endWhenStoppedMovingPastHalfWay() {
+        endConditions.add(() -> follower.getVelocityMagnitude() < 1 && follower.pastParametricPoint(0.5));
+        return this;
+    }
+    /**
      * This end condition makes the robot path end once the robot has arrived within a certain distance
      * away from the end of the path.
      * @param distanceFromFinish in inches
@@ -384,14 +396,15 @@ public class PedroTrajectoryActionBuilder {
      * @param seconds length of time
      */
     public PedroTrajectoryActionBuilder endAfterTimeout(double seconds) {
-        endConditions.add(() -> follower.getFollowingRuntime() > seconds);
+        // endConditions.add(() -> follower.getFollowingRuntime() > seconds);
+        timeOutSeconds = seconds;
         return this;
     }
     /**
      * This end condition makes it so the robot will stop following if it has been taking too long.
      * @param seconds length of time
      */
-    public PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) {
+    private PedroTrajectoryActionBuilder endAfterTimeSincePathFinished(double seconds) { // TODO: may not work
         endConditions.add(() -> follower.getTimeSincePathFinished() > seconds);
         return this;
     }
@@ -429,8 +442,8 @@ public class PedroTrajectoryActionBuilder {
         if (endConditions.isEmpty()) {
             endWhenDoneFollowing(); // default end condition
         }
-        return follower.followPathAction(currentPath.build(), endConditions, OnlyRequireOneEndCondition);
-    } // setPathEndTimeoutConstraint(FollowerConstants.pathEndTimeoutConstraint)
+        return follower.followPathAction(currentPath.build(), endConditions, OnlyRequireOneEndCondition, timeOutSeconds);
+    }
 
 
 }

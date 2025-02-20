@@ -23,6 +23,7 @@ public class SwerveModule {
     private double ModuleZeroAngle;
 
     private boolean usePhoton = false;
+    private double LastR1Power = 0, LastR2Power = 0;
 
 
     public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle) { // initialize the module
@@ -95,13 +96,47 @@ public class SwerveModule {
         double R2Power = -1 * speed + rotation;
         double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
 
-        if (usePhoton) {
-            topMotorAdv.setPower(-1 * R1Power / divider);
-            bottomMotorAdv.setPower(-1 * R2Power / divider);
-        } else {
-            topMotor.setPower(-1 * R1Power / divider);
-            bottomMotor.setPower(-1 * R2Power / divider);
+        R1Power = -1 * R1Power / divider;
+        R2Power = -1 * R2Power / divider;
+
+        if (Math.abs(R1Power) > 0) R1Power = (1 - Settings.driveFeedBackStaticPower) * R1Power + Math.signum(R1Power) * Settings.driveFeedBackStaticPower;
+        if (Math.abs(R2Power) > 0) R2Power = (1 - Settings.driveFeedBackStaticPower) * R2Power + Math.signum(R2Power) * Settings.driveFeedBackStaticPower;
+
+
+        if (Math.abs(LastR1Power - R1Power) >= Settings.DriveMotorReadDifference || (R1Power == 0 && !(LastR1Power == 0))) {
+            topMotor.setPower(R1Power);
+            LastR1Power = R1Power;
         }
+        if (Math.abs(LastR2Power - R2Power) >= Settings.DriveMotorReadDifference || (R2Power == 0 && !(LastR2Power == 0))) {
+            bottomMotor.setPower(R2Power);
+            LastR2Power = R2Power;
+        }
+    }
+
+    public void tuneDriveStaticPower(double maxPowerLimit) {
+        modulePID.setSettingsTheSameAs(Settings.SwerveReference);
+        if (Settings.SwerveModuleDriveSharpness < 1) Settings.SwerveModuleDriveSharpness = 1;
+        double angle = 0;
+        double speed = Settings.driveFeedBackStaticPower;
+
+        double rotation = modulePID.getPowerWrapped(angle, 180);
+
+        if (Math.abs(speed) > 1) speed = Math.signum(speed); // module shouldn't try to calculate speeds beyond 1 as it could mess the math up
+
+        // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
+        double DriveSharpnessCurve = Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2);
+        speed = speed * (Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, Settings.SwerveModuleDriveSharpness)));
+
+        // maintain the correct motor speed balance
+        double R1Power = speed + rotation;
+        double R2Power = -1 * speed + rotation;
+        double divider = Math.max(1, Math.max(R1Power / maxPowerLimit, R2Power / maxPowerLimit));
+
+        R1Power = -1 * R1Power / divider;
+        R2Power = -1 * R2Power / divider;
+
+        topMotor.setPower(R1Power);
+        bottomMotor.setPower(R2Power);
 
     }
 

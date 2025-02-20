@@ -9,12 +9,14 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PIDControllerSett
 @Config
 public class Settings {
 
-    public static double maxDrivetrainMotorPower = 0.9; // percent
+    public static double maxDrivetrainMotorPower = 0.85; // percent
     public static double maxDrivetrainTurnPower = 0.8;
     public static double controllerDeadZone = 0.01;
-    public static double driveFeedBackStaticPower = 0.013; // power required in order to start moving the robot
+    public static double driveFeedBackStaticPower = 0.15; // power required in order to start moving the robot
+    public static double turnFeedBackStaticPower = 0.15;
     public static boolean tuneDriveFeedBackStaticPower = false;
-    public static double SwerveMinimumPower = 0.05;
+    public static boolean tuneTurnFeedBackStaticPower = false;
+    public static double SwerveMinimumPower = 0.04;
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
     public static double HuskyLensTargetX = 160;
     public static double HuskyLensTargetY = 70; // huskylens screen is 320 pixels width (x) and 240 pixels height (y)
@@ -22,6 +24,8 @@ public class Settings {
     public static double DriveExtensionDriveReduction = 0.2;
     public static double DriveExtensionTurnBoost = 0;
     public static double DriverLocalizationCorrectionHoldTime = 1000; // ms
+    public static double DriveMotorReadDifference = 0.01; // makes it so unnecessary changes to motor power don't impact performance as much
+    public static double ArmMotorReadDifference = 0.005;
     public static double LocalizationChamberResetY = tiles(-1.3), LocalizationRightResetX = tiles(2.75), LocalizationBottomResetY = tiles(-3) + 4.0, LocalizationLeftResetX = tiles(-2.75);
 
     // -1.3, 2.75, -3 + 4.0, -2.75
@@ -56,14 +60,17 @@ public class Settings {
         public static double WristServoRatio = 1.38; //1.7 axon // og 1.35
         public static double WristServoOffset = 0;
         public static double WristFloorAngle = 205;
+        public static double WristAutonChamberAngle = 190;
         public static boolean WristServoReversed = true;
         public static double OperatorTurnOverridePower = 0; // permanently 0
-        public static double ClawClosingSlowPower = -0.2;
+        public static double ClawClosingSlowPower = -0.25;
         public static double ClawClosingReallySlowPower = -0.15;
         public static double ClawOpeningPower = 1; // degrees (0.5)
         public static double ClawClosingPower = -1; // degrees (0.85)
         public static double ChamberPresetPivotAngle = 70.0;
         public static double ChamberPresetExtensionLength = 220;
+        public static double AutoChamberPresetPivotAngle = 75.0;
+        public static double AutoChamberPresetExtensionLength = 253;
         public static double PivotBacklashMaxAngle = 82;
         public static double HumanPlayerPresetPivotAngle = 72;
         public static double OperatorDriveTurnPower = 0.35;
@@ -117,16 +124,16 @@ public class Settings {
     public static double slowMovingHeadingPIDMinDifference = 3;
 
     public static PIDControllerSettingsReference HeadingReference = new PIDControllerSettingsReference(
-            0.0038,
+            0.0003,
             0,
-            0.0008,
-            0.00008,
+            0.0005,
+            0.00015,
             0,
             0,
+            0.03,
+            0.8,
             0,
-            1,
-            0,
-            0.25,
+            0.3,
             0,
             0,
             0,
@@ -147,9 +154,9 @@ public class Settings {
     }
 
     public static PIDControllerSettingsReference SwerveReference = new PIDControllerSettingsReference(
-            0.008,
-            0,
-            0.00005,
+            0.007,
+            0.0,
+            0.0002,
             0,
             0,
             0,
@@ -164,6 +171,6 @@ public class Settings {
             false,
             false);
 
-    public static double SwerveAlignmentKI = 0.0;
+    public static double SwerveAlignmentKI = 0.025;
 
 }

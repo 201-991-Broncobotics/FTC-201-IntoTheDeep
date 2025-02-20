@@ -262,12 +262,9 @@ public class DriveCommand extends CommandBase {
                     case 1: // Human Player
 
                         if (functions.isPointAboveLine(SubsystemData.CurrentRobotPose.position, new Vector2d(1, -1), new Vector2d(-1, 1)) && SubsystemData.CurrentRobotPose.position.y > tiles(-1)) {
-                            if (SubsystemData.ClawWasLastOpen) drive.followPath(PathToHumanPlayerTopPickup, true);
-                            else drive.followPath(PathToHumanPlayerTopDropOff, true);
+                            drive.followPath(PathToHumanPlayerTopPickup, true);
                         } else {
-                            if (SubsystemData.ClawWasLastOpen) drive.followPath(PathToHumanPlayerBottomPickup, true);
-                            else drive.followPath(PathToHumanPlayerBottomDropOff, true);
-
+                            drive.followPath(PathToHumanPlayerBottomPickup, true);
                         }
                         break;
                     case 2: // Chamber
@@ -304,7 +301,7 @@ public class DriveCommand extends CommandBase {
             // convert to vector and normalize values to make it easier for the driver to control
             double driveDirection = Math.toDegrees(Math.atan2(forward, strafe));
             double joystickMagnitude = Math.hypot(strafe, forward);
-            double drivePower = Math.abs(joystickMagnitude) * joystickMagnitude; //  Math.pow(joystickMagnitude, 3)
+            double drivePower = Math.pow(joystickMagnitude, 3); //   // Math.abs(joystickMagnitude) * joystickMagnitude
 
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.LEFT_STICK_BUTTON)) headingHold = 90;

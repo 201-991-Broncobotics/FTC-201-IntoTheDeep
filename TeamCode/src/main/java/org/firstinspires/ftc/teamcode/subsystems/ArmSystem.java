@@ -10,6 +10,7 @@ import com.arcrobotics.ftclib.command.SubsystemBase;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.hardware.dfrobot.HuskyLens;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -28,6 +29,7 @@ import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.TelemetryLogger;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.functions;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.DoubleSupplier;
 
 
@@ -103,7 +105,7 @@ public class ArmSystem extends SubsystemBase {
 
     private boolean needToSetStartCoord = true;
 
-    HuskyLensCamera camera;
+    // HuskyLensCamera camera;
 
     private double StartPivotZero, StartPivotDirectZero;
 
@@ -113,6 +115,8 @@ public class ArmSystem extends SubsystemBase {
 
     private double EmergencyExtensionPowerRatio = 1; // for gradually releasing power to extension when over current
     public double StartTime = 0;
+
+    private double LastPivotPower = 0, LastExtensionPower = 0, LastClawPower = 0;
 
 
 
@@ -142,7 +146,7 @@ public class ArmSystem extends SubsystemBase {
         CurrentPivotAngleZero = CurrentPivotAngle.getAsDouble() - CurrentPivotAngleZero;
         CurrentPivotAngleDirectZero = CurrentPivotAngleDirect.getAsDouble() - CurrentPivotAngleDirectZero;
 
-        camera = new HuskyLensCamera(map);
+        // camera = new HuskyLensCamera(map);
 
         // Timers
         CommandFrameTime = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // this is how fast the entire code updates / loop time of command scheduler
@@ -170,20 +174,22 @@ public class ArmSystem extends SubsystemBase {
 
         frameRateStabilizer = new FrameRateStabilizer(0.75, 20, 100);
         frameRateStabilizer.disable(); // makes sure it isn't enabled in auton
-    }
 
-
-    public void startRunTime() {
-        StartTime = runTime.time();
+        List<LynxModule> allHubs = map.getAll(LynxModule.class); // makes code faster
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
     }
 
 
     public void resetAndPrepareArm() {
+        StartTime = runTime.time();
+
         // reset Extension and Pivot to make sure the backlash doesn't get in the way
         ExtensionF.setPower(-0.3);
         ExtensionB.setPower(-0.3);
         Pivot.setPower(-0.4); // makes sure the backlash is always at its max so it can be compensated in the pivot zero
-        functions.Sleep(700);
+        functions.Sleep(500);
         ExtensionF.setPower(0);
         ExtensionB.setPower(0);
         Pivot.setPower(0);
@@ -268,8 +274,6 @@ public class ArmSystem extends SubsystemBase {
             activeExtensionReset = false;
         }
 
-        // tunePIDsWithController(SubsystemData.driver); // we can just use ftc dashboard now which is so much easier
-
         if (SubsystemData.operator.getButton(GamepadKeys.Button.LEFT_BUMPER)) {
             openClaw();
         } else if (SubsystemData.operator.getButton(GamepadKeys.Button.RIGHT_BUMPER)) {
@@ -280,6 +284,7 @@ public class ArmSystem extends SubsystemBase {
 
         updateClawArm();
 
+        /*
         if (SubsystemData.inTeleOp) {
             frameRateStabilizer.Enabled = Settings.FrameRateStabilizerEditor.FrameRateStabilizerEnabled;
             frameRateStabilizer.lowerFrameRateRatio = Settings.FrameRateStabilizerEditor.FrameRateStabilizerRatio;
@@ -289,6 +294,8 @@ public class ArmSystem extends SubsystemBase {
 
             frameRateStabilizer.stabilize(); // yes this does slow down the code but I think it may make the pids more accurate
         }
+
+         */
 
     }
 
@@ -304,7 +311,7 @@ public class ArmSystem extends SubsystemBase {
 
         double RunTimeInSeconds = functions.round((runTime.time() - StartTime) / 1000.0, 1);
         if (!SubsystemData.IMUWorking) {
-            if (RunTimeInSeconds - Math.floor(RunTimeInSeconds) < 0.5) telemetry.addLine("##########################\n IMU HAS STOPPED RESPONDING \n##########################");
+            if (RunTimeInSeconds - Math.floor(RunTimeInSeconds) < 0.7) telemetry.addLine("##########################\n IMU HAS STOPPED RESPONDING \n##########################");
             else telemetry.addLine(" \n \n ");
         }
         int minutes = (int) Math.floor(RunTimeInSeconds / 60);
@@ -342,6 +349,7 @@ public class ArmSystem extends SubsystemBase {
         //LastArmLoopTime = ArmLoopTimer.time();
 
 
+        /*
 
         // AUTO AIMING
         if (autoAiming) { // AUTO AIM
@@ -387,6 +395,8 @@ public class ArmSystem extends SubsystemBase {
             cameraToggle = false;
             camera.EndHuskyLensThread();
         }
+
+         */
 
 
         // HOLD CLAW AT A FIELD COORD
@@ -493,7 +503,11 @@ public class ArmSystem extends SubsystemBase {
             PivotPower = 0;
         }
 
-        Pivot.setPower(PivotPower);
+        if (Math.abs(LastPivotPower - PivotPower) >= Settings.ArmMotorReadDifference || (PivotPower == 0 && !(LastPivotPower == 0))) {
+            Pivot.setPower(PivotPower);
+            LastPivotPower = PivotPower;
+        }
+
 
 
 
@@ -524,8 +538,13 @@ public class ArmSystem extends SubsystemBase {
             CurrentExtensionLengthZero = ((ExtensionF.getCurrentPosition() / 384.5) * 360 + 0) / Constants.SpoolDegreesToMaxExtension * 696;
             readyToResetArm = false;
         } else {
-            ExtensionF.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
-            ExtensionB.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
+
+            if (Math.abs(LastExtensionPower - ExtensionPower * EmergencyExtensionPowerRatio) >= Settings.ArmMotorReadDifference || (ExtensionPower * EmergencyExtensionPowerRatio == 0 && !(LastExtensionPower == 0))) {
+                ExtensionF.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
+                ExtensionB.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
+                LastExtensionPower = ExtensionPower * EmergencyExtensionPowerRatio;
+            }
+
         }
 
 
@@ -546,7 +565,10 @@ public class ArmSystem extends SubsystemBase {
         if (WristTargetAngle > 90) setWrist(WristTargetAngle + linearSlideBendCompensation);
         else setWrist(WristTargetAngle);
 
-        Claw.setPower(ClawServoPower);
+        if (Math.abs(LastClawPower - ClawServoPower) >= Settings.ArmMotorReadDifference || (ClawServoPower == 0 && !(LastClawPower == 0))) {
+            Claw.setPower(ClawServoPower);
+            LastClawPower = ClawServoPower;
+        }
 
 
         telemetry.addLine("Robot Pose: " + functions.TilePoseAsString(SubsystemData.CurrentRobotPose));
@@ -568,6 +590,7 @@ public class ArmSystem extends SubsystemBase {
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
             telemetry.addLine(" ");
             telemetry.addData("ExtensionPID max Position", ExtensionPID.maxPosition);
+            /*
             telemetry.addData("Forward Acceleration", SubsystemData.CurrentForwardAcceleration);
             telemetry.addLine(" ");
             telemetry.addData("FrameRate Stabilization Enabled", frameRateStabilizer.isEnabled());
@@ -576,6 +599,8 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addData("FrameRate Stabilization wait time", frameRateStabilizer.getCurrentWaitTime());
             telemetry.addData("FrameRate Stabilization min max difference", frameRateStabilizer.getMinMaxTimeDifference());
             telemetry.addLine(" ");
+
+             */
             telemetry.addData("Is Auto Driving", SubsystemData.AutoDriving);
             switch (SubsystemData.CurrentPathSetting) {
                 case 0: telemetry.addData("Current Auto Driving Selection", "Submersible"); break;
@@ -618,7 +643,7 @@ public class ArmSystem extends SubsystemBase {
             //telemetry.addData("Extension Difference", ExtensionTargetLength - CurrentExtensionLengthInst);
             //telemetry.addData("Pivot Difference", PivotTargetAngle + linearSlideBendCompensation - CurrentPivotAngleInst);
 
-
+            /*
             telemetry.addLine(" ");
             if (SubsystemData.HuskyLensConnected) telemetry.addLine("HuskyLens Active");
             else telemetry.addLine("HuskyLens not responding");
@@ -641,6 +666,8 @@ public class ArmSystem extends SubsystemBase {
             }
 
             telemetry.addLine(" \n \n \n \n \n \n \n "); // adds spacing so I can actually read the huskylens data without it scrolling
+
+             */
         }
 
         // Gives all the times that I logged inside parts of the code so I can optimise
@@ -798,7 +825,7 @@ public class ArmSystem extends SubsystemBase {
         slowDownExtensionAcceleration = false;
         PushForMaxExtension = false;
         OrthogonalMode = false;
-        if (CurrentlyReadyPreset == 2) { // second action
+        if (CurrentlyReadyPreset == 2 && SubsystemData.inTeleOp) { // second action
             depositSpecimen();
             CurrentlyReadyPreset = 0;
         } else { // normal action
@@ -810,7 +837,7 @@ public class ArmSystem extends SubsystemBase {
         }
     }
 
-    public void moveClawToTopRungAuto(double pivotModifier, double extensionModifier) {
+    public void moveClawToTopRungAdjusted(double pivotModifier, double extensionModifier) {
         SubsystemData.HoldClawFieldPos = false;
         slowDownExtensionAcceleration = false;
         PushForMaxExtension = false;
@@ -820,6 +847,18 @@ public class ArmSystem extends SubsystemBase {
         ExtensionTargetLength = Settings.ArmSystemSettings.ChamberPresetExtensionLength + extensionModifier;
         WristTargetAngle = 180;
         CurrentlyReadyPreset = 2;
+    }
+
+    public void moveClawToTopRungAuto() {
+        SubsystemData.HoldClawFieldPos = false;
+        slowDownExtensionAcceleration = false;
+        PushForMaxExtension = false;
+        OrthogonalMode = false;
+
+        backPedalExtension = true;
+        PivotTargetAngle = Settings.ArmSystemSettings.AutoChamberPresetPivotAngle;
+        ExtensionTargetLength = Settings.ArmSystemSettings.AutoChamberPresetExtensionLength;
+        WristTargetAngle = Settings.ArmSystemSettings.WristAutonChamberAngle;
     }
 
 
@@ -834,7 +873,7 @@ public class ArmSystem extends SubsystemBase {
         slowDownExtensionAcceleration = false;
         PushForMaxExtension = false;
         OrthogonalMode = false;
-        if (CurrentlyReadyPreset == 3) { // second action
+        if (CurrentlyReadyPreset == 3 && SubsystemData.inTeleOp) { // second action
             closeClaw();
             PivotTargetAngle = Settings.ArmSystemSettings.HumanPlayerPresetPivotAngle;
             ExtensionTargetLength = 100;
@@ -917,6 +956,7 @@ public class ArmSystem extends SubsystemBase {
     public void setWristToStraight() { WristTargetAngle = 180; }
     public void setWristToRaisedFloor() { WristTargetAngle = 180; } // remember to update this value in the dropSamplePickup
     public void setWristToFloorPickup() { WristTargetAngle = Settings.ArmSystemSettings.WristFloorAngle; }
+    public void setWristToAutoAngle() { WristTargetAngle = Settings.ArmSystemSettings.WristAutonChamberAngle; }
     public void toggleBetweenStraightAndFloor() {
         if (!(WristTargetAngle == 180 || WristTargetAngle == 170))
             if (CurrentPivotAngleInst > 45) setWristToStraight();
@@ -999,6 +1039,8 @@ public class ArmSystem extends SubsystemBase {
                         case "moveClawToTopRung": moveClawToTopRung(); break;
                         case "moveClawToHumanPickup": moveClawToHumanPickup(); break;
                         case "resetArm": resetArm(); break;
+                        case "setWristToAutoAngle": setWristToAutoAngle(); break;
+                        case "moveClawToTopRungAuto": moveClawToTopRungAuto(); break;
 
                         case "moveArmToPoint":
                             moveArmToPoint((Vector2d) params.get(0));
@@ -1024,8 +1066,8 @@ public class ArmSystem extends SubsystemBase {
                         case "setClaw":
                             setClaw((double) params.get(0));
                             break;
-                        case "moveClawToTopRungAuto":
-                            moveClawToTopRungAuto((double) params.get(0), (double) params.get(1));
+                        case "moveClawToTopRungAdjusted":
+                            moveClawToTopRungAdjusted((double) params.get(0), (double) params.get(1));
                             break;
                     }
                 } else {

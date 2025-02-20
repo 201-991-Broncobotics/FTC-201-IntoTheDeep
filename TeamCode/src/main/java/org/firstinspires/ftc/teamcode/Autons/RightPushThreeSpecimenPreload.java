@@ -81,7 +81,8 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
         PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.21, -1.3), Math.toRadians(90))
+                //.splineToConstantHeading(tileCoords(0.21, -1.3), Math.toRadians(90))
+                .strafeToConstantHeading(tileCoords(0.3, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(DriveToChamber2.endPose())
@@ -91,7 +92,8 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
         PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.11, -1.3), Math.toRadians(90))
+                //.splineToConstantHeading(tileCoords(0.11, -1.3), Math.toRadians(90))
+                .strafeToConstantHeading(tileCoords(0.15, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer3 = drive.actionBuilder(DriveToChamber3.endPose())
@@ -101,7 +103,8 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
         PedroTrajectoryActionBuilder DriveToChamber4 = drive.actionBuilder(DriveToHumanPlayer3.endPose())
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.05, -1.3), Math.toRadians(90))
+                //.splineToConstantHeading(tileCoords(0.05, -1.3), Math.toRadians(90))
+                .strafeToConstantHeading(tileCoords(0.1, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToPark = drive.actionBuilder(DriveToChamber4.endPose())
@@ -162,7 +165,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                         armSystem.RunMethod("setWristToStraight", 0.5),
                         armSystem.Wait(0.2),
                         DriveToChamber1.build(),
-                        armSystem.RunMethod("moveClawToTopRungAuto", 0.0, 0.0, -20.0),
+                        armSystem.RunMethod("moveClawToTopRungAdjusted", 0.0, 0.0, -20.0),
                         PlaceSpecimen1,
                         armSystem.RunMethod("resetArm", 0.3),
                         PushPresetSamplesPart1.build(),
