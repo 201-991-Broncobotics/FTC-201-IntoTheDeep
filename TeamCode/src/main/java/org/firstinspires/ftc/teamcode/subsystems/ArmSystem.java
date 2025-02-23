@@ -175,10 +175,13 @@ public class ArmSystem extends SubsystemBase {
         frameRateStabilizer = new FrameRateStabilizer(0.75, 20, 100);
         frameRateStabilizer.disable(); // makes sure it isn't enabled in auton
 
+        /*
         List<LynxModule> allHubs = map.getAll(LynxModule.class); // makes code faster
         for (LynxModule hub : allHubs) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
+
+         */
     }
 
 
@@ -349,7 +352,7 @@ public class ArmSystem extends SubsystemBase {
         //LastArmLoopTime = ArmLoopTimer.time();
 
 
-        /*
+
 
         // AUTO AIMING
         if (autoAiming) { // AUTO AIM
@@ -359,7 +362,7 @@ public class ArmSystem extends SubsystemBase {
             SubsystemData.HoldClawFieldPos = false;
             if (!cameraToggle) {
                 cameraToggle = true;
-                camera.StartHuskyLensThread();
+                //camera.StartHuskyLensThread();
                 setWristToRaisedFloor();
                 if (CurrentExtensionLengthInst < 100 && CurrentPivotAngleInst < 15) {
                     AutoAimCurrentlyExtending = true;
@@ -373,7 +376,8 @@ public class ArmSystem extends SubsystemBase {
                 AutoAimCurrentlyExtending = false;
             }
 
-            camera.ScanForSample();
+            //camera.ScanForSample();
+            /*
 
             if (SubsystemData.CameraSeesValidObject) {
                 if (AutoAimCurrentlyExtending) { // the point of this is to extend the extension when auto aim is first pressed but if it sees something before it fully extends, it will stop
@@ -391,12 +395,14 @@ public class ArmSystem extends SubsystemBase {
                 SubsystemData.OperatorTurningPower = Settings.ArmSystemSettings.OperatorDriveTurnPower * AutoAimHeadingChange;
             }
 
+             */
+
         } else if (cameraToggle) { // turn off huskylens thread when not in use cause its laggy
             cameraToggle = false;
-            camera.EndHuskyLensThread();
+            //camera.EndHuskyLensThread();
         }
 
-         */
+
 
 
         // HOLD CLAW AT A FIELD COORD
@@ -503,6 +509,10 @@ public class ArmSystem extends SubsystemBase {
             PivotPower = 0;
         }
 
+        if (Settings.ArmSystemSettings.startHanging) {
+            PivotPower = PivotPower + Settings.ArmSystemSettings.HangPivotPowerOffset;
+        }
+
         if (Math.abs(LastPivotPower - PivotPower) >= Settings.ArmMotorReadDifference || (PivotPower == 0 && !(LastPivotPower == 0))) {
             Pivot.setPower(PivotPower);
             LastPivotPower = PivotPower;
@@ -539,6 +549,10 @@ public class ArmSystem extends SubsystemBase {
             readyToResetArm = false;
         } else {
 
+            if (Settings.ArmSystemSettings.startHanging) {
+                ExtensionPower = ExtensionPower + Settings.ArmSystemSettings.HangExtensionPowerOffset;
+            }
+
             if (Math.abs(LastExtensionPower - ExtensionPower * EmergencyExtensionPowerRatio) >= Settings.ArmMotorReadDifference || (ExtensionPower * EmergencyExtensionPowerRatio == 0 && !(LastExtensionPower == 0))) {
                 ExtensionF.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
                 ExtensionB.setPower(ExtensionPower * EmergencyExtensionPowerRatio);
@@ -549,15 +563,18 @@ public class ArmSystem extends SubsystemBase {
 
 
         // This should stop the extension motors if they have high current and their target has not changed for awhile to prevent them from catching fire
+        /*
         if (!(LastExtensionTarget == ExtensionTargetLength)) {
             UnStallExtensionTimer.reset();
             EmergencyExtensionPowerRatio = 1;
         }
         LastExtensionTarget = ExtensionTargetLength;
-        if (UnStallExtensionTimer.time() > Settings.ArmSystemSettings.EmergencyExtensionPowerReleaseTimeout && ExtensionF.getCurrent(CurrentUnit.AMPS) > 0.5) { // 30 second timeout
+        if (UnStallExtensionTimer.time() > Settings.ArmSystemSettings.EmergencyExtensionPowerReleaseTimeout && ExtensionF.getCurrent(CurrentUnit.AMPS) > 1) { // 30 second timeout
             if (EmergencyExtensionPowerRatio > 0) EmergencyExtensionPowerRatio -= Settings.ArmSystemSettings.EmergencyExtensionPowerReleaseSpeed / FrameRate;
             else if (EmergencyExtensionPowerRatio < 0) EmergencyExtensionPowerRatio = 0;
         }
+
+         */
 
 
         // WRIST AND CLAW
@@ -638,6 +655,8 @@ public class ArmSystem extends SubsystemBase {
             telemetry.addLine(" ");
             telemetry.addData("Distance from Pivot Start Zero", CurrentPivotAngleZero - StartPivotZero);
             telemetry.addData("Distance from Pivot Encoder Start Zero", CurrentPivotAngleDirectZero - StartPivotDirectZero);
+            telemetry.addData("Current Pivot Power:", PivotPower);
+            telemetry.addData("Current Extension Power:", ExtensionPower);
             //telemetry.addData("Pivot PID Power:", PivotPIDPower);
             //telemetry.addData("Extension PID Power:", ExtensionPIDPower);
             //telemetry.addData("Extension Difference", ExtensionTargetLength - CurrentExtensionLengthInst);
@@ -803,6 +822,7 @@ public class ArmSystem extends SubsystemBase {
             WristTargetAngle = 0;
         } else if (PivotTargetAngle < 40 && ExtensionTargetLength > 100 && WristTargetAngle > 150) WristTargetAngle = 150;
         ExtensionTargetLength = 0;
+        if (CurrentPivotAngleInst > 82 && CurrentExtensionLengthInst > 100) ignoreAcceleration = true;
 
     }
 
@@ -864,7 +884,9 @@ public class ArmSystem extends SubsystemBase {
 
     public void depositSpecimen() { // onto a rung - this is separate so it is easier to code auton
         ignoreAcceleration = true;
-        ExtensionTargetLength = CurrentExtensionLengthInst + 200;
+        ClawServoPower = Settings.ArmSystemSettings.ClawClampingPower;
+        keepClawSpinning = true;
+        ExtensionTargetLength = CurrentExtensionLengthInst + 240;
     }
 
 

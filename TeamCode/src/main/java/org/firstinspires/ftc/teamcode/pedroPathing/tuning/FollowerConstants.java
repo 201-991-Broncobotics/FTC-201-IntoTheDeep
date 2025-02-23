@@ -58,11 +58,11 @@ public class FollowerConstants {
     public static CustomPIDFCoefficients headingPIDFCoefficients = new CustomPIDFCoefficients(
             0.6, // 0.35 // og 0.7
             0,
-            0.0857, // 0.05 // og 0.1
+            0.08, // 0.05 // og 0.1
             0);
 
     // Feed forward constant added on to the heading PIDF
-    public static double headingPIDFFeedForward = 0.01; // 0.0
+    public static double headingPIDFFeedForward = 0.0; // 0.0
 
 
     // Drive PIDF coefficients
@@ -104,7 +104,7 @@ public class FollowerConstants {
     // Decreasing this will cause the deceleration at the end of the Path to be slower, making the
     // robot slower but reducing risk of end-of-path overshoots or localization slippage.
     // This can be set individually for each Path, but this is the default.
-    public static double zeroPowerAccelerationMultiplier = 3.8; // 4
+    public static double zeroPowerAccelerationMultiplier = 3.1; // 4
 
 
     // When the robot is at the end of its current Path or PathChain and the velocity goes below
@@ -136,7 +136,7 @@ public class FollowerConstants {
     public static int APPROXIMATION_STEPS = 1000;
 
     // This is scales the translational error correction power when the Follower is holding a Point.
-    public static double holdPointTranslationalScaling = 0.8; // 0.45
+    public static double holdPointTranslationalScaling = 0.9; // 0.45
 
     // This is scales the heading error correction power when the Follower is holding a Point.
     public static double holdPointHeadingScaling = 0.8; // 0.35

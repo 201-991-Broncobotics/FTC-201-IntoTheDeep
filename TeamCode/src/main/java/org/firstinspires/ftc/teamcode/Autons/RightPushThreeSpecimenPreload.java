@@ -53,7 +53,7 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
 
         // setup roadrunner trajectories
         PedroTrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
-                .strafeToConstantHeading(tileCoords(0.25, -1.33));
+                .strafeToConstantHeading(tileCoords(0.3, -1.33));
 
         PedroTrajectoryActionBuilder PushPresetSamplesPart1 = drive.actionBuilder(DriveToChamber1.endPose())
                 .bezierToConstantHeading(tileCoords(1.7, -2.4), tileCoords(1.15, -0.8), tileCoords(2.1, -0.5))
@@ -73,38 +73,41 @@ public class RightPushThreeSpecimenPreload extends CommandOpMode {
                 .setPathEndTimeoutConstraint(50);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
-                .strafeToConstantHeading(tileCoords(2.3, -2.4))
-                .setPathEndTimeoutConstraint(200);
+                .strafeToConstantHeading(tileCoords(2.2, -2.4))
+                .setPathEndTimeoutConstraint(100);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer1half = drive.actionBuilder(DriveToHumanPlayer1.endPose())
-                .strafeToConstantHeading(tileCoords(2, -2.715));
+                .strafeToConstantHeading(tileCoords(2.1, -2.715))
+                .setPathEndTimeoutConstraint(100);
 
         PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
                 .setTangent(Math.toRadians(135))
                 //.splineToConstantHeading(tileCoords(0.21, -1.3), Math.toRadians(90))
-                .strafeToConstantHeading(tileCoords(0.3, -1.3))
+                .strafeToConstantHeading(tileCoords(0.22, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer2 = drive.actionBuilder(DriveToChamber2.endPose())
                 .setTangent(Math.toRadians(360-55))
                 .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
-                .strafeToConstantHeading(tileCoords(1.8, -2.73));
+                .strafeToConstantHeading(tileCoords(1.8, -2.73))
+                .setPathEndTimeoutConstraint(100);
 
         PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 .setTangent(Math.toRadians(135))
                 //.splineToConstantHeading(tileCoords(0.11, -1.3), Math.toRadians(90))
-                .strafeToConstantHeading(tileCoords(0.15, -1.3))
+                .strafeToConstantHeading(tileCoords(0.12, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToHumanPlayer3 = drive.actionBuilder(DriveToChamber3.endPose())
                 .setTangent(Math.toRadians(360-55))
                 .splineToConstantHeading(tileCoords(1.5, -2.2), Math.toRadians(360-55))
-                .strafeToConstantHeading(tileCoords(1.8, -2.73));
+                .strafeToConstantHeading(tileCoords(1.8, -2.73))
+                .setPathEndTimeoutConstraint(100);
 
         PedroTrajectoryActionBuilder DriveToChamber4 = drive.actionBuilder(DriveToHumanPlayer3.endPose())
                 .setTangent(Math.toRadians(135))
                 //.splineToConstantHeading(tileCoords(0.05, -1.3), Math.toRadians(90))
-                .strafeToConstantHeading(tileCoords(0.1, -1.3))
+                .strafeToConstantHeading(tileCoords(0.05, -1.3))
                 .setPathEndTimeoutConstraint(300);
 
         PedroTrajectoryActionBuilder DriveToPark = drive.actionBuilder(DriveToChamber4.endPose())

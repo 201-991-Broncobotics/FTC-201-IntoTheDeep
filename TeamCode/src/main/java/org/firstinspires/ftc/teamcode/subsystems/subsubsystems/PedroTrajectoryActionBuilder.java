@@ -333,6 +333,13 @@ public class PedroTrajectoryActionBuilder {
     public PedroTrajectoryActionBuilder afterTime(double dt, InstantFunction f) {
         return afterTime(dt, InstantAction(f));
     }
+    /**
+     * This sets the zero power multiplier which helps control speed and overshoot
+     */
+    public PedroTrajectoryActionBuilder setZeroPowerAccelerationMultiplier(double value) {
+        currentPath.setZeroPowerAccelerationMultiplier(value);
+        return this;
+    }
 
 
 

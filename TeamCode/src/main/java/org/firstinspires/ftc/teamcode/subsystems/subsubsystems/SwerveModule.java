@@ -87,6 +87,8 @@ public class SwerveModule {
 
         if (Math.abs(speed) > 1) speed = Math.signum(speed); // module shouldn't try to calculate speeds beyond 1 as it could mess the math up
 
+        if (Math.abs(speed) > 0) speed = (1 - Settings.driveFeedBackStaticPower) * speed + Math.signum(speed) * Settings.driveFeedBackStaticPower;
+
         // rate at which the wheel attempts to realign itself vs power diverted towards moving forward
         double DriveSharpnessCurve = Math.sin(((Math.abs(functions.angleDifference(getCurrentAngle(), angle, 360)) / 90) - 1) * Math.PI / 2);
         speed = speed * (Math.signum(DriveSharpnessCurve) * Math.abs(Math.pow(DriveSharpnessCurve, Settings.SwerveModuleDriveSharpness)));
@@ -98,10 +100,6 @@ public class SwerveModule {
 
         R1Power = -1 * R1Power / divider;
         R2Power = -1 * R2Power / divider;
-
-        if (Math.abs(R1Power) > 0) R1Power = (1 - Settings.driveFeedBackStaticPower) * R1Power + Math.signum(R1Power) * Settings.driveFeedBackStaticPower;
-        if (Math.abs(R2Power) > 0) R2Power = (1 - Settings.driveFeedBackStaticPower) * R2Power + Math.signum(R2Power) * Settings.driveFeedBackStaticPower;
-
 
         if (Math.abs(LastR1Power - R1Power) >= Settings.DriveMotorReadDifference || (R1Power == 0 && !(LastR1Power == 0))) {
             topMotor.setPower(R1Power);

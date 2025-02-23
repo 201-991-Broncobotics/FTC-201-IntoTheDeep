@@ -7,6 +7,7 @@ import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.arcrobotics.ftclib.command.CommandOpMode;
+import com.arcrobotics.ftclib.command.RunCommand;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.SubsystemData;
@@ -18,11 +19,9 @@ import org.firstinspires.ftc.teamcode.subsystems.ArmSystem;
 import org.firstinspires.ftc.teamcode.subsystems.HuskyLensCamera;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.PedroTrajectoryActionBuilder;
 
-import com.arcrobotics.ftclib.command.RunCommand;
 
-
-@Autonomous(name="RightPickupFiveSpecimen")
-public class RightPickupFiveSpecimen extends CommandOpMode {
+@Autonomous(name="RightPickupFiveSpecimenDriving")
+public class RightPickupFiveSpecimenDriving extends CommandOpMode {
 
     @Override
     public void initialize() {
@@ -54,48 +53,57 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
 
         // setup roadrunner trajectories
         PedroTrajectoryActionBuilder DriveToChamber1 = drive.actionBuilder(startPose)
-                .strafeToConstantHeading(tileCoords(0.3, -1.33))
+                .strafeToConstantHeading(tileCoords(0.33, -1.33))
                 .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToSample1 = drive.actionBuilder(DriveToChamber1.endPose())
-                .setTangent(Math.toRadians(360-60))
-                .splineToConstantHeading(tileCoords(2.07, -1.78), Math.toRadians(0));
+        PedroTrajectoryActionBuilder PushPresetSamplesPart1 = drive.actionBuilder(DriveToChamber1.endPose())
+                .bezierToConstantHeading(tileCoords(1.7, -2.3), tileCoords(1.25, -0.8), tileCoords(2.15, -0.5))
+                .setPathEndTimeoutConstraint(50)
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToSample1half = drive.actionBuilder(DriveToSample1.endPose())
-                .strafeToConstantHeading(tileCoords(2.15, -1.78))
-                .setPathEndTimeoutConstraint(250);
+        PedroTrajectoryActionBuilder PushPresetSamplesPart2 = drive.actionBuilder(PushPresetSamplesPart1.endPose())
+                .strafeToConstantHeading(tileCoords(2.15, -2.2))
+                .setZeroPowerAccelerationMultiplier(4)
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToDropOffSample1 = drive.actionBuilder(DriveToSample1half.endPose())
-                .strafeToConstantHeading(tileCoords(2.15, -2.2));
+        PedroTrajectoryActionBuilder PushPresetSamplesPart3 = drive.actionBuilder(PushPresetSamplesPart2.endPose())
+                .strafeToConstantHeading(tileCoords(2.05, -1.3))
+                .splineToConstantHeading(tileCoords(2.6, -0.6), Math.toRadians(0))
+                //.setPathEndTimeoutConstraint(50)
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToSample2 = drive.actionBuilder(DriveToDropOffSample1.endPose())
-                .strafeToConstantHeading(tileCoords(2.60, -1.85))
-                .setPathEndTimeoutConstraint(250);
+        PedroTrajectoryActionBuilder PushPresetSamplesPart4 = drive.actionBuilder(PushPresetSamplesPart3.endPose())
+                .strafeToConstantHeading(tileCoords(2.6, -2.2))
+                .setZeroPowerAccelerationMultiplier(4)
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToDropOffSample2 = drive.actionBuilder(DriveToSample2.endPose())
-                .strafeToLinearHeading(tileCoords(2.60, -2.2), Math.toRadians(75));
+        PedroTrajectoryActionBuilder PushPresetSamplesPart5 = drive.actionBuilder(PushPresetSamplesPart4.endPose())
+                .strafeToConstantHeading(tileCoords(2.6, -1.5))
+                .splineToConstantHeading(tileCoords(2.83, -0.7), Math.toRadians(0))
+                //.setPathEndTimeoutConstraint(50)
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToSample3 = drive.actionBuilder(DriveToDropOffSample2.endPose())
-                .strafeToLinearHeading(tileCoords(2.67, -1.77), Math.toRadians(50))
-                .setPathEndTimeoutConstraint(250);
+        PedroTrajectoryActionBuilder PushPresetSamplesPart6 = drive.actionBuilder(PushPresetSamplesPart5.endPose())
+                .strafeToConstantHeading(tileCoords(2.84, -2.8))
+                .endAfterTimeout(5.0);
 
-        PedroTrajectoryActionBuilder DriveToDropOffSample3 = drive.actionBuilder(DriveToSample3.endPose())
-                .strafeToLinearHeading(tileCoords(2.67, -2.2), Math.toRadians(80));
-
-        PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(DriveToDropOffSample3.endPose())
+        /*
+        PedroTrajectoryActionBuilder DriveToHumanPlayer1 = drive.actionBuilder(PushPresetSamplesPart6.endPose())
                 .strafeToLinearHeading(tileCoords(2.67, -2.8), Math.toRadians(90))
                 //.strafeToConstantHeading(tileCoords(2.1, -2.72))
                 .setPathEndTimeoutConstraint(100)
                 .endAfterTimeout(3.0);
 
-        PedroTrajectoryActionBuilder DriveToHumanPlayer1half = drive.actionBuilder(DriveToHumanPlayer1.endPose())
+        PedroTrajectoryActionBuilder DriveToHumanPlayer1half = drive.actionBuilder(PushPresetSamplesPart6.endPose())
                 .strafeToConstantHeading(tileCoords(2.1, -2.72))
                 .setPathEndTimeoutConstraint(250);
 
-        PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(DriveToHumanPlayer1.endPose())
+         */
+
+        PedroTrajectoryActionBuilder DriveToChamber2 = drive.actionBuilder(PushPresetSamplesPart6.endPose())
                 //.strafeToConstantHeading(tileCoords(0.28, -1.33))
                 .setTangent(Math.toRadians(135))
-                .splineToConstantHeading(tileCoords(0.26, -1.33), Math.toRadians(110))
+                .splineToConstantHeading(tileCoords(0.25, -1.33), Math.toRadians(110))
                 .setPathEndTimeoutConstraint(0)
                 .endAfterTimeout(5.0);
 
@@ -109,7 +117,7 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
         PedroTrajectoryActionBuilder DriveToChamber3 = drive.actionBuilder(DriveToHumanPlayer2.endPose())
                 //.strafeToConstantHeading(tileCoords(0.18, -1.33))
                 .setTangent(Math.toRadians(150))
-                .splineToConstantHeading(tileCoords(0.18, -1.33), Math.toRadians(110))
+                .splineToConstantHeading(tileCoords(0.12, -1.33), Math.toRadians(110))
                 .setPathEndTimeoutConstraint(0)
                 .endAfterTimeout(5.0);
 
@@ -123,7 +131,7 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
         PedroTrajectoryActionBuilder DriveToChamber4 = drive.actionBuilder(DriveToHumanPlayer3.endPose())
                 //.strafeToConstantHeading(tileCoords(0.11, -1.33))
                 .setTangent(Math.toRadians(150))
-                .splineToConstantHeading(tileCoords(0.11, -1.33), Math.toRadians(110))
+                .splineToConstantHeading(tileCoords(0.01, -1.33), Math.toRadians(110))
                 .setPathEndTimeoutConstraint(0)
                 .endAfterTimeout(5.0);
 
@@ -137,7 +145,7 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
         PedroTrajectoryActionBuilder DriveToChamber5 = drive.actionBuilder(DriveToHumanPlayer4.endPose())
                 //.strafeToConstantHeading(tileCoords(0.05, -1.33))
                 .setTangent(Math.toRadians(150))
-                .splineToConstantHeading(tileCoords(0.05, -1.33), Math.toRadians(110))
+                .splineToConstantHeading(tileCoords(-0.12, -1.33), Math.toRadians(110))
                 .setPathEndTimeoutConstraint(0)
                 .endAfterTimeout(5.0);
 
@@ -147,42 +155,37 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
 
 
         SequentialAction PlaceSpecimen1 = new SequentialAction(
-                // armSystem.Wait(0.1),
+                armSystem.Wait(0.3),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.15),
-                armSystem.RunMethod("openClaw", 0.1),
+                armSystem.Wait(0.1),
                 armSystem.RunMethod("stopClaw", 0.4)
         );
 
         SequentialAction PlaceSpecimen2 = new SequentialAction(
-                armSystem.Wait(0.1),
+                armSystem.Wait(0.45),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.15),
-                armSystem.RunMethod("openClaw", 0.1),
+                armSystem.Wait(0.1),
                 armSystem.RunMethod("stopClaw", 0.4)
         );
 
         SequentialAction PlaceSpecimen3 = new SequentialAction(
-                armSystem.Wait(0.1),
+                armSystem.Wait(0.45),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.15),
-                armSystem.RunMethod("openClaw", 0.1),
+                armSystem.Wait(0.1),
                 armSystem.RunMethod("stopClaw", 0.4)
         );
 
         SequentialAction PlaceSpecimen4 = new SequentialAction(
-                armSystem.Wait(0.1),
+                armSystem.Wait(0.45),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.15),
-                armSystem.RunMethod("openClaw", 0.1),
+                armSystem.Wait(0.1),
                 armSystem.RunMethod("stopClaw", 0.4)
         );
 
         SequentialAction PlaceSpecimen5 = new SequentialAction(
-                armSystem.Wait(0.1),
+                armSystem.Wait(0.45),
                 armSystem.RunMethod("depositSpecimen"),
-                armSystem.Wait(0.15),
-                armSystem.RunMethod("openClaw", 0.1),
+                armSystem.Wait(0.2),
                 armSystem.RunMethod("stopClaw", 0.4)
         );
 
@@ -202,7 +205,7 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
 
         DriveAutonCommand.queueAction(
                 new SequentialAction(
-                        armSystem.RunMethod("slowCloseClaw"),
+                        armSystem.RunMethod("closeClaw"),
                         armSystem.RunMethod("setWristToAutoAngle"),
                         armSystem.RunMethod("moveArmDirectly", 0.0, 76.0, 210.0),
                         armSystem.RunMethod("setWristToAutoAngle", 0.5),
@@ -212,54 +215,14 @@ public class RightPickupFiveSpecimen extends CommandOpMode {
                         armSystem.RunMethod("moveClawToTopRungAdjusted", 0.0, -0.5+5, 10.0),
                         PlaceSpecimen1,
                         armSystem.RunMethod("resetArm", 0.3),
-                        armSystem.RunMethod("setWristToStraight", 0.5),
-                        armSystem.RunMethod("moveArmDirectly", 0.6, 0.0, 72.0),
-                        armSystem.RunMethod("closeClaw", 0.7),
-                        DriveToSample1.build(),
-                        DriveToSample1half.build(),
-
-                        armSystem.Wait(0.5),
-                        armSystem.RunMethod("setWristToFloorPickup"),
-                        armSystem.Wait(0.2),
-                        armSystem.RunMethod("slowCloseClaw"),
+                        PushPresetSamplesPart1.build(),
+                        PushPresetSamplesPart2.build(),
+                        PushPresetSamplesPart3.build(),
+                        PushPresetSamplesPart4.build(),
+                        PushPresetSamplesPart5.build(),
                         armSystem.RunMethod("moveClawToHumanPickup", 0.3),
-                        DriveToDropOffSample1.build(),
-
-                        armSystem.RunMethod("openClaw"),
-                        armSystem.Wait(0.2),
-                        armSystem.RunMethod("stopClaw"),
-                        armSystem.RunMethod("moveArmDirectly", 0.25, 0.0, 72.0),
-                        armSystem.RunMethod("setWristToStraight", 0.25),
                         armSystem.RunMethod("closeClaw", 0.5),
-                        DriveToSample2.build(),
-
-                        armSystem.Wait(0.5),
-                        armSystem.RunMethod("setWristToFloorPickup"),
-                        armSystem.Wait(0.2),
-                        armSystem.RunMethod("slowCloseClaw"),
-                        armSystem.RunMethod("moveClawToHumanPickup", 0.3),
-                        DriveToDropOffSample2.build(),
-
-                        armSystem.Wait(0.5),
-                        armSystem.RunMethod("openClaw"),
-                        armSystem.Wait(0.2),
-                        armSystem.RunMethod("stopClaw"),
-                        armSystem.RunMethod("moveArmDirectly", 0.25, 0.0, 140.0),
-                        armSystem.RunMethod("setWristToStraight", 0.25),
-                        armSystem.RunMethod("closeClaw", 0.5),
-                        DriveToSample3.build(),
-
-                        armSystem.Wait(0.5),
-                        armSystem.RunMethod("setWristToFloorPickup"),
-                        armSystem.Wait(0.35),
-                        armSystem.RunMethod("slowCloseClaw"),
-                        armSystem.RunMethod("moveClawToHumanPickup", 0.3),
-                        DriveToDropOffSample3.build(),
-
-                        armSystem.RunMethod("openClaw"),
-                        armSystem.Wait(0.3),
-                        armSystem.RunMethod("closeClaw"),
-                        DriveToHumanPlayer1.build(),
+                        PushPresetSamplesPart6.build(),
 
                         // DriveToHumanPlayer1half.build(),
 

@@ -13,7 +13,7 @@ public class Settings {
     public static double maxDrivetrainTurnPower = 0.8;
     public static double controllerDeadZone = 0.01;
     public static double driveFeedBackStaticPower = 0.15; // power required in order to start moving the robot
-    public static double turnFeedBackStaticPower = 0.15;
+    public static double turnFeedBackStaticPower = 0.0;
     public static boolean tuneDriveFeedBackStaticPower = false;
     public static boolean tuneTurnFeedBackStaticPower = false;
     public static double SwerveMinimumPower = 0.04;
@@ -43,7 +43,7 @@ public class Settings {
     public static class ArmSystemSettings {
 
         public static double minimumPivotSpeedPercent = 0.4; // for when extension is fully extended
-        public static double pivotMaxAngle = 100; // degrees
+        public static double pivotMaxAngle = 105; // degrees
         public static double maxManualClawSpeedVertical = 700;
         public static double maxManualClawSpeedHorizontal = 600; // mm per second
         public static double maxManualExtensionSpeed = 750;
@@ -63,10 +63,11 @@ public class Settings {
         public static double WristAutonChamberAngle = 190;
         public static boolean WristServoReversed = true;
         public static double OperatorTurnOverridePower = 0; // permanently 0
-        public static double ClawClosingSlowPower = -0.25;
+        public static double ClawClosingSlowPower = -0.3;
         public static double ClawClosingReallySlowPower = -0.15;
         public static double ClawOpeningPower = 1; // degrees (0.5)
         public static double ClawClosingPower = -1; // degrees (0.85)
+        public static double ClawClampingPower = -0.6; // degrees (0.85)
         public static double ChamberPresetPivotAngle = 70.0;
         public static double ChamberPresetExtensionLength = 220;
         public static double AutoChamberPresetPivotAngle = 75.0;
@@ -78,11 +79,15 @@ public class Settings {
         public static double ExtensionNormalMaxDeceleration = -1200;
         public static double ExtensionSubMaxAcceleration = 0;
         public static double ExtensionSubMaxDeceleration = 0;
-        public static double EmergencyExtensionPowerReleaseTimeout = 20000; // ms
+        public static double EmergencyExtensionPowerReleaseTimeout = 1000 * 120; // ms
         public static double EmergencyExtensionPowerReleaseSpeed = 0.1; // power that is decreased every second after timeout
         public static double PivotAccelerationDampeningPower = 0; // tends to cause extreme oscillations even at very small numbers
         public static double FieldCentricArmVelocityCompensation = 0.25;
         public static boolean ObeyHorizontalLimit = true;
+        public static double HangExtensionPowerOffset = -0.5;
+        public static double HangPivotPowerOffset = -0.5;
+        public static boolean startHanging = false;
+
 
         public static PIDControllerSettingsReference ExtensionReference = new PIDControllerSettingsReference(
                 0.01,
@@ -124,13 +129,13 @@ public class Settings {
     public static double slowMovingHeadingPIDMinDifference = 3;
 
     public static PIDControllerSettingsReference HeadingReference = new PIDControllerSettingsReference(
-            0.0003,
+            0.003,
             0,
-            0.0005,
-            0.00015,
+            0.0004,
+            0.00012,
             0,
             0,
-            0.03,
+            0.01,
             0.8,
             0,
             0.3,
@@ -146,7 +151,7 @@ public class Settings {
     public static class DriverAutoTargetCoords{
         public static double BasketX = -2.45, BasketY = -2.4;
 
-        public static double HumanPickupX = 2.1, HumanPickupY = -2.5;
+        public static double HumanPickupX = 2.1, HumanPickupY = -2.6;
         public static double HumanDropOffX = 2.1, HumanDropOffY = -2.2, HumanDropOffHeading = 315;
 
         public static double SubmersibleX = -1.05, SubmersibleY = 0;
@@ -163,7 +168,7 @@ public class Settings {
             0,
             1,
             0,
-            0,
+            1,
             0,
             0,
             0,

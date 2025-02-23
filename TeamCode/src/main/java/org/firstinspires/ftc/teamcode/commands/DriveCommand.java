@@ -198,14 +198,22 @@ public class DriveCommand extends CommandBase {
                     drive.setPoseRRY(Settings.LocalizationBottomResetY);
                     SubsystemData.LocalizationCoordsAligned[1] = true;
                 }
+                Settings.ArmSystemSettings.startHanging = false;
             } else DpadDownTime = LocalizationCorrectionTimer.time();
 
             if (SubsystemData.driver.getButton(GamepadKeys.Button.DPAD_LEFT)) {
+                /*
                 if (currentTime - DpadLeftTime > Settings.DriverLocalizationCorrectionHoldTime) {
                     drive.setPoseRRX(Settings.LocalizationLeftResetX);
                     SubsystemData.LocalizationCoordsAligned[0] = true;
                 }
-            } else DpadLeftTime = LocalizationCorrectionTimer.time();
+
+                 */
+
+                Settings.ArmSystemSettings.startHanging = true;
+            } else {
+                DpadLeftTime = LocalizationCorrectionTimer.time();
+            }
         }
 
 
