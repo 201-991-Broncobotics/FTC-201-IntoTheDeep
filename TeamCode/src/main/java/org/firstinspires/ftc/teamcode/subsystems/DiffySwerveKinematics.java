@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Constants;
 import org.firstinspires.ftc.teamcode.Settings;
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
 import org.firstinspires.ftc.teamcode.subsystems.subsubsystems.SwerveModule;
@@ -39,8 +40,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
         telemetry = newTelemetry;
 
-        rightModule = new SwerveModule(newRightTop, newRightBottom, 0); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        leftModule = new SwerveModule(newLeftTop, newLeftBottom, 0);
+        rightModule = new SwerveModule(newRightTop, newRightBottom, Constants.driveWheelBaseAngle); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
+        leftModule = new SwerveModule(newLeftTop, newLeftBottom, Constants.driveWheelBaseAngle);
 
         telemetry.addData("Current right Diffy Angle:", rightModule.getCurrentAngle());
         telemetry.addData("Current left Diffy Angle:", leftModule.getCurrentAngle());
@@ -58,6 +59,12 @@ public class DiffySwerveKinematics extends SubsystemBase {
 
     // only use one of these diffy swerve methods at one time as some of the values are shared
     public void driveDifferentialSwerve(double forward, double strafe, double turn, double throttle) {
+        // Compensate for if the diffy wheels aren't symmetrical to each side
+        double driveDirection = Math.atan2(forward, strafe) + Math.toRadians(Constants.driveWheelBaseAngle);
+        double drivePower = Math.hypot(forward, strafe);
+        forward = Math.sin(driveDirection) * drivePower;
+        strafe = Math.cos(driveDirection) * drivePower;
+
         double A = -forward + turn; // diffy swerve drive math
         double B = -forward - turn;
         double RightPower = Math.hypot(strafe, A);
