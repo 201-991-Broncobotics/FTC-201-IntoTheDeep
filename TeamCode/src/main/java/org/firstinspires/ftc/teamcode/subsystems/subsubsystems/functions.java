@@ -84,6 +84,10 @@ public class functions {
         return tiles * Constants.tileLength;
     }
 
+    public static double untiles(double inches) { // convert inches to tiles
+        return inches / Constants.tileLength;
+    }
+
     public static boolean intListContains(int[] list, int value) {
         for (int item : list) {
             if (item == value) return true;
@@ -134,11 +138,11 @@ public class functions {
     }
 
     public static String TilePoseAsString(Pose pose) {
-        return "X:" + round(tiles(pose.getX()), 3) + " Y:" + round(tiles(pose.getY()), 3) + " H:" + round(Math.toDegrees(pose.getHeading()), 2);
+        return "X:" + round(untiles(pose.getX()), 3) + " Y:" + round(untiles(pose.getY()), 3) + " H:" + round(Math.toDegrees(pose.getHeading()), 2);
     }
 
     public static String TilePoseAsString(Pose2d pose) {
-        return "X:" + round(tiles(pose.position.x), 3) + " Y:" + round(tiles(pose.position.y), 3) + " H:" + round(Math.toDegrees(pose.heading.toDouble()), 2);
+        return "X:" + round(untiles(pose.position.x), 3) + " Y:" + round(untiles(pose.position.y), 3) + " H:" + round(Math.toDegrees(pose.heading.toDouble()), 2);
     }
 
 

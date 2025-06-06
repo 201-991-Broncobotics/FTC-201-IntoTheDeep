@@ -25,14 +25,17 @@ public class SwerveModule {
     private boolean usePhoton = false;
     private double LastR1Power = 0, LastR2Power = 0;
 
+    public double bottomMotorCoeff = 1;
 
-    public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle) { // initialize the module
+
+    public SwerveModule(DcMotorEx newTopMotor, DcMotorEx newBottomMotor, double startingAngle, double BottomMotorCoeff) { // initialize the module
         ModuleZeroAngle = startingAngle;
         topMotor = newTopMotor;
         bottomMotor = newBottomMotor;
         topMotorEncoder = () -> functions.angleDifference((topMotor.getCurrentPosition() / Constants.encoderResolution * 360) - ModuleZeroAngle, 0, 360);
         modulePID = new PIDController(0, 0, 0, topMotorEncoder);
         modulePID.setSettingsTheSameAs(Settings.SwerveReference);
+        bottomMotorCoeff = BottomMotorCoeff;
     }
 
 
@@ -58,7 +61,7 @@ public class SwerveModule {
             bottomMotorAdv.setPower(-1 * rotation / divider);
         } else {
             topMotor.setPower(-1 * rotation / divider);
-            bottomMotor.setPower(-1 * rotation / divider);
+            bottomMotor.setPower(bottomMotorCoeff * -1 * rotation / divider);
         }
     }
 
@@ -74,6 +77,9 @@ public class SwerveModule {
     public double getCurrentAngle() {
         return topMotorEncoder.getAsDouble();
     }
+
+    public double getTopMotorPower() { return topMotor.getPower(); }
+    public double getBottomMotorPower() { return bottomMotor.getPower(); }
 
 
     public void setCurrentDiffyAngleTo(double newAngleZero) { ModuleZeroAngle = newAngleZero; }
@@ -106,7 +112,7 @@ public class SwerveModule {
             LastR1Power = R1Power;
         }
         if (Math.abs(LastR2Power - R2Power) >= Settings.DriveMotorReadDifference || (R2Power == 0 && !(LastR2Power == 0))) {
-            bottomMotor.setPower(R2Power);
+            bottomMotor.setPower(bottomMotorCoeff * R2Power);
             LastR2Power = R2Power;
         }
     }
@@ -134,7 +140,7 @@ public class SwerveModule {
         R2Power = -1 * R2Power / divider;
 
         topMotor.setPower(R1Power);
-        bottomMotor.setPower(R2Power);
+        bottomMotor.setPower(bottomMotorCoeff * R2Power);
 
     }
 

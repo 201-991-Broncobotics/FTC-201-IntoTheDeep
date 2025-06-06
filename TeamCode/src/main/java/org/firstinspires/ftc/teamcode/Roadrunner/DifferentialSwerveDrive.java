@@ -82,11 +82,11 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         // drive model parameters
         public double inPerTick = (32 / 25.4 / 2000) * (140.5 / 40.3852); // should be the first term but isn't for some reason
         public double lateralInPerTick = inPerTick;
-        public double trackWidthTicks = 2767.66150868237;
+        public double trackWidthTicks = 208.8992568756762;
 
         // feedforward parameters (in tick units)
-        public double kS = 1.1948995626388177;
-        public double kV = 0.00028398777139056647;
+        public double kS = 2.0; // 1.1948995626388177;
+        public double kV = 0.005; // 0.00028398777139056647;
         public double kA = 0.00004;
 
         // path profile parameters (in inches)
@@ -255,12 +255,6 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        leftFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
-        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
-
-
         //leftFront.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         leftBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         rightBack.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -269,6 +263,14 @@ public final class DifferentialSwerveDrive extends SubsystemBase { // This used 
         leftBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         rightBack.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
         //rightFront.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+
+        leftFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
+        leftBack.setDirection(DcMotorSimple.Direction.FORWARD); // this is stupid
+        rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightFront.setDirection(DcMotorSimple.Direction.FORWARD); // this needs to be reversed while tuning roadrunner
+
+
+
 
         /*
         leftFrontAdv = new PhotonAdvancedDcMotor(leftFront); // Photon stuff

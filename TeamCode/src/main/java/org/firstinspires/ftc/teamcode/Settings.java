@@ -12,10 +12,10 @@ public class Settings {
     public static double maxDrivetrainMotorPower = 0.85; // percent
     public static double maxDrivetrainTurnPower = 0.8;
     public static double controllerDeadZone = 0.01;
-    public static double driveFeedBackStaticPower = 0.15; // power required in order to start moving the robot
-    public static double turnFeedBackStaticPower = 0.0;
+    public static double driveFeedBackStaticPower = 0.12; // power required in order to start moving the robot
+    //public static double turnFeedBackStaticPower = 0.0;
     public static boolean tuneDriveFeedBackStaticPower = false;
-    public static boolean tuneTurnFeedBackStaticPower = false;
+    //public static boolean tuneTurnFeedBackStaticPower = false;
     public static double SwerveMinimumPower = 0.04;
     public static int[] AcceptableIds = new int[] {1, 2, 3}; // 1 = red, 2 = yellow, 3 = blue
     public static double HuskyLensTargetX = 160;
@@ -26,7 +26,7 @@ public class Settings {
     public static double DriverLocalizationCorrectionHoldTime = 1000; // ms
     public static double DriveMotorReadDifference = 0.01; // makes it so unnecessary changes to motor power don't impact performance as much
     public static double ArmMotorReadDifference = 0.005;
-    public static double LocalizationChamberResetY = tiles(-1.3), LocalizationRightResetX = tiles(2.75), LocalizationBottomResetY = tiles(-3) + 4.0, LocalizationLeftResetX = tiles(-2.75);
+    public static double LocalizationChamberResetY = tiles(-1.3), LocalizationRightResetX = tiles(2.75) + 4, LocalizationBottomResetY = tiles(-3) + 4.0, LocalizationLeftResetX = tiles(-2.75);
 
     // -1.3, 2.75, -3 + 4.0, -2.75
     @Config
@@ -63,7 +63,7 @@ public class Settings {
         public static double WristAutonChamberAngle = 190;
         public static boolean WristServoReversed = true;
         public static double OperatorTurnOverridePower = 0; // permanently 0
-        public static double ClawClosingSlowPower = -0.3;
+        public static double ClawClosingSlowPower = -0.6;
         public static double ClawClosingReallySlowPower = -0.15;
         public static double ClawOpeningPower = 1; // degrees (0.5)
         public static double ClawClosingPower = -1; // degrees (0.85)
@@ -149,12 +149,12 @@ public class Settings {
 
     @Config
     public static class DriverAutoTargetCoords{
-        public static double BasketX = -2.45, BasketY = -2.4;
+        public static double BasketX = -3, BasketY = -3; // BasketX = -2.45, BasketY = -2.4;
 
-        public static double HumanPickupX = 2.1, HumanPickupY = -2.6;
-        public static double HumanDropOffX = 2.1, HumanDropOffY = -2.2, HumanDropOffHeading = 315;
+        public static double HumanPickupX = 1.75, HumanPickupY = -2.8; // HumanPickupX = 2.1, HumanPickupY = -2.6;
+        public static double HumanDropOffX = 2.1, HumanDropOffY = -2.2, HumanDropOffHeading = 315; // HumanDropOffX = 2.1, HumanDropOffY = -2.2, HumanDropOffHeading = 315;
 
-        public static double SubmersibleX = -1.05, SubmersibleY = 0;
+        public static double SubmersibleX = -1.1, SubmersibleY = 0; // SubmersibleX = -1.05, SubmersibleY = 0;
 
     }
 

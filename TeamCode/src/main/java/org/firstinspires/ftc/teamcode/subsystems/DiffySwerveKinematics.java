@@ -40,8 +40,8 @@ public class DiffySwerveKinematics extends SubsystemBase {
         maxPower = maxPowerLimit; // helps to slow down how fast the gears wear down
         telemetry = newTelemetry;
 
-        rightModule = new SwerveModule(newRightTop, newRightBottom, Constants.driveWheelBaseAngle); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
-        leftModule = new SwerveModule(newLeftTop, newLeftBottom, Constants.driveWheelBaseAngle);
+        rightModule = new SwerveModule(newRightTop, newRightBottom, Constants.driveWheelBaseAngle, 1); // rotation encoders need to be the top motors for consistency and in ports 2 and 3 since port 0 and 3 on the control hub are more accurate for odometry
+        leftModule = new SwerveModule(newLeftTop, newLeftBottom, Constants.driveWheelBaseAngle, 1);
 
         telemetry.addData("Current right Diffy Angle:", rightModule.getCurrentAngle());
         telemetry.addData("Current left Diffy Angle:", leftModule.getCurrentAngle());
@@ -102,6 +102,9 @@ public class DiffySwerveKinematics extends SubsystemBase {
             rightModule.setModule(lastRightAngle, RightPower, maxPower);
             leftModule.setModule(lastLeftAngle, LeftPower, maxPower);
         }
+
+        //telemetry.addLine("test Right Module Powers: T" + rightModule.getTopMotorPower() + " B: " + rightModule.getBottomMotorPower());
+        //telemetry.addLine("test Left Module Powers: T" + leftModule.getTopMotorPower() + " B: " + leftModule.getBottomMotorPower());
     }
 
 

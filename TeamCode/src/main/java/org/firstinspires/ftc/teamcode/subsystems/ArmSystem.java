@@ -335,8 +335,9 @@ public class ArmSystem extends SubsystemBase {
 
 
         // this speeds up the code a lot by only checking sensors once per update
-        CurrentPivotAngleInst = CurrentPivotAngleDirect.getAsDouble(); // uses the more accurate direct encoder only when below 70 degrees to prevent the backlash from affecting the arm
-        if (CurrentPivotAngleInst > 70) CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble();
+        //CurrentPivotAngleInst = CurrentPivotAngleDirect.getAsDouble(); // uses the more accurate direct encoder only when below 70 degrees to prevent the backlash from affecting the arm
+        //if (CurrentPivotAngleInst > 70) CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble();
+        CurrentPivotAngleInst = CurrentPivotAngle.getAsDouble();
 
         if (CurrentPivotAngleInst < Constants.PivotDownAngle) CurrentPivotAngleInst = Constants.PivotDownAngle; // caps pivot angle values to within range
         CurrentExtensionLengthInst = CurrentExtensionLength.getAsDouble();
@@ -592,7 +593,7 @@ public class ArmSystem extends SubsystemBase {
         telemetry.addLine("Robot Velocity X:" +
                 functions.round(SubsystemData.RobotVelocity.linearVel.x, 2) + " Y:" +
                 functions.round(SubsystemData.RobotVelocity.linearVel.y, 2));
-        /*
+
         telemetry.addData("Pedro Heading", Math.toDegrees(SubsystemData.CurrentPedroPose.getHeading()));
         telemetry.addLine("Pedro Pose (in) X: " +
                 functions.round(SubsystemData.CurrentPedroPose.getX(), 2) + " Y: " +
@@ -601,7 +602,11 @@ public class ArmSystem extends SubsystemBase {
                 functions.round(SubsystemData.CurrentPedroVelocity.getXComponent(), 2) + " Y: " +
                 functions.round(SubsystemData.CurrentPedroVelocity.getYComponent(), 2));
 
-         */
+
+        //telemetry.addData("test Pivot Motor Power:", Pivot.getPower());
+        //telemetry.addData("test Extension F Motor Power:", ExtensionF.getPower());
+        //telemetry.addData("test Extension B Motor Power:", ExtensionB.getPower());
+
 
 
         if (telemetryEnabled) { // a lot of telemetry slows the code down so I made it toggleable
